@@ -1,0 +1,40 @@
+"""
+The Great Papyrus Discord bot — entrypoint.
+
+Loads ordered modules from Papyrus/ into this module's globals so the
+split package behaves like the original monolith.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+_MODULE_DIR = Path(__file__).resolve().parent / "Papyrus"
+
+_PARTS = [
+    "m01_imports_config.py",
+    "m02_database_setup.py",
+    "m03_db_helpers.py",
+    "m04_universes_combat.py",
+    "m05_bot_init_chat.py",
+    "m06_modals_views_a.py",
+    "m07_pvp_inventory.py",
+    "m08_commands_misc.py",
+    "m09_admin_rpg.py",
+    "m10_events_safety.py",
+    "m12_papyrus_features.py",
+    "m13_papyrus_more.py",
+    "m14_new_features.py",
+    "m11_economy_run.py",
+]
+
+def _load_parts() -> None:
+    g = globals()
+    for name in _PARTS:
+        path = _MODULE_DIR / name
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing bot module: {path}")
+        code = path.read_text(encoding="utf-8")
+        exec(compile(code, str(path), "exec"), g)
+
+_load_parts()
+# bot.run(TOKEN) is at the end of m11_economy_run.py
