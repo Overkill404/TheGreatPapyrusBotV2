@@ -12,6 +12,8 @@ db = sqlite3.connect(
     timeout=30
 )
 
+print(f"  🗄️  Database: {DATABASE}")
+
 db.row_factory = sqlite3.Row
 try:
     db.execute("PRAGMA journal_mode=WAL")
@@ -2206,4 +2208,3 @@ async def open_gauntlet_panel(interaction, owner, guild_id):
         codex_add(guild_id, f"Gauntlet: {g['name']}", f"{owner.display_name} entered the gauntlet.", "gauntlet", owner.id)
     sel.callback=cb; view.add_item(sel)
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-
