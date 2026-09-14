@@ -11265,6 +11265,12 @@ class EditBossActionSelect(discord.ui.Select):
                 description="HP, ATK, DEF, XP, gold, spawn, level, image",
             ),
             discord.SelectOption(
+                label="Set Mercy requirement",
+                value="mercy",
+                emoji="💛",
+                description="ACT attempts needed to spare this boss",
+            ),
+            discord.SelectOption(
                 label="Set type: Normal",
                 value="normal",
                 emoji="🌀",
@@ -11306,6 +11312,9 @@ class EditBossActionSelect(discord.ui.Select):
         if choice == "stats":
             await interaction.response.send_modal(EditBossModal(self.guild_id, boss))
             return
+        if choice == "mercy":
+            await interaction.response.send_modal(BossMercyRequirementModal(self.guild_id, boss))
+            return
         if choice == "change_id":
             await interaction.response.send_modal(ChangeBossIdModal(self.guild_id, self.boss_id))
             return
@@ -11343,6 +11352,51 @@ class EditBossActionSelect(discord.ui.Select):
         await interaction.response.send_message(
             f"✅ **{boss['name']}** is now **{label}** "
             f"(event=`{is_event}` · final=`{is_final}` · universe_final=`{is_uf}`).",
+            ephemeral=True,
+        )
+
+
+class BossMercyRequirementModal(discord.ui.Modal):
+    def __init__(self, guild_id, boss):
+        super().__init__(title=f"Mercy: {boss['name']}"[:45])
+        self.guild_id = int(guild_id)
+        self.boss_id = int(boss["id"])
+        try:
+            current = max(1, int(boss["mercy_required"] or 5))
+        except Exception:
+            current = 5
+        self.amount_in = discord.ui.TextInput(
+            label="MERCY actions required",
+            default=str(current),
+            placeholder="5",
+            min_length=1,
+            max_length=5,
+        )
+        self.add_item(self.amount_in)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not is_member_bot_admin(interaction.user):
+            await interaction.response.send_message("❌ Admins only.", ephemeral=True)
+            return
+        try:
+            amount = int(str(self.amount_in.value).strip())
+        except ValueError:
+            await interaction.response.send_message("❌ Enter a whole number.", ephemeral=True)
+            return
+        if amount < 1 or amount > 99999:
+            await interaction.response.send_message(
+                "❌ Mercy requirement must be between 1 and 99,999.",
+                ephemeral=True,
+            )
+            return
+        execute(
+            "UPDATE bosses SET mercy_required = ? WHERE guild_id = ? AND id = ?",
+            (amount, self.guild_id, self.boss_id),
+        )
+        boss = get_boss(self.guild_id, self.boss_id)
+        await interaction.response.send_message(
+            f"💛 **{boss['name'] if boss else self.boss_id}** now needs "
+            f"**{amount:,} MERCY action(s)** to be spared.",
             ephemeral=True,
         )
 
@@ -11386,6 +11440,11 @@ class ChangeBossIdModal(discord.ui.Modal, title="Change Boss ID"):
                 ("boss_roles", "boss_id"),
                 ("boss_move_links", "boss_id"),
                 ("boss_role_drops", "boss_id"),
+                ("player_boss_kills", "boss_id"),
+                ("player_boss_spares", "boss_id"),
+                ("boss_encounter_log", "boss_id"),
+                ("codes", "boss_id"),
+                ("levels", "require_boss_id"),
             ):
                 try:
                     execute(
@@ -11409,6 +11468,11 @@ class ChangeBossIdModal(discord.ui.Modal, title="Change Boss ID"):
                 ("boss_roles", "boss_id"),
                 ("boss_move_links", "boss_id"),
                 ("boss_role_drops", "boss_id"),
+                ("player_boss_kills", "boss_id"),
+                ("player_boss_spares", "boss_id"),
+                ("boss_encounter_log", "boss_id"),
+                ("codes", "boss_id"),
+                ("levels", "require_boss_id"),
             ):
                 try:
                     execute(

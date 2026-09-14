@@ -479,6 +479,22 @@ def papyrus_on_battle_win(guild_id, user_id):
         pass
 
 
+def papyrus_on_battle_spare(guild_id, user_id):
+    """Reward mercy with a larger Papyrus friendship gain than a battle win."""
+    try:
+        fcfg = papyrus_get_cfg(guild_id, "friend")
+        if int(fcfg.get("enabled", 1)) == 1:
+            normal = max(0, int(fcfg.get("battle_pts", 4) or 0))
+            add_papyrus_friend(
+                guild_id,
+                user_id,
+                max(1, normal * 2),
+                reason="mercy",
+            )
+    except Exception:
+        pass
+
+
 def papyrus_on_work(guild_id, user_id):
     try:
         add_royal_points(guild_id, user_id, papyrus_guard_pts_for(guild_id, "work"), reason="work")
