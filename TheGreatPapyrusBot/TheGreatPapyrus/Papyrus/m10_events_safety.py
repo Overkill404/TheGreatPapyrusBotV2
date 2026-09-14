@@ -249,34 +249,23 @@ class Battle:
             threat_emoji = "🟢"
             threat_text = "WEAK"
 
-        # Battle log with better formatting
-        log_lines = self.log[-4:] if self.log else ["Battle begins..."]
+        # Keep the active panel compact so HP and controls stay on screen.
+        log_lines = self.log[-3:] if self.log else ["Battle begins..."]
         cleaned_logs = []
         for x in log_lines:
             s = str(x).replace(chr(10), " ").strip()
-            # Add timestamp-style formatting
-            if len(s) > 60:
-                s = s[:57] + "..."
-            cleaned_logs.append(f"├ {s}")
-        log_text = "\n".join(cleaned_logs) if cleaned_logs else "├ Battle begins..."
+            if len(s) > 72:
+                s = s[:69] + "..."
+            cleaned_logs.append(f"> {s}")
+        log_text = "\n".join(cleaned_logs) if cleaned_logs else "> Battle begins..."
 
         you = label_for_member(self.player)
         nl = chr(10)
         
-        # Enhanced header with boss info
-        boss_header = f"**{threat_emoji} {self.boss['name']}** - {threat_text} THREAT"
-        
-        # Enhanced stats display
         mercy_required = max(1, int(getattr(self, "mercy_required", 5) or 5))
         mercy_progress = max(0, min(mercy_required, int(getattr(self, "mercy_progress", 0) or 0)))
         mercy_pct = int((mercy_progress / mercy_required) * 100)
         mercy_bar = mercy_progress_bar(mercy_progress, mercy_required)
-        boss_stats = (
-            f"**HP:** {boss_bar_visual} {boss_hp:,}/{boss_max:,} ({boss_pct}%){nl}"
-            f"**MERCY:** 💛 {mercy_bar} {mercy_progress}/{mercy_required} ({mercy_pct}%){nl}"
-            f"**ATK:** ⚔️ {int(self.boss['attack']):,} | **DEF:** 🛡️ {int(self.boss['defense']):,}"
-        )
-        player_stats = f"**HP:** {player_bar_visual} {player_hp:,}/{player_max:,} ({player_pct}%){nl}**ATK:** ⚔️ {atk:,} | **DEF:** 🛡️ {deff:,}"
         
         # Status effects display
         status_effects = []
@@ -289,23 +278,17 @@ class Battle:
         if self.player_weaken_turns > 0:
             status_effects.append(f"⬇️ Player Weaken ({self.player_weaken_pct}% reduction)")
         
-        status_text = nl + " | ".join(status_effects) if status_effects else ""
-        
-        # Main battle description
+        status_text = f"{nl}✨ " + " | ".join(status_effects) if status_effects else ""
+
         desc = (
-            f"┌─────────────────────────────────┐{nl}"
-            f"│ {boss_header:<35}│{nl}"
-            f"├─────────────────────────────────┤{nl}"
-            f"│ **👹 BOSS STATS**{nl}"
-            f"│ {boss_stats:<35}│{nl}"
-            f"├─────────────────────────────────┤{nl}"
-            f"│ **❤️ {you.upper()} STATS**{nl}"
-            f"│ {player_stats:<35}│{nl}"
-            f"├─────────────────────────────────┤{nl}"
-            f"│ **📜 BATTLE LOG**{nl}"
-            f"│ {log_text:<35}│{nl}"
-            f"└─────────────────────────────────┘"
-            f"{status_text}"
+            f"{threat_emoji} **{self.boss['name']}** · {threat_text}{nl}"
+            f"❤️ `{boss_bar_visual}` **{boss_hp:,}/{boss_max:,}** · {boss_pct}%{nl}"
+            f"💛 `{mercy_bar}` **{mercy_progress}/{mercy_required}** · {mercy_pct}% MERCY{nl}"
+            f"⚔️ {int(self.boss['attack']):,}  🛡️ {int(self.boss['defense']):,}{nl}{nl}"
+            f"🧡 **{you}**{nl}"
+            f"❤️ `{player_bar_visual}` **{player_hp:,}/{player_max:,}** · {player_pct}%{nl}"
+            f"⚔️ {atk:,}  🛡️ {deff:,}{status_text}{nl}{nl}"
+            f"📜 **Recent actions**{nl}{log_text}"
         )
 
         embed = discord.Embed(
@@ -314,9 +297,7 @@ class Battle:
             color=theme,
         )
         
-        # Enhanced footer with action hints
-        action_hints = "⚔️ FIGHT | 🎭 ACT | 🎒 ITEM | 🏃 FLEE"
-        embed.set_footer(text=f"{action_hints} ┃ Turn-based combat")
+        embed.set_footer(text="FIGHT · ACT · ITEM · FLEE")
         
         # Enhanced thumbnail
         try:
@@ -333,13 +314,6 @@ class Battle:
                     url = ""
             if url:
                 apply_embed_media(embed, url, force_thumbnail=True)
-        except Exception:
-            pass
-        
-        # Add boss image as main image if available
-        try:
-            if url and url.startswith("http"):
-                embed.set_image(url=url)
         except Exception:
             pass
         
