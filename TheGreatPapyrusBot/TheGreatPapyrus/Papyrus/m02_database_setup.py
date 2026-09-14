@@ -550,7 +550,8 @@ def setup_database():
 
             is_event INTEGER NOT NULL DEFAULT 0,
             is_final INTEGER NOT NULL DEFAULT 0,
-            ui_color TEXT NOT NULL DEFAULT ''
+            ui_color TEXT NOT NULL DEFAULT '',
+            mercy_required INTEGER NOT NULL DEFAULT 5
         )
     """)
 
@@ -581,6 +582,10 @@ def setup_database():
         pass
     try:
         execute("ALTER TABLE bosses ADD COLUMN ui_color TEXT NOT NULL DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        execute("ALTER TABLE bosses ADD COLUMN mercy_required INTEGER NOT NULL DEFAULT 5")
     except sqlite3.OperationalError:
         pass
 
@@ -626,6 +631,16 @@ def setup_database():
             user_id INTEGER NOT NULL,
             boss_id INTEGER NOT NULL,
             kills INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (guild_id, user_id, boss_id)
+        )
+    """)
+
+    execute("""
+        CREATE TABLE IF NOT EXISTS player_boss_spares (
+            guild_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            boss_id INTEGER NOT NULL,
+            spares INTEGER NOT NULL DEFAULT 1,
             PRIMARY KEY (guild_id, user_id, boss_id)
         )
     """)

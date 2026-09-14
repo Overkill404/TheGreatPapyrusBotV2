@@ -92,6 +92,23 @@ async def start_solo_battle_ui(interaction, boss, *, level_id=None, kind="a solo
         return None
 
 
+def boss_mercy_requirement(boss):
+    """Return the number of successful MERCY actions configured for a boss."""
+    try:
+        if "mercy_required" in boss.keys():
+            return max(1, int(boss["mercy_required"] or 5))
+    except Exception:
+        pass
+    return 5
+
+
+def mercy_progress_bar(progress, required, length=10):
+    required = max(1, int(required or 1))
+    progress = max(0, min(required, int(progress or 0)))
+    filled = max(0, min(length, int((progress / required) * length)))
+    return "█" * filled + "░" * (length - filled)
+
+
 class Battle:
 
     def __init__(
@@ -109,6 +126,8 @@ class Battle:
 
         self.boss_max_hp = boss["hp"]
         self.boss_hp = boss["hp"]
+        self.mercy_required = boss_mercy_requirement(boss)
+        self.mercy_progress = 0
 
         self.log = []
 
@@ -248,7 +267,15 @@ class Battle:
         boss_header = f"**{threat_emoji} {self.boss['name']}** - {threat_text} THREAT"
         
         # Enhanced stats display
-        boss_stats = f"**HP:** {boss_bar_visual} {boss_hp:,}/{boss_max:,} ({boss_pct}%){nl}**ATK:** ⚔️ {int(self.boss['attack']):,} | **DEF:** 🛡️ {int(self.boss['defense']):,}"
+        mercy_required = max(1, int(getattr(self, "mercy_required", 5) or 5))
+        mercy_progress = max(0, min(mercy_required, int(getattr(self, "mercy_progress", 0) or 0)))
+        mercy_pct = int((mercy_progress / mercy_required) * 100)
+        mercy_bar = mercy_progress_bar(mercy_progress, mercy_required)
+        boss_stats = (
+            f"**HP:** {boss_bar_visual} {boss_hp:,}/{boss_max:,} ({boss_pct}%){nl}"
+            f"**MERCY:** 💛 {mercy_bar} {mercy_progress}/{mercy_required} ({mercy_pct}%){nl}"
+            f"**ATK:** ⚔️ {int(self.boss['attack']):,} | **DEF:** 🛡️ {int(self.boss['defense']):,}"
+        )
         player_stats = f"**HP:** {player_bar_visual} {player_hp:,}/{player_max:,} ({player_pct}%){nl}**ATK:** ⚔️ {atk:,} | **DEF:** 🛡️ {deff:,}"
         
         # Status effects display
@@ -1782,6 +1809,16 @@ def make_act_embed(battle):
     )
     embed.add_field(name="🗣️ TAUNT", value="Cut HP for extra loot (stacks).", inline=True)
     embed.add_field(name="🔍 CHECK", value="View stats and drop chances.", inline=True)
+    required = max(1, int(getattr(battle, "mercy_required", 5) or 5))
+    progress = max(0, min(required, int(getattr(battle, "mercy_progress", 0) or 0)))
+    embed.add_field(
+        name="💛 MERCY",
+        value=(
+            f"`{mercy_progress_bar(progress, required)}` **{progress}/{required}**\n"
+            "Each attempt fills the bar but gives the boss a turn. Fill it to spare the boss."
+        ),
+        inline=False,
+    )
     return embed
 
 
@@ -2008,6 +2045,40 @@ class ActView(CooldownView):
         view = CooldownView(timeout=60)
         view.add_item(ActBackButton(battle))
         await interaction.response.edit_message(embed=embed, view=view)
+
+    @discord.ui.button(label="MERCY", emoji="💛", style=discord.ButtonStyle.success, row=1)
+    async def mercy(self, interaction, button):
+        battle = self.battle_ref
+        if interaction.user.id != battle.player.id:
+            await interaction.response.send_message("❌ Not your battle.", ephemeral=True)
+            return
+        if getattr(battle, "finished", False):
+            await interaction.response.send_message("❌ Fight already ended.", ephemeral=True)
+            return
+
+        required = max(1, int(getattr(battle, "mercy_required", 5) or 5))
+        battle.mercy_progress = min(
+            required,
+            int(getattr(battle, "mercy_progress", 0) or 0) + 1,
+        )
+        battle.add_log(
+            f"💛 {label_for_member(battle.player)} appealed to {battle.boss['name']}! "
+            f"MERCY {battle.mercy_progress}/{required}"
+        )
+
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+
+        if battle.mercy_progress >= required:
+            battle.finished = True
+            battle.add_log(f"✨ {battle.boss['name']} accepted MERCY!")
+            await victory(interaction, battle, spared=True)
+            return
+
+        await self._after_act_turn(interaction, battle)
 
 
 
@@ -2880,8 +2951,11 @@ class PostBattleView(CooldownView):
 
 async def victory(
     interaction,
-    battle
+    battle,
+    spared=False,
 ):
+
+    battle.finished = True
 
     guild_id = interaction.guild.id
     user_id = interaction.user.id
@@ -2891,7 +2965,8 @@ async def victory(
     # Give the full gold amount set on the boss
     raw_gold = max(0, int(boss["gold"] or 0))
     gold_gain = raw_gold
-    xp_gain = max(0, int(boss["xp"] or 0))
+    # Pacifist victories grant gold, but no EXP or combat loot.
+    xp_gain = 0 if spared else max(0, int(boss["xp"] or 0))
 
     loot_mult = battle_loot_mult(battle, guild_id)
     if loot_mult > 1:
@@ -2942,9 +3017,20 @@ async def victory(
         user_id
     ))
     full_heal_player(guild_id, user_id)
-    record_boss_kill(guild_id, user_id, boss["id"])
+    if spared:
+        record_boss_spare(guild_id, user_id, boss["id"])
+        try:
+            papyrus_on_battle_spare(guild_id, user_id)
+        except Exception:
+            pass
+    else:
+        record_boss_kill(guild_id, user_id, boss["id"])
+        try:
+            papyrus_on_battle_win(guild_id, user_id)
+        except Exception:
+            pass
     try:
-        papyrus_on_battle_win(guild_id, user_id)
+        update_route_on_boss(guild_id, user_id, boss["id"], killed=not spared)
     except Exception:
         pass
 
@@ -2998,6 +3084,11 @@ async def victory(
             )
         )
     reward_text += "\n⭐ **+{:,} XP**".format(final_xp_show)
+    if spared:
+        reward_text += (
+            "\n💛 **PACIFIST CLEAR** - no EXP or combat drops"
+            "\n🦴 **Papyrus friendship increased!**"
+        )
     if total_x > 1.0001:
         parts = []
         if rebirth_x > 1.0001:
@@ -3054,7 +3145,7 @@ async def victory(
     # ABILITY DROPS (skipped in Boss Rush)
     # --------------------------------------------------------
 
-    boss_abilities = [] if getattr(battle, "boss_rush", False) else boss_ability_rows(
+    boss_abilities = [] if spared or getattr(battle, "boss_rush", False) else boss_ability_rows(
         guild_id,
         boss["id"]
     )
@@ -3105,7 +3196,7 @@ async def victory(
     # WEAPON / ARMOR / ITEM LOOT
     # --------------------------------------------------------
 
-    loot_rows = [] if getattr(battle, "boss_rush", False) else db.execute("""
+    loot_rows = [] if spared or getattr(battle, "boss_rush", False) else db.execute("""
         SELECT *
         FROM boss_loot
         WHERE guild_id = ?
@@ -3185,7 +3276,7 @@ async def victory(
     # BOSS ROLE DROPS
     # --------------------------------------------------------
 
-    role_drop_rows = db.execute("""
+    role_drop_rows = [] if spared else db.execute("""
         SELECT * FROM boss_role_drops
         WHERE guild_id = ? AND boss_id = ?
     """, (guild_id, boss["id"])).fetchall()
@@ -3230,14 +3321,19 @@ async def victory(
         )
 
     embed = discord.Embed(
-        title="🎉  VICTORY",
+        title="💛  BOSS SPARED" if spared else "🎉  VICTORY",
         description=(
             f"{ui_rule('thick')}\n"
-            f"👑 **{boss['name']}** has been defeated!\n"
-            f"*The strange AU fades away around you.*\n"
-            f"{ui_rule()}"
+            + (
+                f"💛 **{boss['name']}** accepted your MERCY!\n"
+                f"*You won without taking a life.*\n"
+                if spared else
+                f"👑 **{boss['name']}** has been defeated!\n"
+                f"*The strange AU fades away around you.*\n"
+            )
+            + f"{ui_rule()}"
         ),
-        color=discord.Color.from_str("#27AE60")
+        color=discord.Color.gold() if spared else discord.Color.from_str("#27AE60")
     )
     embed.set_author(name="BATTLE COMPLETE")
     if boss["image_url"]:
@@ -3252,7 +3348,7 @@ async def victory(
     )
 
     # Boss phase roll - may start a follow-up fight
-    next_boss = roll_next_boss_phase(guild_id, boss["id"])
+    next_boss = None if spared else roll_next_boss_phase(guild_id, boss["id"])
     if next_boss:
         unregister_battle_player(battle)
 
@@ -3658,6 +3754,7 @@ async def createboss(
     defense: int,
     xp: int,
     gold: int,
+    mercy_required: int = 5,
     spawn_rate: Optional[float] = None,
     image_url: Optional[str] = None,
     event: bool = False
@@ -3687,9 +3784,10 @@ async def createboss(
             gold,
             spawn_rate,
             image_url,
-            is_event
+            is_event,
+            mercy_required
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         guild_id,
         name,
@@ -3700,7 +3798,8 @@ async def createboss(
         max(0, gold),
         max(0, spawn_rate),
         image_url,
-        is_event
+        is_event,
+        max(1, mercy_required),
     ))
 
     boss_id = cursor.lastrowid
@@ -3723,6 +3822,7 @@ async def createboss(
             f"🛡️ Defense: `{defense}`\n"
             f"⭐ XP: `{xp}`\n"
             f"💰 Gold: `{gold}`\n"
+            f"💛 Mercy ACTs: `{max(1, mercy_required)}`\n"
             f"🌀 Spawn Rate: `{spawn_rate}%`\n"
             f"📅 Type: `{'EVENT (summon only)' if is_event else 'Normal portal'}`"
         ),
@@ -4278,6 +4378,7 @@ async def editboss(
     defense: Optional[int] = None,
     xp: Optional[int] = None,
     gold: Optional[int] = None,
+    mercy_required: Optional[int] = None,
     spawn_rate: Optional[float] = None,
     image_url: Optional[str] = None
 ):
@@ -4334,6 +4435,13 @@ async def editboss(
         else boss["gold"]
     )
 
+    old_mercy = (
+        int(boss["mercy_required"] or 5)
+        if "mercy_required" in boss.keys()
+        else 5
+    )
+    new_mercy = max(1, mercy_required) if mercy_required is not None else old_mercy
+
     new_spawn = (
         max(0, float(spawn_rate))
         if spawn_rate is not None
@@ -4355,6 +4463,7 @@ async def editboss(
             defense = ?,
             xp = ?,
             gold = ?,
+            mercy_required = ?,
             spawn_rate = ?,
             image_url = ?
         WHERE guild_id = ?
@@ -4366,6 +4475,7 @@ async def editboss(
         new_defense,
         new_xp,
         new_gold,
+        new_mercy,
         new_spawn,
         new_image,
         guild_id,
@@ -4388,6 +4498,7 @@ async def editboss(
             f"🛡️ Defense: `{new_defense}`\n"
             f"⭐ XP: `{new_xp}`\n"
             f"💰 Gold: `{new_gold}`\n"
+            f"💛 Mercy ACTs: `{new_mercy}`\n"
             f"🌀 Spawn Rate: `{new_spawn}%`"
         ),
         inline=False
@@ -5017,54 +5128,13 @@ async def spontaneous_idle_loop():
             guild_id = channel.guild.id if channel.guild else 0
             if not is_guild_subscribed(guild_id):
                 continue
-            # Idle chat never @pings anyone (avoids hour-later notifications)
-            mention = None
-            # Prefer roasting with old lines — but use display names, not @mentions
-            line = None
-            try:
-                if channel.guild and random.random() < 0.55:
-                    keys = [
-                        k
-                        for k in PLAYER_QUOTE_MEMORY
-                        if k[0] == guild_id and PLAYER_QUOTE_MEMORY[k]
-                    ]
-                    if keys:
-                        _gid, uid = random.choice(keys)
-                        quotes = get_remembered_quotes(guild_id, uid, limit=8)
-                        member = channel.guild.get_member(uid)
-                        name = member.display_name if member else f"user-{uid}"
-                        if quotes:
-                            stolen = random.choice(quotes)
-                            if len(stolen) > 100:
-                                stolen = stolen[:97] + "..."
-                            line = random.choice([
-                                f'{name} still thinking about when you said "{stolen}"',
-                                f'{name} "{stolen}" lives rent free in the void',
-                                f'{name} random reminder: "{stolen}"',
-                                f'{name} nobody forgot "{stolen}"',
-                                f'echo flower: "{stolen}" - {name}',
-                            ])
-            except Exception:
-                line = None
-            if not line:
-                line = _spontaneous_line(guild_id, mention=None)
-            line = _attach_category_gif(
-                line, category="roast" if random.random() < 0.35 else None,
-                chance=0.40, guild_id=guild_id, channel_id=channel.id,
-            )
-            body, gif = _split_text_and_gif(line)
+            # Idle chat never quotes or pings a player and never attaches learned media.
+            line = random.choice(PAPYRUS_SPONTANEOUS_LINES)
             _mark_spoke_spontaneous(channel.id)
-            body = _scrub_media_tokens_from_text(body or "")
-            if body:
-                await channel.send(
-                    body,
-                    allowed_mentions=discord.AllowedMentions.none(),
-                )
-            if gif:
-                try:
-                    await send_media_token(channel, gif)
-                except Exception:
-                    pass
+            await channel.send(
+                line,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
         except Exception as e:
             try:
                 print(f"idle spontaneous failed: {e}")
@@ -5738,8 +5808,99 @@ async def on_ready():
 
 
 # ============================================================
-# ERROR HANDLER
+# PAPYRUS CHAT HANDLER
 # ============================================================
+
+
+PAPYRUS_CHAT_LINES = [
+    "NYEH HEH HEH! THE GREAT PAPYRUS IS LISTENING!",
+    "A MESSAGE FOR ME? EXCELLENT! YOUR TASTE IN SKELETONS IS IMPECCABLE!",
+    "I, THE GREAT PAPYRUS, AM HERE! WHAT MAGNIFICENT SUBJECT SHALL WE DISCUSS?",
+    "HELLO, HUMAN! I HOPE YOU ARE READY FOR PUZZLES, FRIENDSHIP, AND PERHAPS SPAGHETTI!",
+]
+
+PAPYRUS_SPONTANEOUS_LINES = [
+    "NYEH HEH HEH! THIS CONVERSATION COULD USE A BRILLIANT PUZZLE!",
+    "REMEMBER, HUMANS: CONFIDENCE, KINDNESS, AND PROPERLY COOKED SPAGHETTI!",
+    "THE GREAT PAPYRUS BELIEVES IN YOUR ABILITY TO BE VERY COOL TODAY!",
+    "I HAVE ARRIVED WITH ENCOURAGEMENT! AND ALSO BONES! MOSTLY ENCOURAGEMENT!",
+]
+
+
+def _papyrus_chat_reply(text, guild_id=0, user_id=0, *, from_bot=False):
+    """Return an in-character Papyrus reply without learned roasts or random media."""
+    clean = " ".join(str(text or "").split()).strip()
+    low = clean.lower()
+
+    def pick(lines):
+        return random.choice(lines)
+
+    if from_bot:
+        return pick([
+            "HELLO, FELLOW AUTOMATON! LET US USE OUR TECHNOLOGY FOR PUZZLES AND FRIENDSHIP!",
+            "NYEH HEH HEH! A ROBOT HAS CONTACTED THE GREAT PAPYRUS! HOW EXCITING!",
+            "GREETINGS, MACHINE! I HOPE YOUR PROGRAMMING INCLUDES GOOD MANNERS!",
+        ])
+    if not clean:
+        return pick(PAPYRUS_CHAT_LINES)
+    if any(word in low for word in ("error sans", "error!sans", "glitch sans")):
+        return "I AM THE GREAT PAPYRUS, NOT ERROR SANS! MY SPECIALTIES ARE PUZZLES, FRIENDSHIP, AND VERY DRAMATIC POSES!"
+    if any(phrase in low for phrase in ("roast them", "roast him", "roast her", "flame them", "bully them", "attack them")):
+        return "I WILL NOT BULLY ANYONE! I SHALL DEFEAT THEM FAIRLY WITH AN EXTREMELY CLEVER PUZZLE INSTEAD!"
+    if any(word in low for word in ("fuck", "bitch", "dumbass", "shut up", "hate you", "you suck", "stupid")):
+        return "THAT WAS NOT VERY NICE! BUT I, THE GREAT PAPYRUS, STILL BELIEVE YOU CAN DO BETTER!"
+    if any(phrase in low for phrase in ("who are you", "what are you", "your name", "are you papyrus")):
+        return "I AM THE GREAT PAPYRUS! FUTURE ROYAL GUARDSMAN, MASTER PUZZLE DESIGNER, AND EXTREMELY COOL SKELETON!"
+    if any(word in low for word in ("hello", " hi", "hi ", "hey", "howdy", "greetings")) or low == "hi":
+        return pick([
+            "HELLO, HUMAN! YOU HAVE BEEN GREETED BY THE GREAT PAPYRUS!",
+            "NYEH HEH HEH! GREETINGS! YOUR DAY HAS JUST BECOME AT LEAST 200% COOLER!",
+            "HELLO! I HOPE YOU BROUGHT YOUR PUZZLE-SOLVING SPIRIT!",
+        ])
+    if any(phrase in low for phrase in ("how are you", "how r u", "you okay", "are you okay")):
+        return "I AM FEELING GREAT, AS USUAL! THANK YOU FOR ASKING, HUMAN!"
+    if "soft" in low:
+        return "MY SCARF MAY BE SOFT, BUT MY PUZZLES ARE FORMIDABLE! NYEH HEH HEH!"
+    if any(word in low for word in ("spaghetti", "pasta", "cook", "cooking")):
+        return pick([
+            "SPAGHETTI! AT LAST, A SUBJECT WORTHY OF THE GREAT PAPYRUS!",
+            "MY SPAGHETTI IS PREPARED WITH CONFIDENCE, PASSION, AND AN IMPRESSIVE AMOUNT OF SAUCE!",
+            "OF COURSE I CAN COOK! GREATNESS IS THE MOST IMPORTANT INGREDIENT!",
+        ])
+    if any(word in low for word in ("puzzle", "riddle", "challenge")):
+        return "YOU SEEK A PUZZLE? EXCELLENT! TRY `/puzzle` AND PREPARE TO BE IMPRESSED BY MY GENIUS!"
+    if "sans" in low:
+        return "SANS IS MY BROTHER! HE IS LAZY, BUT I REMAIN DETERMINED TO HELP HIM REACH HIS FULL POTENTIAL!"
+    if any(word in low for word in ("mercy", "spare", "pacifist")):
+        return "CHOOSING MERCY TAKES REAL STRENGTH! USE ACTS TO FILL THE MERCY BAR, THEN SPARE THE BOSS WHEN IT IS READY!"
+    if any(word in low for word in ("genocide", "geno route", "kill everyone")):
+        return "I DO NOT APPROVE OF HURTING EVERYONE! THERE IS ALWAYS TIME TO CHOOSE MERCY AND BECOME A BETTER HUMAN!"
+    if any(word in low for word in ("battle", "boss", "fight")):
+        return "A BATTLE! REMEMBER: FIGHTING IS NOT YOUR ONLY OPTION. ACTS AND MERCY CAN WIN WITHOUT A KILL!"
+    if any(word in low for word in ("friendship", "relationship", "friend", "like me", "love me")):
+        try:
+            friend = get_papyrus_friend(guild_id, user_id)
+            rank = str(friend["rank_name"] or "Stranger") if friend else "Stranger"
+            return f"OUR CURRENT FRIENDSHIP RANK IS **{rank.upper()}**! KEEP BEING KIND AND IT WILL BECOME EVEN GREATER!"
+        except Exception:
+            return "FRIENDSHIP IS ONE OF MY GREATEST TALENTS! KEEP BEING KIND AND WE SHALL BECOME VERY COOL FRIENDS!"
+    if any(word in low for word in ("help", "command", "what can you do", "how do i")):
+        return "I CAN HELP WITH BATTLES, PUZZLES, FRIENDSHIP, THE UNDERNET, AND MORE! USE `/commands` TO SEE MY MAGNIFICENT ABILITIES!"
+    if any(word in low for word in ("sad", "upset", "crying", "bad day", "not okay")):
+        return "DO NOT GIVE UP, HUMAN! EVEN A TERRIBLE DAY CAN BE DEFEATED WITH PATIENCE, FRIENDSHIP, AND A GOOD PUZZLE!"
+    if any(word in low for word in ("cool", "great", "awesome", "best", "thank", "thanks", "nice")):
+        return pick([
+            "OF COURSE I AM GREAT! BUT IT TAKES A VERY COOL HUMAN TO RECOGNIZE IT!",
+            "THANK YOU! YOUR EXCELLENT JUDGMENT HAS BEEN NOTED!",
+            "NYEH HEH HEH! YOU ARE PRETTY GREAT YOURSELF, HUMAN!",
+        ])
+    if "?" in clean:
+        return pick([
+            "AN EXCELLENT QUESTION! I SHALL THINK ABOUT IT WHILE STRIKING A DRAMATIC POSE!",
+            "THE GREAT PAPYRUS SAYS: BELIEVE IN YOURSELF, THEN TEST THE ANSWER WITH SCIENCE!",
+            "HMM! THAT QUESTION MAY REQUIRE A PUZZLE TO ANSWER PROPERLY!",
+        ])
+    return pick(PAPYRUS_CHAT_LINES)
 
 
 @bot.event
@@ -5798,27 +5959,11 @@ async def on_message(message: discord.Message):
         pass
 
     try:
-        # Remember human lines + gifs for later roasts
+        # Friendship chat progress is the only automatic learning Papyrus needs.
         try:
             if message.guild and not message.author.bot:
-                remember_player_chat(message.guild.id, message.author.id, message)
                 try:
                     papyrus_on_chat(message.guild.id, message.author.id, message.channel.id)
-                except Exception:
-                    pass
-                # Auto-archive media from chat into BotStorage (images/gifs/videos)
-                try:
-                    raw_c = message.content or ""
-                    if message.attachments or _extract_gif_urls(raw_c, message.attachments):
-                        for att in (message.attachments or []):
-                            name = (getattr(att, "filename", "") or "").lower()
-                            ctype = (getattr(att, "content_type", "") or "").lower()
-                            if name.endswith(tuple(BOT_STORAGE_EXTS)) or any(
-                                x in ctype for x in ("image", "gif", "video")
-                            ):
-                                await save_discord_attachment_to_bot_storage(att)
-                        for gu in _extract_gif_urls(raw_c, None)[:3]:
-                            await save_url_to_bot_storage(gu, prefix="chat")
                 except Exception:
                     pass
         except Exception:
@@ -5863,63 +6008,24 @@ async def on_message(message: discord.Message):
                 except Exception:
                     clean = (message.content or "").strip()
 
-                other_targets = [
-                    u for u in message.mentions
-                    if u.id != bot.user.id and u.id != message.author.id
-                ]
-                target = random.choice(other_targets) if other_targets else message.author
-                if target.id == bot.user.id:
-                    target = message.author
-
                 gid = message.guild.id if message.guild else 0
-                _soft = True
-                try:
-                    _soft = get_style_pack(gid)["id"] != "error"
-                except Exception:
-                    _soft = True
-                reply = _build_roast_message(
-                    target, [], [clean] if clean else [],
-                    message_text=clean,
-                    channel_id=message.channel.id,
-                    guild_id=gid,
-                    soft=_soft,
+                reply = _papyrus_chat_reply(
+                    clean,
+                    gid,
+                    getattr(message.author, "id", 0),
+                    from_bot=True,
                 )
-                # Keep it short for bot-bot chat sometimes
-                if random.random() < 0.4:
-                    reply = random.choice([
-                        f"{target.mention} yo",
-                        f"{target.mention} what",
-                        f"{target.mention} mid",
-                        f"{target.mention} W",
-                        f"{target.mention} L",
-                        f"{target.mention} bot detected",
-                        f"{target.mention} nah",
-                        f"{target.mention} real",
-                        f"{target.mention} who asked",
-                        f"{message.author.mention} yo",
-                        f"{message.author.mention} bot fr",
-                        "yo",
-                        "what",
-                        "lmao",
-                        "bot war",
-                    ])
-                reply = _attach_category_gif(
-                    reply, chance=0.20, guild_id=gid, channel_id=message.channel.id
-                )
-                reply = error_glitch_speech(reply)
-                body, gif = _split_text_and_gif(reply)
-                body = _scrub_media_tokens_from_text(body or "")
                 try:
-                    if body:
-                        await message.reply(body, mention_author=False)
+                    await message.reply(
+                        reply,
+                        mention_author=False,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
                 except Exception:
-                    if body:
-                        await message.channel.send(body)
-                if gif:
-                    try:
-                        await send_media_token(message.channel, gif)
-                    except Exception:
-                        pass
+                    await message.channel.send(
+                        reply,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
             except Exception as e:
                 try:
                     print(f"bot-ping reply failed: {e}")
@@ -5940,53 +6046,12 @@ async def on_message(message: discord.Message):
                 ):
                     # Never random-@ people on delayed spontaneous chat.
                     # "ping" mode removed — only reply/text, and never mention_author here.
-                    mode = random.choices(
-                        ["reply", "text"],
-                        weights=[55, 45],
-                        k=1,
-                    )[0]
-                    gid = message.guild.id
-                    if mode == "reply":
-                        line = _spontaneous_line(gid, mention=None)
-                        if message.content and random.random() < 0.45:
-                            line = _build_roast_message(
-                                message.author, [], [message.content[:100]],
-                                message_text=message.content[:120],
-                                channel_id=message.channel.id,
-                                guild_id=gid,
-                            )
-                        line = _attach_category_gif(
-                            line, chance=0.25, guild_id=gid, channel_id=message.channel.id
-                        )
-                        body, gif = _split_text_and_gif(line)
-                        _mark_spoke_spontaneous(message.channel.id)
-                        body = _scrub_media_tokens_from_text(body or "")
-                        if body:
-                            # No author ping on spontaneous/late replies
-                            await message.reply(body, mention_author=False)
-                        if gif:
-                            try:
-                                await send_media_token(message.channel, gif)
-                            except Exception:
-                                pass
-                    else:
-                        line = _spontaneous_line(gid, mention=None)
-                        line = _attach_category_gif(
-                            line, chance=0.18, guild_id=gid, channel_id=message.channel.id
-                        )
-                        body, gif = _split_text_and_gif(line)
-                        _mark_spoke_spontaneous(message.channel.id)
-                        body = _scrub_media_tokens_from_text(body or "")
-                        if body:
-                            await message.channel.send(
-                                body,
-                                allowed_mentions=discord.AllowedMentions.none(),
-                            )
-                        if gif:
-                            try:
-                                await send_media_token(message.channel, gif)
-                            except Exception:
-                                pass
+                    line = random.choice(PAPYRUS_SPONTANEOUS_LINES)
+                    _mark_spoke_spontaneous(message.channel.id)
+                    await message.channel.send(
+                        line,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
             except Exception as e:
                 try:
                     print(f"spontaneous chat failed: {e}")
@@ -6027,6 +6092,31 @@ async def on_message(message: discord.Message):
             clean = " ".join(clean.split()).strip()
         except Exception:
             clean = (message.content or "").strip()
+
+        # Papyrus answers directly. The legacy Error/Hazel roast engine below is
+        # intentionally bypassed so it cannot quote users, swear, glitch text,
+        # attach unrelated media, or accept orders to bully another member.
+        gid = message.guild.id if message.guild else 0
+        reply = _papyrus_chat_reply(clean, gid, message.author.id)
+        try:
+            await message.reply(
+                reply,
+                mention_author=False,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except Exception:
+            try:
+                await message.channel.send(
+                    reply,
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
+            except Exception:
+                pass
+        try:
+            await bot.process_commands(message)
+        except Exception:
+            pass
+        return
 
         # Learn GIFs / phrases people feed the bot
         try:

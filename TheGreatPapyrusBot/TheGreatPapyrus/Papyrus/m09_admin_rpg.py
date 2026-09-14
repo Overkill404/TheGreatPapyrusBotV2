@@ -1920,6 +1920,10 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
         """, (p_gold, guild_id, user_id))
         full_heal_player(guild_id, user_id)
         record_boss_kill(guild_id, user_id, boss["id"])
+        try:
+            update_route_on_boss(guild_id, user_id, boss["id"], killed=True)
+        except Exception:
+            pass
 
         levelups = add_xp(guild_id, user_id, p_xp)
         try:
@@ -3184,7 +3188,7 @@ def _check_require_specific_boss(guild_id, user_id, boss_id) -> tuple:
         bid = 0
     if bid <= 0:
         return True, ""
-    if player_has_killed_boss(guild_id, user_id, bid):
+    if player_has_defeated_boss(guild_id, user_id, bid):
         return True, ""
     b = get_boss(guild_id, bid)
     name = b["name"] if b else f"#{bid}"

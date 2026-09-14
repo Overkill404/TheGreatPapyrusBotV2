@@ -841,6 +841,7 @@ def repair_all_guild_ids(guild_id):
             ("boss_loot", "boss_id", None),
             ("boss_role_drops", "boss_id", None),
             ("player_boss_kills", "boss_id", None),
+            ("player_boss_spares", "boss_id", None),
             ("codes", "boss_id", None),
             ("levels", "require_boss_id", None),
             ("boss_phases", "from_boss_id", None),
@@ -868,6 +869,10 @@ def delete_boss_fully(guild_id, boss_id):
     except Exception:
         pass
     try:
+        execute("DELETE FROM player_boss_spares WHERE guild_id = ? AND boss_id = ?", (guild_id, boss_id))
+    except Exception:
+        pass
+    try:
         execute("UPDATE codes SET boss_id = NULL WHERE guild_id = ? AND boss_id = ?", (guild_id, boss_id))
     except Exception:
         pass
@@ -884,6 +889,7 @@ def delete_boss_fully(guild_id, boss_id):
             ("boss_loot", "boss_id", None),
             ("boss_role_drops", "boss_id", None),
             ("player_boss_kills", "boss_id", None),
+            ("player_boss_spares", "boss_id", None),
             ("codes", "boss_id", None),
             ("levels", "require_boss_id", None),
             ("boss_phases", "from_boss_id", None),
@@ -2831,6 +2837,42 @@ def player_has_killed_boss(guild_id, user_id, boss_id):
     return bool(row and int(row["kills"] or 0) > 0)
 
 
+def record_boss_spare(guild_id, user_id, boss_id):
+    """Record a non-lethal boss completion without incrementing kill totals."""
+    existing = db.execute("""
+        SELECT spares FROM player_boss_spares
+        WHERE guild_id = ? AND user_id = ? AND boss_id = ?
+    """, (guild_id, user_id, boss_id)).fetchone()
+    if existing:
+        execute("""
+            UPDATE player_boss_spares SET spares = spares + 1
+            WHERE guild_id = ? AND user_id = ? AND boss_id = ?
+        """, (guild_id, user_id, boss_id))
+    else:
+        execute("""
+            INSERT INTO player_boss_spares (guild_id, user_id, boss_id, spares)
+            VALUES (?, ?, ?, 1)
+        """, (guild_id, user_id, boss_id))
+
+
+def player_has_spared_boss(guild_id, user_id, boss_id):
+    if not boss_id:
+        return True
+    row = db.execute("""
+        SELECT spares FROM player_boss_spares
+        WHERE guild_id = ? AND user_id = ? AND boss_id = ?
+    """, (guild_id, user_id, boss_id)).fetchone()
+    return bool(row and int(row["spares"] or 0) > 0)
+
+
+def player_has_defeated_boss(guild_id, user_id, boss_id):
+    """Progression accepts either a lethal victory or a completed spare."""
+    return (
+        player_has_killed_boss(guild_id, user_id, boss_id)
+        or player_has_spared_boss(guild_id, user_id, boss_id)
+    )
+
+
 def level_unlock_status(guild_id, user_id, level):
     """
     Returns (unlocked: bool, reason: str).
@@ -2859,7 +2901,7 @@ def level_unlock_status(guild_id, user_id, level):
         return False, f"Need **player LV {req_lv}** (you are LV {player['level']})."
 
     if req_boss:
-        if not player_has_killed_boss(guild_id, user_id, req_boss):
+        if not player_has_defeated_boss(guild_id, user_id, req_boss):
             boss = get_boss(guild_id, req_boss)
             bname = boss["name"] if boss else f"Boss #{req_boss}"
             return False, f"Must defeat **{bname}** first."
@@ -3289,7 +3331,8 @@ def fill_boss_info_embed(embed, guild, boss, compact=False):
         value=(
             f"❤️ **HP** `{int(boss['hp'] or 0):,}`\n"
             f"⚔️ **ATK** `{int(boss['attack'] or 0):,}`   🛡️ **DEF** `{int(boss['defense'] or 0):,}`\n"
-            f"⭐ **XP** `{int(boss['xp'] or 0):,}`   💰 **Gold** `{int(boss['gold'] or 0):,}`"
+            f"⭐ **XP** `{int(boss['xp'] or 0):,}`   💰 **Gold** `{int(boss['gold'] or 0):,}`\n"
+            f"💛 **Mercy ACTs** `{max(1, int(boss['mercy_required'] or 5)) if 'mercy_required' in boss.keys() else 5}`"
         ),
         inline=True,
     )
