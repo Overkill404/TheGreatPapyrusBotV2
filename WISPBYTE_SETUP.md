@@ -32,6 +32,10 @@ only `Bot.py`, so the `Papyrus/` modules remain beside the entrypoint.
      database included in this project, use
      `/home/container/TheGreatPapyrusBot/TheGreatPapyrus/Papyrus/undertale_au_rpg.db`.
 
+   When `DATABASE_PATH` is omitted, the bot now selects that database beside
+   the Papyrus modules automatically instead of creating one in Wispbyte's
+   `/home/container` startup directory.
+
    If Wispbyte shows a **File location** box, leave it as `.env`, add both
    variables, and click **Save changes**. The bot loads that file automatically.
 
