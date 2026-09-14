@@ -6665,7 +6665,12 @@ try:
 except Exception:
     pass
 
-# Prefer TOKEN set at top of file; fall back to env vars.
+# Prefer TOKEN set at top of file; fall back to common hosting env vars.
 _token = (TOKEN or "").strip() if isinstance(TOKEN, str) else ""
 if not _token:
-    _token = (os.getenv("DISCORD_TOKEN") or os.getenv("TOKEN") or "").strip()
+    _token = (
+        os.getenv("DISCORD_TOKEN")
+        or os.getenv("BOT_TOKEN")
+        or os.getenv("TOKEN")
+        or ""
+    ).strip()

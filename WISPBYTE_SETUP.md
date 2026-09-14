@@ -10,13 +10,27 @@ only `Bot.py`, so the `Papyrus/` modules remain beside the entrypoint.
 
    `TheGreatPapyrusBot/TheGreatPapyrus/Bot.py`
 
+   If Wispbyte gives you one full **Startup Command** field instead, replace
+   `pip install --user discord.py && python Bot.py` with this exact command:
+
+   ```sh
+   python -m pip install --user -r requirements.txt && python -u TheGreatPapyrusBot/TheGreatPapyrus/Bot.py
+   ```
+
+   The short command `python Bot.py` does not work from `/home/container`
+   because this repository's `Bot.py` is inside two folders.
+
 4. Set the requirements file to `requirements.txt`. If the panel instead asks
    for additional Python packages, enter `discord.py`.
 5. In **Startup → Environment Variables**, create:
 
-   - `DISCORD_TOKEN`: the bot token from Discord Developer Portal.
+   - `DISCORD_TOKEN`: the bot token from Discord Developer Portal. If your
+     Wispbyte template provides a built-in `BOT_TOKEN` field, that also works.
    - `SUBSCRIBED_GUILD_IDS`: comma-separated Discord server IDs allowed to use
      the bot, for example `123456789012345678,987654321098765432`.
+
+   If Wispbyte shows a **File location** box, leave it as `.env`, add both
+   variables, and click **Save changes**. The bot loads that file automatically.
 
 6. In Discord Developer Portal → **Bot → Privileged Gateway Intents**,
    enable **Server Members Intent** and **Message Content Intent**.
@@ -35,7 +49,16 @@ automatically without deleting existing player data.
 
 ## Common fixes
 
-- `No Discord bot token found`: check the exact `DISCORD_TOKEN` spelling.
+- `python: can't open file '/home/container/Bot.py'`: the Startup Command is
+  pointing at the wrong location. Use the full command from step 3. In the
+  Wispbyte file manager, verify this file exists:
+  `TheGreatPapyrusBot/TheGreatPapyrus/Bot.py`. If your zip extracted into an
+  extra outer folder, either move the repository contents into the server root
+  or include that outer folder in both paths in the startup command.
+- `No Discord bot token found`: check the exact `DISCORD_TOKEN` spelling, or
+  use Wispbyte's built-in `BOT_TOKEN` field. Do not put the token in the startup
+  command or share it in screenshots/logs. If the variables are stored in a
+  `.env` file, ensure `python-dotenv` was installed from `requirements.txt`.
 - `Missing bot module`: the project was uploaded without the complete
   `Papyrus/` folder or its folder structure changed.
 - `ModuleNotFoundError: discord`: set `requirements.txt` as the requirements

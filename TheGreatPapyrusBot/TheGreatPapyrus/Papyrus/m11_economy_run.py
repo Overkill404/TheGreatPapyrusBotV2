@@ -8,7 +8,7 @@ if not TOKEN:
     print("  ╔══════════════════════════════════════════════╗")
     print("  ║  🦴 PAPYRUS STARTUP CHECK FAILED             ║")
     print("  ╠══════════════════════════════════════════════╣")
-    print("  ║  DISCORD_TOKEN is missing.                   ║")
+    print("  ║  DISCORD_TOKEN / BOT_TOKEN is missing.       ║")
     print("  ║  Add it in your host's environment settings.║")
     print("  ║  Never paste a bot token into public logs.   ║")
     print("  ╚══════════════════════════════════════════════╝")
