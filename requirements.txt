@@ -1,0 +1,1 @@
+-r TheGreatPapyrusBot/TheGreatPapyrus/Papyrus/requirements.txt

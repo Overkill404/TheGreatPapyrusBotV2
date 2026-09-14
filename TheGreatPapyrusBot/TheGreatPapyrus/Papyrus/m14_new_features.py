@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
+import re
 import time
 import json
 from typing import Optional
@@ -157,6 +158,52 @@ def setup_new_features_tables():
             posted INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (guild_id, date)
         )""",
+        """CREATE TABLE IF NOT EXISTS undernet_profiles (
+            user_id INTEGER PRIMARY KEY,
+            handle TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            display_name TEXT NOT NULL DEFAULT '',
+            last_guild_id INTEGER NOT NULL DEFAULT 0,
+            updated_at REAL NOT NULL DEFAULT 0
+        )""",
+        """CREATE TABLE IF NOT EXISTS undernet_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL,
+            recipient_id INTEGER NOT NULL,
+            origin_guild_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at REAL NOT NULL DEFAULT 0,
+            read_at REAL NOT NULL DEFAULT 0
+        )""",
+        """CREATE TABLE IF NOT EXISTS undernet_user_guilds (
+            user_id INTEGER NOT NULL,
+            guild_id INTEGER NOT NULL,
+            last_seen_at REAL NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, guild_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS undernet_groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at REAL NOT NULL DEFAULT 0
+        )""",
+        """CREATE TABLE IF NOT EXISTS undernet_group_members (
+            group_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            invited_by INTEGER NOT NULL DEFAULT 0,
+            joined_at REAL NOT NULL DEFAULT 0,
+            PRIMARY KEY (group_id, user_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS undernet_group_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            origin_guild_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at REAL NOT NULL DEFAULT 0
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_undernet_posts_created ON undernet_posts(enabled, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_undernet_messages_recipient ON undernet_messages(recipient_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_undernet_group_messages ON undernet_group_messages(group_id, created_at DESC)",
         
         # Pacifist/Genocide Route System tables
         """CREATE TABLE IF NOT EXISTS player_route (
@@ -235,7 +282,7 @@ def get_jail_config(guild_id):
                 "SELECT * FROM cool_jail_config WHERE guild_id = ?",
                 (int(guild_id),)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
@@ -243,13 +290,6 @@ def get_jail_config(guild_id):
 def build_jail_shop_embed(guild_id, page=0):
     """Build paginated jail shop embed with enhanced design."""
     page_size = 5
-    offset = page * page_size
-    
-    rows = db.execute(
-        "SELECT * FROM jail_shop WHERE guild_id = ? AND enabled = 1 ORDER BY sort_order, id LIMIT ? OFFSET ?",
-        (guild_id, page_size, offset)
-    ).fetchall() or []
-    
     total = db.execute(
         "SELECT COUNT(*) as count FROM jail_shop WHERE guild_id = ? AND enabled = 1",
         (guild_id,)
@@ -257,6 +297,11 @@ def build_jail_shop_embed(guild_id, page=0):
     total_count = total["count"] if total else 0
     pages = max(1, (total_count + page_size - 1) // page_size)
     page = max(0, min(page, pages - 1))
+    offset = page * page_size
+    rows = db.execute(
+        "SELECT * FROM jail_shop WHERE guild_id = ? AND enabled = 1 ORDER BY sort_order, id LIMIT ? OFFSET ?",
+        (guild_id, page_size, offset)
+    ).fetchall() or []
     
     if not rows:
         embed = discord.Embed(
@@ -306,20 +351,23 @@ class JailShopView(CooldownView):
     def __init__(self, guild_id, page=0, user_id=None):
         super().__init__(timeout=180)
         self.guild_id = guild_id
-        self.page = page
         self.user_id = user_id
-        
+        total = db.execute(
+            "SELECT COUNT(*) AS count FROM jail_shop WHERE guild_id = ? AND enabled = 1", (guild_id,)
+        ).fetchone()
+        self.pages = max(1, (int(total["count"] or 0) + 4) // 5)
+        self.page = max(0, min(int(page), self.pages - 1))
         # Get items for current page
         page_size = 5
-        offset = page * page_size
+        offset = self.page * page_size
         self.items = db.execute(
             "SELECT * FROM jail_shop WHERE guild_id = ? AND enabled = 1 ORDER BY sort_order, id LIMIT ? OFFSET ?",
             (guild_id, page_size, offset)
         ).fetchall() or []
         
         # Navigation buttons
-        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(page <= 0))
-        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary)
+        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(self.page <= 0))
+        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary, disabled=(self.page >= self.pages - 1))
         
         async def prev_cb(inter: discord.Interaction):
             embed, new_page, pages = build_jail_shop_embed(self.guild_id, self.page - 1)
@@ -332,7 +380,7 @@ class JailShopView(CooldownView):
             await inter.response.edit_message(embed=embed, view=JailShopView(self.guild_id, self.page, self.user_id))
         
         prev_b.callback = prev_cb
-        next_b.callback = next_b
+        next_b.callback = next_cb
         
         self.add_item(prev_b)
         self.add_item(next_b)
@@ -423,18 +471,7 @@ def set_jail_config(guild_id, **kwargs):
 def is_in_jail(guild_id, user_id):
     """Check if a user is currently in jail."""
     try:
-        # Check if user has the jail role via database
-        cfg = get_string_config(guild_id)
-        if not cfg:
-            return False
-        
-        jail_role_id = cfg.get("string_role_id")
-        if not jail_role_id:
-            return False
-        
-        # For now, return False - this would need integration with the actual jail system
-        # The actual jail system uses role-based confinement in m06_modals_views_a.py
-        return False
+        return bool(is_strung_up(guild_id, user_id))
     except Exception:
         return False
 
@@ -799,7 +836,7 @@ def get_bone_training_config(guild_id):
                 "SELECT * FROM bone_training_config WHERE guild_id = ?",
                 (int(guild_id),)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
@@ -1001,7 +1038,7 @@ def get_special_attack_config(guild_id):
                 "SELECT * FROM special_attack_config WHERE guild_id = ?",
                 (int(guild_id),)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
@@ -1038,7 +1075,7 @@ def get_player_special_attack(guild_id, user_id):
                 "SELECT * FROM papyrus_special_attack WHERE guild_id = ? AND user_id = ?",
                 (guild_id, user_id)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
@@ -1172,31 +1209,91 @@ def get_undernet_config(guild_id):
                 "SELECT * FROM undernet_config WHERE guild_id = ?",
                 (int(guild_id),)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
 
+def register_undernet_profile(member):
+    """Make a stable, searchable network identity for a Discord user."""
+    base = re.sub(r"[^a-z0-9_]", "", str(member.name).lower().replace(" ", "_"))[:24] or f"user{member.id}"
+    handle = base
+    suffix = 0
+    while True:
+        owner = db.execute("SELECT user_id FROM undernet_profiles WHERE handle = ?", (handle,)).fetchone()
+        if not owner or int(owner["user_id"]) == int(member.id):
+            break
+        suffix += 1
+        handle = f"{base[:19]}_{str(member.id)[-4:]}{suffix if suffix > 1 else ''}"[:24]
+    execute(
+        """INSERT INTO undernet_profiles (user_id, handle, display_name, last_guild_id, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             display_name = excluded.display_name,
+             last_guild_id = excluded.last_guild_id,
+             updated_at = excluded.updated_at""",
+        (member.id, handle, str(member.display_name)[:80], member.guild.id, time.time()),
+    )
+    execute(
+        """INSERT INTO undernet_user_guilds (user_id, guild_id, last_seen_at) VALUES (?, ?, ?)
+           ON CONFLICT(user_id, guild_id) DO UPDATE SET last_seen_at = excluded.last_seen_at""",
+        (member.id, member.guild.id, time.time()),
+    )
+    return db.execute("SELECT * FROM undernet_profiles WHERE user_id = ?", (member.id,)).fetchone()
+
+
+def resolve_undernet_user(target):
+    raw = str(target or "").strip()
+    match = re.fullmatch(r"<@!?(\d+)>", raw)
+    if match:
+        raw = match.group(1)
+    if raw.isdigit():
+        return db.execute("SELECT * FROM undernet_profiles WHERE user_id = ?", (int(raw),)).fetchone()
+    return db.execute("SELECT * FROM undernet_profiles WHERE handle = ?", (raw.lstrip("@"),)).fetchone()
+
+
+def undernet_user_is_connected(user_id):
+    return bool(db.execute(
+        """SELECT 1 FROM undernet_user_guilds ug
+            JOIN undernet_config c ON c.guild_id = ug.guild_id
+           WHERE ug.user_id = ? AND c.enabled = 1 LIMIT 1""",
+        (int(user_id),),
+    ).fetchone())
+
+
+def _undernet_origin_name(guild_id):
+    guild = bot.get_guild(int(guild_id))
+    return guild.name if guild else f"Server {guild_id}"
+
+
+def _undernet_author_name(user_id):
+    profile = db.execute("SELECT * FROM undernet_profiles WHERE user_id = ?", (int(user_id),)).fetchone()
+    if profile:
+        return f"@{profile['handle']}"
+    user = bot.get_user(int(user_id))
+    return user.display_name if user else f"User {user_id}"
+
+
 def build_undernet_feed_embed(guild_id, page=0, guild=None):
-    """Build paginated Undernet feed embed with social media design."""
+    """Build the shared feed for every server where Undernet is enabled."""
     page_size = 5
-    offset = page * page_size
-    
-    rows = db.execute(
-        """SELECT * FROM undernet_posts 
-           WHERE guild_id = ? AND enabled = 1 
-           ORDER BY created_at DESC 
-           LIMIT ? OFFSET ?""",
-        (guild_id, page_size, offset)
-    ).fetchall() or []
-    
     total = db.execute(
-        "SELECT COUNT(*) as count FROM undernet_posts WHERE guild_id = ? AND enabled = 1",
-        (guild_id,)
+        """SELECT COUNT(*) AS count FROM undernet_posts p
+            JOIN undernet_config c ON c.guild_id = p.guild_id
+           WHERE p.enabled = 1 AND c.enabled = 1"""
     ).fetchone()
     total_count = total["count"] if total else 0
     pages = max(1, (total_count + page_size - 1) // page_size)
     page = max(0, min(page, pages - 1))
+    offset = page * page_size
+    rows = db.execute(
+        """SELECT p.* FROM undernet_posts p
+            JOIN undernet_config c ON c.guild_id = p.guild_id
+           WHERE p.enabled = 1 AND c.enabled = 1
+           ORDER BY p.created_at DESC, p.id DESC
+           LIMIT ? OFFSET ?""",
+        (page_size, offset),
+    ).fetchall() or []
     
     if not rows:
         embed = discord.Embed(
@@ -1205,9 +1302,8 @@ def build_undernet_feed_embed(guild_id, page=0, guild=None):
                 "┌─────────────────────────────────┐\n"
                 "│ 📱 **UNDERNET CONNECTION**              │\n"
                 "├─────────────────────────────────┤\n"
-                "│ No posts yet! Be the first to      │\n"
-                "│ share your thoughts with the       │\n"
-                "│ underground network.               │\n"
+                "│ No network posts yet. Be first!    │\n"
+                "│ /undernet action:post              │\n"
                 "└─────────────────────────────────┘"
             ),
             color=theme_color()
@@ -1220,15 +1316,15 @@ def build_undernet_feed_embed(guild_id, page=0, guild=None):
     feed_text += "├─────────────────────────────────┤\n"
     
     for r in rows:
-        poster = guild.get_member(r["user_id"]) if guild else None
-        poster_name = poster.display_name if poster else f"<@{r['user_id']}>"
+        poster_name = _undernet_author_name(r["user_id"])
+        origin_name = _undernet_origin_name(r["guild_id"])
         time_str = f"<t:{int(r['created_at'])}:R>"
         likes = r['likes']
         likes_visual = "❤️" * min(5, likes // 5) + "🤍" * max(0, 5 - min(5, likes // 5))
         
         feed_text += f"│ 📝 **Post #{r['id']}**                       │\n"
-        feed_text += f"│ 👤 {poster_name[:25]} · {time_str}│\n"
-        feed_text += f"│ {r['content'][:35]}{'...' if len(r['content']) > 35 else ''}│\n"
+        feed_text += f"│ 👤 {poster_name[:22]} · {origin_name[:18]}\n"
+        feed_text += f"│ {time_str} · {r['content'][:80]}{'...' if len(r['content']) > 80 else ''}\n"
         feed_text += f"│ {likes_visual} {likes} likes                     │\n"
         
         if r['papyrus_comment']:
@@ -1244,7 +1340,7 @@ def build_undernet_feed_embed(guild_id, page=0, guild=None):
         description=feed_text,
         color=theme_color()
     )
-    embed.set_footer(text="🦴 The Great Papyrus · NYEH HEH HEH!")
+    embed.set_footer(text="Connected across every server with Undernet enabled · use action:search to find posts")
     
     return embed, page, pages
 
@@ -1255,11 +1351,16 @@ class UndernetFeedView(CooldownView):
     def __init__(self, guild_id, page=0, guild=None):
         super().__init__(timeout=180)
         self.guild_id = guild_id
-        self.page = page
         self.guild = guild
-        
-        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(page <= 0))
-        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary)
+        total = db.execute(
+            """SELECT COUNT(*) AS count FROM undernet_posts p
+                JOIN undernet_config c ON c.guild_id = p.guild_id
+               WHERE p.enabled = 1 AND c.enabled = 1"""
+        ).fetchone()
+        self.pages = max(1, (int(total["count"] or 0) + 4) // 5)
+        self.page = max(0, min(int(page), self.pages - 1))
+        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(self.page <= 0))
+        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary, disabled=(self.page >= self.pages - 1))
         
         async def prev_cb(inter: discord.Interaction):
             embed, new_page, pages = build_undernet_feed_embed(self.guild_id, self.page - 1, self.guild)
@@ -1272,33 +1373,31 @@ class UndernetFeedView(CooldownView):
             await inter.response.edit_message(embed=embed, view=UndernetFeedView(self.guild_id, self.page, self.guild))
         
         prev_b.callback = prev_cb
-        next_b.callback = next_b
+        next_b.callback = next_cb
         
         self.add_item(prev_b)
         self.add_item(next_b)
 
 
 def build_user_posts_embed(guild_id, user_id, page=0, guild=None):
-    """Build paginated user posts embed."""
+    """Build a user's posts from across the entire Undernet."""
     page_size = 5
-    offset = page * page_size
-    
-    rows = db.execute(
-        """SELECT * FROM undernet_posts 
-           WHERE guild_id = ? AND user_id = ? AND enabled = 1 
-           ORDER BY created_at DESC 
-           LIMIT ? OFFSET ?""",
-        (guild_id, user_id, page_size, offset)
-    ).fetchall() or []
-    
     total = db.execute(
         """SELECT COUNT(*) as count FROM undernet_posts 
-           WHERE guild_id = ? AND user_id = ? AND enabled = 1""",
-        (guild_id, user_id)
+           WHERE user_id = ? AND enabled = 1""",
+        (user_id,)
     ).fetchone()
     total_count = total["count"] if total else 0
     pages = max(1, (total_count + page_size - 1) // page_size)
     page = max(0, min(page, pages - 1))
+    offset = page * page_size
+    rows = db.execute(
+        """SELECT * FROM undernet_posts
+           WHERE user_id = ? AND enabled = 1
+           ORDER BY created_at DESC
+           LIMIT ? OFFSET ?""",
+        (user_id, page_size, offset)
+    ).fetchall() or []
     
     if not rows:
         embed = discord.Embed(
@@ -1336,11 +1435,14 @@ class UserPostsView(CooldownView):
         super().__init__(timeout=180)
         self.guild_id = guild_id
         self.user_id = user_id
-        self.page = page
         self.guild = guild
-        
-        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(page <= 0))
-        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary)
+        total = db.execute(
+            "SELECT COUNT(*) AS count FROM undernet_posts WHERE user_id = ? AND enabled = 1", (user_id,)
+        ).fetchone()
+        self.pages = max(1, (int(total["count"] or 0) + 4) // 5)
+        self.page = max(0, min(int(page), self.pages - 1))
+        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(self.page <= 0))
+        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary, disabled=(self.page >= self.pages - 1))
         
         async def prev_cb(inter: discord.Interaction):
             embed, new_page, pages = build_user_posts_embed(self.guild_id, self.user_id, self.page - 1, self.guild)
@@ -1353,7 +1455,7 @@ class UserPostsView(CooldownView):
             await inter.response.edit_message(embed=embed, view=UserPostsView(self.guild_id, self.user_id, self.page, self.guild))
         
         prev_b.callback = prev_cb
-        next_b.callback = next_b
+        next_b.callback = next_cb
         
         self.add_item(prev_b)
         self.add_item(next_b)
@@ -1375,28 +1477,134 @@ def set_undernet_config(guild_id, **kwargs):
             pass
 
 
+def build_undernet_search_embed(query):
+    rows = db.execute(
+        """SELECT p.* FROM undernet_posts p
+            JOIN undernet_config c ON c.guild_id = p.guild_id
+           WHERE p.enabled = 1 AND c.enabled = 1 AND p.content LIKE ?
+           ORDER BY p.created_at DESC LIMIT 10""",
+        (f"%{str(query).strip()[:80]}%",),
+    ).fetchall()
+    lines = [
+        f"**#{row['id']}** · {_undernet_author_name(row['user_id'])} · {_undernet_origin_name(row['guild_id'])}\n"
+        f"{row['content'][:240]} · <t:{int(row['created_at'])}:R>"
+        for row in rows
+    ]
+    embed = discord.Embed(
+        title=f"🔎 Undernet Search · {str(query)[:60]}",
+        description="\n\n".join(lines)[:4000] or "No posts matched that search.",
+        color=theme_color(),
+    )
+    embed.set_footer(text="Latest 10 matching posts")
+    return embed
+
+
+def build_undernet_inbox_embed(user_id):
+    rows = db.execute(
+        "SELECT * FROM undernet_messages WHERE recipient_id = ? ORDER BY created_at DESC LIMIT 15",
+        (int(user_id),),
+    ).fetchall()
+    lines = [
+        f"**#{row['id']} from {_undernet_author_name(row['sender_id'])}** · <t:{int(row['created_at'])}:R>\n{row['content'][:300]}"
+        for row in rows
+    ]
+    execute(
+        "UPDATE undernet_messages SET read_at = ? WHERE recipient_id = ? AND read_at = 0",
+        (time.time(), int(user_id)),
+    )
+    embed = discord.Embed(
+        title="📬 Undernet Private Messages",
+        description="\n\n".join(lines)[:4000] or "Your private inbox is empty.",
+        color=theme_color(),
+    )
+    embed.set_footer(text="Latest 15 private messages")
+    return embed
+
+
+def _undernet_group_for_member(group_id, user_id):
+    return db.execute(
+        """SELECT g.* FROM undernet_groups g
+            JOIN undernet_group_members m ON m.group_id = g.id
+           WHERE g.id = ? AND m.user_id = ?""",
+        (int(group_id), int(user_id)),
+    ).fetchone()
+
+
+def build_undernet_group_embed(group, user_id):
+    messages = db.execute(
+        "SELECT * FROM undernet_group_messages WHERE group_id = ? ORDER BY created_at DESC LIMIT 20",
+        (int(group["id"]),),
+    ).fetchall()
+    messages = list(reversed(messages))
+    lines = [
+        f"**{_undernet_author_name(row['sender_id'])}** · <t:{int(row['created_at'])}:R>\n{row['content'][:300]}"
+        for row in messages
+    ]
+    member_count = db.execute(
+        "SELECT COUNT(*) AS count FROM undernet_group_members WHERE group_id = ?", (int(group["id"]),)
+    ).fetchone()["count"]
+    embed = discord.Embed(
+        title=f"👥 #{group['id']} · {group['name']}",
+        description="\n\n".join(lines)[:4000] or "No messages yet. Start the conversation!",
+        color=theme_color(),
+    )
+    embed.set_footer(text=f"{member_count} members · private cross-server group")
+    return embed
+
+
+def build_undernet_groups_embed(user_id):
+    rows = db.execute(
+        """SELECT g.*, COUNT(all_members.user_id) AS member_count
+             FROM undernet_groups g
+             JOIN undernet_group_members mine ON mine.group_id = g.id AND mine.user_id = ?
+             LEFT JOIN undernet_group_members all_members ON all_members.group_id = g.id
+            GROUP BY g.id ORDER BY g.created_at DESC""",
+        (int(user_id),),
+    ).fetchall()
+    lines = [f"**#{row['id']} · {row['name']}** — {row['member_count']} members" for row in rows[:25]]
+    embed = discord.Embed(
+        title="👥 My Undernet Groups",
+        description="\n".join(lines) or "You have not created or joined a group yet.",
+        color=theme_color(),
+    )
+    embed.set_footer(text=f"Showing {min(len(rows), 25)} of {len(rows)} group(s)")
+    return embed
+
+
 @bot.tree.command(
     name="undernet",
-    description="Access the Undernet Social Feed - post, like, and see Papyrus's reactions."
+    description="Use the cross-server Undernet for posts, search, private messages, and groups."
 )
 @app_commands.describe(
     action="What to do on Undernet",
-    content="Post content (for posting)",
-    post_id="Post ID (for liking)"
+    content="Post or message text, search words, or a group name",
+    post_id="Post ID when liking",
+    target="Player @handle, mention, or ID for a DM/invite",
+    group_id="Group ID for invite, send, or read"
 )
 @app_commands.choices(
     action=[
         app_commands.Choice(name="feed", value="feed"),
         app_commands.Choice(name="post", value="post"),
+        app_commands.Choice(name="search", value="search"),
         app_commands.Choice(name="like", value="like"),
         app_commands.Choice(name="myposts", value="myposts"),
+        app_commands.Choice(name="dm", value="dm"),
+        app_commands.Choice(name="inbox", value="inbox"),
+        app_commands.Choice(name="group-create", value="group-create"),
+        app_commands.Choice(name="groups", value="groups"),
+        app_commands.Choice(name="group-invite", value="group-invite"),
+        app_commands.Choice(name="group-send", value="group-send"),
+        app_commands.Choice(name="group-read", value="group-read"),
     ]
 )
 async def undernet_cmd(
     interaction: discord.Interaction,
     action: app_commands.Choice[str],
     content: Optional[str] = None,
-    post_id: Optional[int] = None
+    post_id: Optional[int] = None,
+    target: Optional[str] = None,
+    group_id: Optional[int] = None,
 ):
     if not interaction.guild:
         await interaction.response.send_message("Server only.", ephemeral=True)
@@ -1406,6 +1614,7 @@ async def undernet_cmd(
     user_id = interaction.user.id
     act = action.value if hasattr(action, "value") else str(action)
     cfg = get_undernet_config(guild_id)
+    profile = register_undernet_profile(interaction.user)
     now = time.time()
     
     if not int(cfg.get("enabled", 1)):
@@ -1413,6 +1622,13 @@ async def undernet_cmd(
             "📡 Undernet is currently disabled! Connection lost...",
             ephemeral=True
         )
+        return
+
+    if act == "search":
+        if not content or not content.strip():
+            await interaction.response.send_message("🔎 Enter words to search for in `content`.", ephemeral=True)
+            return
+        await interaction.response.send_message(embed=build_undernet_search_embed(content), ephemeral=True)
         return
     
     if act == "feed":
@@ -1435,10 +1651,10 @@ async def undernet_cmd(
         
         # Check cooldown
         last_post = db.execute(
-            """SELECT created_at FROM undernet_posts 
-               WHERE guild_id = ? AND user_id = ? 
+            """SELECT created_at FROM undernet_posts
+               WHERE user_id = ?
                ORDER BY created_at DESC LIMIT 1""",
-            (guild_id, user_id)
+            (user_id,)
         ).fetchone()
         
         cooldown = int(cfg.get("post_cooldown", 300))
@@ -1492,10 +1708,7 @@ async def undernet_cmd(
             return
         
         # Check if post exists
-        post = db.execute(
-            "SELECT * FROM undernet_posts WHERE guild_id = ? AND id = ? AND enabled = 1",
-            (guild_id, post_id)
-        ).fetchone()
+        post = db.execute("SELECT * FROM undernet_posts WHERE id = ? AND enabled = 1", (post_id,)).fetchone()
         
         if not post:
             await interaction.response.send_message(
@@ -1506,8 +1719,7 @@ async def undernet_cmd(
         
         # Check if already liked
         existing = db.execute(
-            "SELECT * FROM undernet_likes WHERE guild_id = ? AND post_id = ? AND user_id = ?",
-            (guild_id, post_id, user_id)
+            "SELECT * FROM undernet_likes WHERE post_id = ? AND user_id = ?", (post_id, user_id)
         ).fetchone()
         
         if existing:
@@ -1544,6 +1756,109 @@ async def undernet_cmd(
         return
 
 
+    if act == "dm":
+        recipient = resolve_undernet_user(target)
+        if not recipient or not content or not content.strip():
+            await interaction.response.send_message(
+                "📨 Provide a registered player's `target` (@handle, mention, or ID) and `content`.", ephemeral=True
+            )
+            return
+        if not undernet_user_is_connected(recipient["user_id"]):
+            await interaction.response.send_message("That player is not connected through an enabled Undernet server.", ephemeral=True)
+            return
+        if int(recipient["user_id"]) == user_id:
+            await interaction.response.send_message("You cannot privately message yourself.", ephemeral=True)
+            return
+        text = content.strip()[:1000]
+        cursor = execute(
+            """INSERT INTO undernet_messages
+               (sender_id, recipient_id, origin_guild_id, content, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, int(recipient["user_id"]), guild_id, text, now),
+        )
+        delivered = False
+        try:
+            discord_user = bot.get_user(int(recipient["user_id"])) or await bot.fetch_user(int(recipient["user_id"]))
+            await discord_user.send(
+                f"📡 **Undernet message from @{profile['handle']}**\n{text}\n\n"
+                f"Open `/undernet action:inbox` in any connected server. Message #{cursor.lastrowid}."
+            )
+            delivered = True
+        except Exception:
+            pass
+        await interaction.response.send_message(
+            f"📨 Private message sent to **@{recipient['handle']}**."
+            + (" Discord DM notification delivered." if delivered else " It is waiting in their Undernet inbox."),
+            ephemeral=True,
+        )
+        return
+
+    if act == "inbox":
+        await interaction.response.send_message(embed=build_undernet_inbox_embed(user_id), ephemeral=True)
+        return
+
+    if act == "group-create":
+        name = str(content or "").strip()
+        if not name:
+            await interaction.response.send_message("Enter the group name in `content`.", ephemeral=True)
+            return
+        cursor = execute(
+            "INSERT INTO undernet_groups (owner_id, name, created_at) VALUES (?, ?, ?)",
+            (user_id, name[:80], now),
+        )
+        execute(
+            "INSERT INTO undernet_group_members (group_id, user_id, invited_by, joined_at) VALUES (?, ?, ?, ?)",
+            (cursor.lastrowid, user_id, user_id, now),
+        )
+        await interaction.response.send_message(
+            f"👥 Created private group **#{cursor.lastrowid} · {name[:80]}**. Invite players with `action:group-invite`.",
+            ephemeral=True,
+        )
+        return
+
+    if act == "groups":
+        await interaction.response.send_message(embed=build_undernet_groups_embed(user_id), ephemeral=True)
+        return
+
+    if act == "group-invite":
+        group = _undernet_group_for_member(group_id or 0, user_id)
+        recipient = resolve_undernet_user(target)
+        if not group or int(group["owner_id"]) != user_id:
+            await interaction.response.send_message("Only the group owner can invite players.", ephemeral=True)
+            return
+        if not recipient:
+            await interaction.response.send_message("That player has not registered on Undernet yet.", ephemeral=True)
+            return
+        if not undernet_user_is_connected(recipient["user_id"]):
+            await interaction.response.send_message("That player is not connected through an enabled Undernet server.", ephemeral=True)
+            return
+        execute(
+            "INSERT OR IGNORE INTO undernet_group_members (group_id, user_id, invited_by, joined_at) VALUES (?, ?, ?, ?)",
+            (int(group["id"]), int(recipient["user_id"]), user_id, now),
+        )
+        await interaction.response.send_message(
+            f"👥 Added **@{recipient['handle']}** to **#{group['id']} · {group['name']}**.", ephemeral=True
+        )
+        return
+
+    if act in ("group-send", "group-read"):
+        group = _undernet_group_for_member(group_id or 0, user_id)
+        if not group:
+            await interaction.response.send_message("Group not found, or you are not a member.", ephemeral=True)
+            return
+        if act == "group-send":
+            if not content or not content.strip():
+                await interaction.response.send_message("Enter a group message in `content`.", ephemeral=True)
+                return
+            execute(
+                """INSERT INTO undernet_group_messages
+                   (group_id, sender_id, origin_guild_id, content, created_at) VALUES (?, ?, ?, ?, ?)""",
+                (int(group["id"]), user_id, guild_id, content.strip()[:1000], now),
+            )
+        await interaction.response.send_message(embed=build_undernet_group_embed(group, user_id), ephemeral=True)
+        return
+
+
 # ============================================================
 # PACIFIST/GENOCIDE ROUTE SYSTEM
 # ============================================================
@@ -1564,7 +1879,7 @@ def get_route_config(guild_id):
                 "SELECT * FROM route_config WHERE guild_id = ?",
                 (int(guild_id),)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
@@ -1601,7 +1916,7 @@ def get_player_route(guild_id, user_id):
                 "SELECT * FROM player_route WHERE guild_id = ? AND user_id = ?",
                 (guild_id, user_id)
             ).fetchone()
-        return row
+        return dict(row) if row else None
     except Exception:
         return None
 
@@ -1811,13 +2126,25 @@ async def route_cmd(interaction: discord.Interaction):
 # ADMIN CONTROLS FOR NEW FEATURES
 # ============================================================
 
+def _new_features_button(label, style, callback):
+    button = discord.ui.Button(label=label, style=style)
+    button.callback = callback
+    return button
+
 async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
-    """Admin panel for the 5 new features."""
+    """Admin panel for the expanded Papyrus features."""
     try:
         if not interaction.response.is_done():
             await interaction.response.defer(ephemeral=True)
     except Exception:
         pass
+
+    if tool == "backpack":
+        await open_backpack_upgrade_admin(interaction, guild_id)
+        return
+
+    if tool == "train":
+        tool = "training"
     
     if tool == "jail":
         cfg = get_jail_config(guild_id)
@@ -1851,6 +2178,7 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
         
         btn.callback = cb
         view.add_item(btn)
+        view.add_item(PapyrusChannelSelect(guild_id, "jail", "Cool Jail"))
         
         # Toggle buttons
         async def toggle_visitor(inter):
@@ -1878,11 +2206,11 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
             set_jail_config(guild_id, jail_shop_enabled=0 if current else 1)
             await inter.response.send_message(f"Jail shop {'enabled' if not current else 'disabled'}!", ephemeral=True)
         
-        view.add_item(discord.ui.Button(label="Toggle Visitors", style=discord.ButtonStyle.secondary, callback=toggle_visitor))
-        view.add_item(discord.ui.Button(label="Toggle Jobs", style=discord.ButtonStyle.secondary, callback=toggle_jobs))
-        view.add_item(discord.ui.Button(label="Toggle Escape", style=discord.ButtonStyle.secondary, callback=toggle_escape))
-        view.add_item(discord.ui.Button(label="Toggle Judgment", style=discord.ButtonStyle.secondary, callback=toggle_judgment))
-        view.add_item(discord.ui.Button(label="Toggle Shop", style=discord.ButtonStyle.secondary, callback=toggle_shop))
+        view.add_item(_new_features_button("Toggle Visitors", discord.ButtonStyle.secondary, toggle_visitor))
+        view.add_item(_new_features_button("Toggle Jobs", discord.ButtonStyle.secondary, toggle_jobs))
+        view.add_item(_new_features_button("Toggle Escape", discord.ButtonStyle.secondary, toggle_escape))
+        view.add_item(_new_features_button("Toggle Judgment", discord.ButtonStyle.secondary, toggle_judgment))
+        view.add_item(_new_features_button("Toggle Shop", discord.ButtonStyle.secondary, toggle_shop))
         
         await interaction.followup.send("🦴 Cool Jail Admin Panel", view=view, ephemeral=True)
         return
@@ -1895,19 +2223,22 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
             session_len = discord.ui.TextInput(label="Session Length", default=str(cfg.get("session_length", 30)))
             acc_bonus = discord.ui.TextInput(label="Accuracy Bonus Per Hit", default=str(cfg.get("accuracy_bonus_per_hit", 0.01)))
             max_perm = discord.ui.TextInput(label="Max Permanent Bonus", default=str(cfg.get("max_permanent_bonus", 20)))
-            temp_dur = discord.ui.TextInput(label="Temp Buff Duration (seconds)", default=str(cfg.get("temp_buff_duration", 3600)))
-            temp_power = discord.ui.TextInput(label="Temp Buff Power", default=str(cfg.get("temp_buff_power", 1.1)))
+            temp = discord.ui.TextInput(
+                label="Temp duration,power",
+                default=f"{cfg.get('temp_buff_duration', 3600)},{cfg.get('temp_buff_power', 1.1)}"
+            )
             
             async def on_submit(self, inter):
                 try:
+                    temp_duration, temp_power = [part.strip() for part in self.temp.value.split(",", 1)]
                     set_bone_training_config(
                         guild_id,
                         cooldown=int(self.cd.value),
                         session_length=int(self.session_len.value),
                         accuracy_bonus_per_hit=float(self.acc_bonus.value),
                         max_permanent_bonus=int(self.max_perm.value),
-                        temp_buff_duration=int(self.temp_dur.value),
-                        temp_buff_power=float(self.temp_power.value)
+                        temp_buff_duration=int(temp_duration),
+                        temp_buff_power=float(temp_power)
                     )
                     await inter.response.send_message("✅ Training config updated!", ephemeral=True)
                 except Exception as e:
@@ -1921,13 +2252,14 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
         
         btn.callback = cb
         view.add_item(btn)
+        view.add_item(PapyrusChannelSelect(guild_id, "train", "Bone Training"))
         
         async def toggle_training(inter):
             current = int(cfg.get("enabled", 1))
             set_bone_training_config(guild_id, enabled=0 if current else 1)
             await inter.response.send_message(f"Bone training {'enabled' if not current else 'disabled'}!", ephemeral=True)
         
-        view.add_item(discord.ui.Button(label="Toggle Training", style=discord.ButtonStyle.secondary, callback=toggle_training))
+        view.add_item(_new_features_button("Toggle Training", discord.ButtonStyle.secondary, toggle_training))
         
         await interaction.followup.send("🦴 Bone Training Admin Panel", view=view, ephemeral=True)
         return
@@ -1964,13 +2296,14 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
         
         btn.callback = cb
         view.add_item(btn)
+        view.add_item(PapyrusChannelSelect(guild_id, "special", "Special Attack"))
         
         async def toggle_special(inter):
             current = int(cfg.get("enabled", 1))
             set_special_attack_config(guild_id, enabled=0 if current else 1)
             await inter.response.send_message(f"Special attacks {'enabled' if not current else 'disabled'}!", ephemeral=True)
         
-        view.add_item(discord.ui.Button(label="Toggle Special", style=discord.ButtonStyle.secondary, callback=toggle_special))
+        view.add_item(_new_features_button("Toggle Special", discord.ButtonStyle.secondary, toggle_special))
         
         await interaction.followup.send("💥 Special Attack Admin Panel", view=view, ephemeral=True)
         return
@@ -2003,15 +2336,22 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
         
         btn.callback = cb
         view.add_item(btn)
+        view.add_item(PapyrusChannelSelect(guild_id, "undernet", "Undernet"))
         
         async def toggle_undernet(inter):
             current = int(cfg.get("enabled", 1))
             set_undernet_config(guild_id, enabled=0 if current else 1)
             await inter.response.send_message(f"Undernet {'enabled' if not current else 'disabled'}!", ephemeral=True)
         
-        view.add_item(discord.ui.Button(label="Toggle Undernet", style=discord.ButtonStyle.secondary, callback=toggle_undernet))
+        view.add_item(_new_features_button("Toggle Undernet", discord.ButtonStyle.secondary, toggle_undernet))
         
-        await interaction.followup.send("📡 Undernet Admin Panel", view=view, ephemeral=True)
+        channel_id = int(papyrus_get_cfg(guild_id, "undernet").get("channel_id") or 0)
+        channel_text = f"<#{channel_id}>" if channel_id else "*any channel*"
+        await interaction.followup.send(
+            f"📡 **Undernet Admin Panel**\nCommand channel: {channel_text}",
+            view=view,
+            ephemeral=True,
+        )
         return
     
     if tool == "route":
@@ -2022,19 +2362,22 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
             pacifist_thresh = discord.ui.TextInput(label="Pacifist Threshold", default=str(cfg.get("pacifist_threshold", 0.95)))
             neut_min = discord.ui.TextInput(label="Neutral Min", default=str(cfg.get("neutral_range_min", 0.2)))
             neut_max = discord.ui.TextInput(label="Neutral Max", default=str(cfg.get("neutral_range_max", 0.8)))
-            gen_gold = discord.ui.TextInput(label="Genocide Reward Gold", default=str(cfg.get("genocide_reward_gold", 5000)))
-            pacifist_gold = discord.ui.TextInput(label="Pacifist Reward Gold", default=str(cfg.get("pacifist_reward_gold", 3000)))
+            rewards = discord.ui.TextInput(
+                label="Genocide,pacifist reward gold",
+                default=f"{cfg.get('genocide_reward_gold', 5000)},{cfg.get('pacifist_reward_gold', 3000)}"
+            )
             
             async def on_submit(self, inter):
                 try:
+                    genocide_gold, pacifist_gold = [part.strip() for part in self.rewards.value.split(",", 1)]
                     set_route_config(
                         guild_id,
                         genocide_threshold=float(self.gen_thresh.value),
                         pacifist_threshold=float(self.pacifist_thresh.value),
                         neutral_range_min=float(self.neut_min.value),
                         neutral_range_max=float(self.neut_max.value),
-                        genocide_reward_gold=int(self.gen_gold.value),
-                        pacifist_reward_gold=int(self.pacifist_gold.value)
+                        genocide_reward_gold=int(genocide_gold),
+                        pacifist_reward_gold=int(pacifist_gold)
                     )
                     await inter.response.send_message("✅ Route config updated!", ephemeral=True)
                 except Exception as e:
@@ -2048,13 +2391,14 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
         
         btn.callback = cb
         view.add_item(btn)
+        view.add_item(PapyrusChannelSelect(guild_id, "route", "Route System"))
         
         async def toggle_route(inter):
             current = int(cfg.get("enabled", 1))
             set_route_config(guild_id, enabled=0 if current else 1)
             await inter.response.send_message(f"Route system {'enabled' if not current else 'disabled'}!", ephemeral=True)
         
-        view.add_item(discord.ui.Button(label="Toggle Route", style=discord.ButtonStyle.secondary, callback=toggle_route))
+        view.add_item(_new_features_button("Toggle Route", discord.ButtonStyle.secondary, toggle_route))
         
         await interaction.followup.send("⚖️ Route System Admin Panel", view=view, ephemeral=True)
         return
@@ -2094,11 +2438,11 @@ async def open_new_features_admin(interaction, guild_id, tool: str = "hub"):
     async def backpack_cb(inter):
         await open_new_features_admin(inter, guild_id, "backpack")
     
-    view.add_item(discord.ui.Button(label="🧵 Jail", style=discord.ButtonStyle.primary, callback=jail_cb))
-    view.add_item(discord.ui.Button(label="🦴 Training", style=discord.ButtonStyle.primary, callback=training_cb))
-    view.add_item(discord.ui.Button(label="💥 Special", style=discord.ButtonStyle.primary, callback=special_cb))
-    view.add_item(discord.ui.Button(label="📡 Undernet", style=discord.ButtonStyle.primary, callback=undernet_cb))
-    view.add_item(discord.ui.Button(label="⚖️ Route", style=discord.ButtonStyle.primary, callback=route_cb))
-    view.add_item(discord.ui.Button(label="🎒 Backpack", style=discord.ButtonStyle.primary, callback=backpack_cb))
+    view.add_item(_new_features_button("🧵 Jail", discord.ButtonStyle.primary, jail_cb))
+    view.add_item(_new_features_button("🦴 Training", discord.ButtonStyle.primary, training_cb))
+    view.add_item(_new_features_button("💥 Special", discord.ButtonStyle.primary, special_cb))
+    view.add_item(_new_features_button("📡 Undernet", discord.ButtonStyle.primary, undernet_cb))
+    view.add_item(_new_features_button("⚖️ Route", discord.ButtonStyle.primary, route_cb))
+    view.add_item(_new_features_button("🎒 Backpack", discord.ButtonStyle.primary, backpack_cb))
     
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)

@@ -958,6 +958,27 @@ class AnnounceChannelSelect(discord.ui.ChannelSelect):
         )
 
 
+class RPGChannelSelect(discord.ui.ChannelSelect):
+    def __init__(self, guild_id):
+        self.guild_id = guild_id
+        super().__init__(
+            placeholder="Choose the RPG command channel…",
+            channel_types=[discord.ChannelType.text],
+            min_values=1,
+            max_values=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not is_bot_admin(interaction):
+            await interaction.response.send_message("❌ Admin only.", ephemeral=True)
+            return
+        channel = self.values[0]
+        set_command_channel(self.guild_id, "rpg", channel.id)
+        await interaction.response.send_message(
+            f"✅ RPG commands are now locked to {channel.mention}.", ephemeral=True
+        )
+
+
 
 # Public meme GIFs (Discord embeds these when the URL is alone on a line)
 GIF_TAGGED = [
@@ -2300,7 +2321,7 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
          f"{mention} main stuff:\n"
          f"`/start` - create character\n"
          f"`/summon` - pick a level & fight portals\n"
-         f"`/inventory` - gear, abilities, party, shop, craft, codes, pvp\n"
+         f"`/backpack` - gear, abilities, party, shop, craft, codes, pvp\n"
          f"`/shop` - `/playershop` - `/leaderboard`\n"
          f"Admins: `/admin`"),
 
@@ -2309,16 +2330,16 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
          f"SKIP rolls another boss in that level. Clear Fights in inventory if you are stuck."),
 
         (("inventory", "equip", "unequip", "gear"),
-         f"{mention} `/inventory` has buttons for weapons, armor, souls, abilities, items, craft, party, pvp, shop, codes. Equip/unequip from there."),
+         f"{mention} `/backpack` has buttons for weapons, armor, souls, abilities, items, craft, party, pvp, shop, codes. Equip/unequip from there."),
 
         (("level up", "xp", "experience", "leveling", "how level"),
-         f"{mention} kill bosses for XP. Level ups give HP (more) and a bit of DEF. Harder bosses = more XP. Check progress on `/inventory`."),
+         f"{mention} kill bosses for XP. Level ups give HP (more) and a bit of DEF. Harder bosses = more XP. Check progress on `/backpack`."),
 
         (("gold", "money", "sell", "economy"),
          f"{mention} gold comes from bosses (nerfed) and selling. Inventory -> sell for gold, or list on player shop. `/shop` is the NPC shop."),
 
         (("shop", "buy", "playershop", "player shop"),
-         f"{mention} `/shop` = NPC listings. Player market is in `/inventory` or `/playershop`. List items from inventory sell buttons."),
+         f"{mention} `/shop` = NPC listings. Player market is in `/backpack` or `/playershop`. List items from backpack sell buttons."),
 
         (("party", "team boss", "raid", "co-op", "coop"),
          f"{mention} Inventory -> **Create Party** for a random portal team fight (not event bosses). Admins can Team Boss / summon. Up to 8 players; HP scales with party size."),
@@ -2327,13 +2348,13 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
          f"{mention} Inventory -> **PvP**. Pick 1v1-4v4 or Random, invite players, teams shuffle, winner steals XP/gold."),
 
         (("ability", "abilities", "cooldown", "stun"),
-         f"{mention} equip up to 3 abilities in `/inventory`. They have damage/heal/accuracy/cooldown and can stun/poison/weaken bosses. Use them in fight from the ability buttons."),
+         f"{mention} equip up to 3 abilities in `/backpack`. They have damage/heal/accuracy/cooldown and can stun/poison/weaken bosses. Use them in fight from the ability buttons."),
 
         (("soul", "souls"),
          f"{mention} souls are equippable boosts (HP/ATK/DEF style). Get them from boss loot or admin rewards. Equip under inventory -> Soul."),
 
         (("weapon", "armor", "bleed", "poison"),
-         f"{mention} weapons = ATK (some have bleed/poison DoT). Armor = DEF + HP. Equip in `/inventory`. Dupes convert to XP."),
+         f"{mention} weapons = ATK (some have bleed/poison DoT). Armor = DEF + HP. Equip in `/backpack`. Dupes convert to XP."),
 
         (("craft", "crafting", "recipe"),
          f"{mention} Inventory -> **Craft**. Shows recipes, what you need, and crafts if you have the mats (consumes them)."),
@@ -2388,7 +2409,7 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
     if game_hint and ("?" in t or low.startswith(("how", "what", "where", "help"))):
         return (
             f"{mention} not sure on that one. Try:\n"
-            f"`/summon` fights - `/inventory` everything else - `/shop` - `/leaderboard`\n"
+            f"`/summon` fights - `/backpack` everything else - `/shop` - `/leaderboard`\n"
             f"Or ask about a **boss name**, gold, party, pvp, abilities, codes..."
         )
 
@@ -5346,7 +5367,7 @@ def build_admin_panel_embed(guild_id, page: int = 0):
             "🎟️ Lottery · 💸 Give/Take · ⏻ Toggle · 🎭 Hazel Persona"
         ),
         7: (
-            "**Papyrus+** — all ten Papyrus features\n"
+            "**Papyrus+** — Papyrus feature controls\n"
             "🦴 Guard · 💜 Friendship · 🧩 Puzzle · 🍝 Kitchen · 🏁 Gauntlet\n"
             "🧵 Jail · 🦴 Train · 💥 Special · 📡 Undernet · ⚖️ Route\n"
             "🎒 Backpack · Use dropdown to edit each system."
@@ -5454,7 +5475,8 @@ class AdminPanelView(CooldownView):
             return [
                 discord.SelectOption(label="Catalog", value="catalog", emoji="📖"),
                 discord.SelectOption(label="Refresh", value="refresh", emoji="🔄"),
-                discord.SelectOption(label="Set Channel", value="set_channel", emoji="📢"),
+                discord.SelectOption(label="Announcement Channels", value="set_channel", emoji="📢"),
+                discord.SelectOption(label="RPG Channel", value="rpg_channel", emoji="🎮"),
                 discord.SelectOption(label="Character Tools", value="error_sans", emoji="🍗"),
                 discord.SelectOption(
                     label="Style: Hazel / Error Sans",
@@ -5692,6 +5714,7 @@ class AdminPanelView(CooldownView):
             "codes": "codes_btn",
             "shop": "shop_btn",
             "set_channel": "set_channel_btn",
+            "rpg_channel": "rpg_channel_btn",
             "refresh": "refresh_btn",
             "levels": "levels_btn",
         }
@@ -6116,6 +6139,18 @@ class AdminPanelView(CooldownView):
         cur_txt = ", ".join(f"<#{cid}>" for cid in current_ids) if current_ids else "*none set*"
         await interaction.response.send_message(
             f"📢 **Announce channels**\nCurrent: {cur_txt}\nPick channels (up to 5):",
+            view=view,
+            ephemeral=True,
+        )
+
+    async def rpg_channel_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = CooldownView(timeout=60)
+        view.add_item(RPGChannelSelect(self.guild_id))
+        channel_id = get_command_channel(self.guild_id, "rpg")
+        current = f"<#{channel_id}>" if channel_id else "*any channel*"
+        await interaction.response.send_message(
+            f"🎮 **RPG command channel**\nCurrent: {current}\n"
+            "Choose one channel. Once set, player RPG commands cannot be used elsewhere.",
             view=view,
             ephemeral=True,
         )
@@ -12126,5 +12161,3 @@ class AdminSummonBossSelect(discord.ui.Select):
             content=f"✅ Summoned {tag}**{boss['name']}**!", view=None
         )
         await interaction.followup.send(embed=embed, view=SummonPortalView(boss))
-
-

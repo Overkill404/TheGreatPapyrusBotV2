@@ -713,7 +713,7 @@ def build_player_shop(guild, viewer, page=0, per_page=8):
     chunk = rows[page * per_page:(page + 1) * per_page]
 
     if not rows:
-        desc = "*No listings right now.*\nList something from `/inventory` -> **List for Sale**."
+        desc = "*No listings right now.*\nList something from `/backpack` -> **List for Sale**."
     else:
         lines = []
         for r in chunk:
@@ -1385,6 +1385,7 @@ class InventoryView(CooldownView):
         "Shop",
         "Player Shop",
         "Craft",
+        "Upgrades",
         "Combat",
         "Progress",
         "Kills",
@@ -1427,7 +1428,12 @@ class InventoryView(CooldownView):
             ]
         if p == 3:  # Craft
             return [discord.SelectOption(label="Craft", value="craft", emoji="🔨", description="Recipes & crafting")]
-        if p == 4:  # Combat
+        if p == 4:  # Upgrades
+            return [
+                discord.SelectOption(label="View Upgrades", value="view_upgrades", emoji="🎒", description="Browse craftable backpack bonuses"),
+                discord.SelectOption(label="My Upgrades", value="my_upgrades", emoji="✨", description="View your active bonuses"),
+            ]
+        if p == 5:  # Combat
             return [
                 discord.SelectOption(label="Create Party", value="party", emoji="👥"),
                 discord.SelectOption(label="Boss Rush", value="rush", emoji="🏃"),
@@ -1441,13 +1447,13 @@ class InventoryView(CooldownView):
                     description="Peek at the string channel for 5 minutes",
                 ),
             ]
-        if p == 5:  # Progress
+        if p == 6:  # Progress
             return [
                 discord.SelectOption(label="Rebirth", value="rebirth", emoji="✨"),
                 discord.SelectOption(label="Ascend", value="ascend", emoji="🌟"),
                 discord.SelectOption(label="Codes", value="codes", emoji="🔑"),
             ]
-        if p == 6:  # Kills
+        if p == 7:  # Kills
             return [
                 discord.SelectOption(label="Boss Stats", value="kills_stats", emoji="☠️"),
                 discord.SelectOption(label="Kill Roles", value="kills_roles", emoji="🏅"),
@@ -3888,7 +3894,7 @@ class SellModal(discord.ui.Modal, title="List in Player Shop"):
             if is_equipped:
                 await interaction.response.send_message(
                     "❌ Unequip that item first before listing it.\n"
-                    "Use the **Weapon** / **Armor** buttons in `/inventory`.",
+                    "Use the **Weapon** / **Armor** buttons in `/backpack`.",
                     ephemeral=True
                 )
                 return
@@ -3985,7 +3991,7 @@ class SellModal(discord.ui.Modal, title="List in Player Shop"):
             (
                 f"🏪 Listed {emoji} **{item_name}** for **{price} {cur_label}**!\n"
                 f"Sale ID: `{cursor.lastrowid if cursor else '?'}`\n"
-                f"Buyers use **/inventory -> Browse Shop** (or `/playershop`)."
+                f"Buyers use **/backpack -> Browse Shop** (or `/playershop`)."
             ),
             ephemeral=True
         )
@@ -4926,80 +4932,30 @@ class LeaderboardView(discord.ui.View):
 # ============================================================
 
 def get_all_commands():
-    """Return comprehensive list of all bot slash commands organized by category."""
-    return {
-        "rpg": [
-            ("/start", "Start your RPG journey and create your character"),
-            ("/profile", "View your RPG profile and stats"),
-            ("/inventory", "Open your inventory management panel"),
-            ("/leaderboard", "View the danger ranks leaderboard"),
-            ("/party", "Create or manage a party for boss fights"),
-            ("/summonboss", "Summon a boss for players to fight (admin)"),
-            ("/pvp", "Challenge another player to PvP combat"),
-            ("/bossrush", "Start a boss rush through an area"),
-            ("/explore", "Explore areas and find bosses"),
-            ("/attack", "Attack a boss in combat"),
-            ("/flee", "Flee from a battle"),
-            ("/rebirth", "Rebirth your character for bonuses"),
-            ("/ascend", "Ascend to higher power tiers"),
-        ],
-        "social": [
-            ("/court", "Accuse a player in Strings Court"),
-            ("/bounty", "Place or view bounties on players"),
-            ("/room", "Manage your apartment room"),
-            ("/soulpath", "View your soul progression path"),
-            ("/friend", "Add or remove friends"),
-            ("/dm", "Send a private message to a friend"),
-            ("/social", "View social features and relationships"),
-        ],
-        "economy": [
-            ("/econ", "Economy hub - balance, daily, work, crime, games"),
-            ("/econ balance", "Check your economy wallet balance"),
-            ("/econ daily", "Claim daily economy rewards"),
-            ("/econ work", "Work to earn economy currency"),
-            ("/econ crime", "Attempt crime for rewards (risky)"),
-            ("/econ rob", "Attempt to rob another player"),
-            ("/econ deposit", "Deposit cash to bank"),
-            ("/econ withdraw", "Withdraw from bank"),
-            ("/econ coinflip", "Play coinflip gambling"),
-            ("/econ slots", "Play slots gambling"),
-            ("/econ dice", "Play dice gambling"),
-            ("/econ lottery", "Buy lottery tickets"),
-            ("/econ shop", "Access economy shop"),
-            ("/econ leaderboard", "View economy leaderboard"),
-            ("/econ convert-to-gold", "Convert economy currency to RPG gold"),
-            ("/econ convert-to-shards", "Convert economy currency to shards"),
-        ],
-        "papyrus": [
-            ("/papyrus", "Papyrus feature hub (Guard, Friendship, Puzzle, Kitchen, Gauntlet)"),
-            ("/guard", "View Royal Guard rank and progress"),
-            ("/friendship", "View Papyrus friendship status"),
-            ("/puzzle", "Solve daily puzzles for rewards"),
-            ("/kitchen", "Cook spaghetti in Papyrus's kitchen"),
-            ("/puzzle-gauntlet", "Attempt multi-stage puzzle gauntlets"),
-            ("/jail", "The Cool Jail - visit, work, escape, shop, judgment"),
-            ("/bonetraining", "Train with Papyrus's bone attacks for bonuses"),
-            ("/specialattack", "Check Papyrus Special Attack unlock status"),
-            ("/undernet", "Access Undernet Social Feed"),
-            ("/route", "Check your Pacifist/Genocide route status"),
-        ],
-        "admin": [
-            ("/admin", "Open the admin panel (admin only)"),
-            ("/adminrole", "Set the admin role for server management"),
-            ("/ban", "Ban a user from the bot (admin)"),
-            ("/kick", "Kick a user from the bot (admin)"),
-            ("/setchannel", "Set bot channels (admin)"),
-            ("/refresh", "Refresh bot data (admin)"),
-        ],
-        "utility": [
-            ("/help", "Show help information"),
-            ("/ping", "Check bot latency"),
-            ("/stats", "View bot statistics"),
-            ("/info", "View bot information"),
-            ("/invite", "Get bot invite link"),
-            ("/support", "Get support server link"),
-        ],
-    }
+    """Return the commands currently registered on the bot, grouped by purpose."""
+    categories = {key: [] for key in ("rpg", "social", "economy", "papyrus", "admin", "utility")}
+    economy = {"econ"}
+    papyrus = {"papyrus", "guard", "friendship", "puzzle", "kitchen", "puzzle-gauntlet", "jail", "bonetraining", "specialattack", "route"}
+    social = {"undernet", "court", "bounty", "room", "social", "friend"}
+    admin = {"admin", "adminrole", "ban", "kick", "setchannel", "refresh", "summonboss"}
+    rpg = {"start", "profile", "backpack", "backpackupgrades", "leaderboard", "party", "pvp", "bossrush", "explore", "attack", "flee", "rebirth", "ascend", "shop", "playershop"}
+    for command in sorted(bot.tree.get_commands(), key=lambda item: item.name):
+        name = command.name
+        description = getattr(command, "description", "") or "No description provided"
+        if name in economy:
+            category = "economy"
+        elif name in papyrus:
+            category = "papyrus"
+        elif name in social:
+            category = "social"
+        elif name in admin:
+            category = "admin"
+        elif name in rpg:
+            category = "rpg"
+        else:
+            category = "utility"
+        categories[category].append((f"/{name}", description))
+    return categories
 
 
 def build_commands_embed(category, page=0, guild_id=None):
@@ -5010,11 +4966,11 @@ def build_commands_embed(category, page=0, guild_id=None):
         # Show all categories with pagination
         categories = list(commands_data.keys())
         page_size = 2
+        total_pages = max(1, (len(categories) + page_size - 1) // page_size)
+        current_page = max(0, min(int(page), total_pages - 1))
+        page = current_page
         offset = page * page_size
         selected_categories = categories[offset:offset + page_size]
-        
-        if not selected_categories:
-            selected_categories = categories[:page_size]
         
         lines = []
         for cat in selected_categories:
@@ -5024,9 +4980,6 @@ def build_commands_embed(category, page=0, guild_id=None):
             for cmd, desc in cat_commands:
                 lines.append(f"`{cmd}` — {desc}")
             lines.append("")  # Empty line between categories
-        
-        total_pages = (len(categories) + page_size - 1) // page_size
-        current_page = min(page, total_pages - 1)
         
         embed = discord.Embed(
             title="📜 All Bot Commands",
@@ -5047,20 +5000,16 @@ def build_commands_embed(category, page=0, guild_id=None):
         
         actual_category = category_map.get(category, "rpg")
         commands = commands_data.get(actual_category, [])
-        
         page_size = 8
+        total_pages = max(1, (len(commands) + page_size - 1) // page_size)
+        current_page = max(0, min(int(page), total_pages - 1))
+        page = current_page
         offset = page * page_size
         selected_commands = commands[offset:offset + page_size]
-        
-        if not selected_commands:
-            selected_commands = commands[:page_size]
         
         lines = []
         for cmd, desc in selected_commands:
             lines.append(f"`{cmd}` — {desc}")
-        
-        total_pages = (len(commands) + page_size - 1) // page_size
-        current_page = min(page, total_pages - 1)
         
         category_names = {
             "rpg": "⚔️ RPG Commands",
@@ -5093,8 +5042,8 @@ class CommandsView(CooldownView):
         self.embed = embed
         
         # Navigation buttons
-        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(page <= 0))
-        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary, disabled=(page >= self.total_pages - 1))
+        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, disabled=(self.page <= 0))
+        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary, disabled=(self.page >= self.total_pages - 1))
         
         async def prev_cb(inter: discord.Interaction):
             if inter.user.id != self.owner.id:
@@ -5155,18 +5104,16 @@ async def show_backpack_upgrades_panel(interaction, owner, guild_id, action="vie
     except Exception:
         pass
     
-    # For now, just redirect to the slash command
-    # The full backpack upgrade system is in m14_new_features
-    if action == "view_upgrades":
-        content = "🎒 **Backpack Upgrades** — Purchase powerful upgrades to boost your progress!\n\nUse `/backpackupgrades` to view and purchase upgrades."
-    else:
-        content = "✨ **My Upgrades** — View your active backpack upgrades and their effects.\n\nUse `/backpackupgrades` to manage your upgrades."
-    
+    owned_only = action == "my_upgrades"
+    content = (
+        "✨ **My Upgrades** — your active bonuses and rewards."
+        if owned_only else
+        "🎒 **Upgrade Workbench** — meet the requirements, then craft with `/backpackupgrades action:buy`."
+    )
+    view = BackpackUpgradesView(owner, guild_id, owned_only, 0)
     await edit_inventory_subpanel(
         interaction, owner, guild_id,
         content=content,
-        embed=None,
-        view=None,
+        embed=view.embed,
+        view=view,
     )
-
-

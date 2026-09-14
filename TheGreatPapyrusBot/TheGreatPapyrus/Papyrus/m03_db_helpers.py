@@ -4368,3 +4368,92 @@ def get_royal_bonuses(guild_id, user_id):
             return float(r.get("xp_bonus", 0) or 0), float(r.get("gold_bonus", 0) or 0)
     return 0.0, 0.0
 
+
+# ============================================================
+# COMMAND CHANNEL ROUTING
+# ============================================================
+
+# Commands in these groups are checked by PapyrusCommandTree before their
+# handlers run. Admin/configuration commands deliberately remain available in
+# every channel so a misplaced or deleted channel can always be repaired.
+RPG_CHANNEL_COMMANDS = {
+    "start", "backpack", "backpackupgrades", "leaderboard", "playershop",
+    "shop", "summon", "explore", "bosses", "abilitylist", "itemlist",
+    "equipmentlist", "bossabilitylist",
+}
+
+PAPYRUS_CHANNEL_COMMANDS = {
+    "guard": "guard",
+    "friendship": "friend",
+    "puzzle": "puzzle",
+    "kitchen": "kitchen",
+    "puzzle-gauntlet": "gauntlet",
+    "jail": "jail",
+    "bonetraining": "train",
+    "specialattack": "special",
+    "undernet": "undernet",
+    "route": "route",
+}
+
+
+def get_command_channel(guild_id, scope):
+    """Return the configured channel for a command scope, or 0 if unrestricted."""
+    row = db.execute(
+        "SELECT channel_id FROM command_channel_config WHERE guild_id = ? AND scope = ?",
+        (int(guild_id), str(scope)),
+    ).fetchone()
+    return int(row["channel_id"] or 0) if row else 0
+
+
+def set_command_channel(guild_id, scope, channel_id):
+    """Set one command scope's channel. Passing 0 removes the restriction."""
+    execute(
+        """INSERT INTO command_channel_config (guild_id, scope, channel_id)
+           VALUES (?, ?, ?)
+           ON CONFLICT(guild_id, scope) DO UPDATE SET channel_id = excluded.channel_id""",
+        (int(guild_id), str(scope), int(channel_id or 0)),
+    )
+
+
+async def command_channel_gate(interaction):
+    """Enforce configured RPG and Papyrus-feature channels for slash commands."""
+    if interaction.type is discord.InteractionType.autocomplete:
+        return True
+    if not interaction.guild or not interaction.channel:
+        return True
+
+    data = interaction.data or {}
+    command_name = str(data.get("name") or "").lower()
+    channel_id = int(interaction.channel.id)
+
+    if command_name in RPG_CHANNEL_COMMANDS:
+        required = get_command_channel(interaction.guild.id, "rpg")
+        if required and required != channel_id:
+            await interaction.response.send_message(
+                f"🎮 RPG commands only work in <#{required}>.", ephemeral=True
+            )
+            return False
+
+    feature = PAPYRUS_CHANNEL_COMMANDS.get(command_name)
+    if feature:
+        try:
+            row = db.execute(
+                """SELECT enabled, channel_id FROM papyrus_feature_config
+                   WHERE guild_id = ? AND feature = ?""",
+                (int(interaction.guild.id), feature),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        if row and int(row["enabled"] if row["enabled"] is not None else 1) != 1:
+            await interaction.response.send_message(
+                "NYEH! That feature is **disabled** by an admin.", ephemeral=True
+            )
+            return False
+        required = int(row["channel_id"] or 0) if row else 0
+        if required and required != channel_id:
+            await interaction.response.send_message(
+                f"NYEH! Use that in <#{required}>.", ephemeral=True
+            )
+            return False
+
+    return True

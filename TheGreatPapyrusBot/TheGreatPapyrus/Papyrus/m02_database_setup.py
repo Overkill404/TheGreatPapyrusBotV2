@@ -772,6 +772,18 @@ def setup_database():
         )
     """)
 
+    # Player-facing command groups can be locked to one server channel.
+    # A missing row / channel_id=0 intentionally means "any channel" so
+    # existing servers keep working until an admin chooses a channel.
+    execute("""
+        CREATE TABLE IF NOT EXISTS command_channel_config (
+            guild_id INTEGER NOT NULL,
+            scope TEXT NOT NULL,
+            channel_id INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (guild_id, scope)
+        )
+    """)
+
     execute("""
         CREATE TABLE IF NOT EXISTS bot_bans (
             guild_id INTEGER NOT NULL,
@@ -2194,5 +2206,4 @@ async def open_gauntlet_panel(interaction, owner, guild_id):
         codex_add(guild_id, f"Gauntlet: {g['name']}", f"{owner.display_name} entered the gauntlet.", "gauntlet", owner.id)
     sel.callback=cb; view.add_item(sel)
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-
 

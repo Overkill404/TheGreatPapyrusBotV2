@@ -5,15 +5,13 @@ Original Bot.py lines 43682-44793 (auto-split; loaded into shared namespace).
 TOKEN = _token
 
 if not TOKEN:
-    print("=" * 60)
-    print("No Discord bot token found")
-    print()
-    print("Option 1 - hardcode in Bot.py (near the top):")
-    print('  TOKEN = "paste_your_bot_token_here"')
-    print()
-    print("Option 2 - host environment variable:")
-    print("  DISCORD_TOKEN = your bot token")
-    print("=" * 60)
+    print("  ╔══════════════════════════════════════════════╗")
+    print("  ║  🦴 PAPYRUS STARTUP CHECK FAILED             ║")
+    print("  ╠══════════════════════════════════════════════╣")
+    print("  ║  DISCORD_TOKEN is missing.                   ║")
+    print("  ║  Add it in your host's environment settings.║")
+    print("  ║  Never paste a bot token into public logs.   ║")
+    print("  ╚══════════════════════════════════════════════╝")
     raise SystemExit(1)
 
 
