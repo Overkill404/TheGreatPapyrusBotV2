@@ -683,15 +683,28 @@ def combined_mults_for_player(guild_id, user_id):
             xp_mult *= (1.0 + float(xb or 0))
     except Exception:
         pass
+    try:
+        backpack = backpack_upgrade_multipliers(guild_id, user_id)
+    except Exception:
+        backpack = {
+            "gold_mult": 1.0,
+            "xp_mult": 1.0,
+            "hp_mult": 1.0,
+            "damage_mult": 1.0,
+            "defense_mult": 1.0,
+        }
+    gold_mult *= float(backpack.get("gold_mult") or 1)
+    xp_mult *= float(backpack.get("xp_mult") or 1)
     return {
         "gold_mult": gold_mult,
         "xp_mult": xp_mult,
-        "hp_mult": float(p["hp_mult"]) * float(a["hp_mult"]) * float(r.get("hp_mult") or 1),
-        "damage_mult": float(p["damage_mult"]) * float(a["damage_mult"]) * float(r.get("damage_mult") or 1) * float(r.get("attack_mult") or 1),
-        "defense_mult": float(p["defense_mult"]) * float(a["defense_mult"]) * float(r.get("defense_mult") or 1),
+        "hp_mult": float(p["hp_mult"]) * float(a["hp_mult"]) * float(r.get("hp_mult") or 1) * float(backpack.get("hp_mult") or 1),
+        "damage_mult": float(p["damage_mult"]) * float(a["damage_mult"]) * float(r.get("damage_mult") or 1) * float(r.get("attack_mult") or 1) * float(backpack.get("damage_mult") or 1),
+        "defense_mult": float(p["defense_mult"]) * float(a["defense_mult"]) * float(r.get("defense_mult") or 1) * float(backpack.get("defense_mult") or 1),
         "rebirth": p,
         "ascend": a,
         "roles": r,
+        "backpack": backpack,
         "tag": " ".join(x for x in [a.get("tag") or "", p.get("tag") or ""] if x).strip(),
     }
 
@@ -1854,5 +1867,4 @@ def remove_item(
         ))
 
     return True
-
 

@@ -626,7 +626,7 @@ async def broadcast_online_notice():
         '*"' + str(quote) + '"*\n\n'
         + "**" + str(name) + "** is online.\n\n"
         + "⚔️ portals open · 👑 bosses waiting · 🎒 gear ready\n\n"
-        + "`/summon` · `/inventory` · `/start`"
+        + "`/summon` · `/backpack` · `/start`"
     )
     embed = discord.Embed(
         title="🦴 THE GREAT PAPYRUS IS BACK!",
@@ -6264,6 +6264,5 @@ class RedeemCodeModal(discord.ui.Modal, title="Enter Code"):
             f"🔑 Code **{name}** redeemed!\n" + "\n".join(lines),
             ephemeral=True
         )
-
 
 

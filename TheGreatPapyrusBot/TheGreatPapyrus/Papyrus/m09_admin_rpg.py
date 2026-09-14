@@ -2920,7 +2920,7 @@ async def rewardplayer(
         if newly:
             await interaction.response.send_message(
                 f"🎁 Gave {member.mention} boss role {role.mention}.\n"
-                f"They can equip it from `/inventory` -> **Boss Role**."
+                f"They can equip it from `/backpack` -> **Boss Role**."
             )
         else:
             await interaction.response.send_message(
@@ -3336,7 +3336,7 @@ def build_portal_embed(guild, level, boss, player=None):
         description=(
             f"```\n"
             "╔══════════════════════════════════════╗\n"
-            "║      🌀  D I M E N S I O N  G A T  ║\n"
+            "║     🌀  D I M E N S I O N  G A T E  ║\n"
             "║        a new challenge awaits       ║\n"
             "╚══════════════════════════════════════╝\n"
             "```\n"
@@ -3835,5 +3835,3 @@ class PortalView(CooldownView):
             except Exception:
                 pass
         self.stop()
-
-

@@ -207,12 +207,12 @@ class Battle:
         boss_max = max(1, int(self.boss_max_hp))
         player_hp = max(0, int(self.player_hp))
         player_max = max(1, int(self.player_max_hp))
-        boss_pct = int((boss_hp / boss_max) * 100)
-        player_pct = int((player_hp / player_max) * 100)
+        boss_pct = max(0, min(100, int((boss_hp / boss_max) * 100)))
+        player_pct = max(0, min(100, int((player_hp / player_max) * 100)))
         
         # Enhanced HP bars with better visual representation
-        boss_bar_filled = int((boss_hp / boss_max) * 10)
-        player_bar_filled = int((player_hp / player_max) * 10)
+        boss_bar_filled = max(0, min(10, int((boss_hp / boss_max) * 10)))
+        player_bar_filled = max(0, min(10, int((player_hp / player_max) * 10)))
         boss_bar_visual = "█" * boss_bar_filled + "░" * (10 - boss_bar_filled)
         player_bar_visual = "█" * player_bar_filled + "░" * (10 - player_bar_filled)
         
@@ -312,7 +312,7 @@ class Battle:
         # Add boss image as main image if available
         try:
             if url and url.startswith("http"):
-                embed.set_image(url)
+                embed.set_image(url=url)
         except Exception:
             pass
         
@@ -3212,7 +3212,7 @@ async def victory(
         reward_text += (
             "\n\n🎭 **ROLE DROPS**\n"
             + "\n".join(dropped_roles)
-            + "\n_Use `/inventory` -> **Boss Role** to equip it._"
+            + "\n_Use `/backpack` -> **Boss Role** to equip it._"
         )
     elif role_drop_rows:
         reward_text += (
@@ -4124,7 +4124,7 @@ async def bossrole(
         description=(
             f"{role.mention} can now drop from **{boss['name']}** "
             f"with a **{drop_chance}%** chance.\n\n"
-            "Players who get it can equip it from `/inventory` -> **Boss Role** "
+            "Players who get it can equip it from `/backpack` -> **Boss Role** "
             "to receive the Discord role."
         ),
         color=discord.Color.purple()
@@ -4938,7 +4938,7 @@ async def explore_prefix(ctx):
 async def inventory_prefix(ctx):
     try:
         await ctx.send(
-            "🎒 Use **/inventory** (type `/` then **inventory**).",
+            "🎒 Use **/backpack** (type `/` then **backpack**).",
             delete_after=15
         )
     except Exception:
@@ -5558,14 +5558,19 @@ async def on_ready():
     registered_names = sorted(cmd.name for cmd in registered)
 
     print()
-    print("  ╔══════════════════════════════════════════╗")
-    print("  ║       HAZEL BOT ONLINE        ║")
-    print("  ╚══════════════════════════════════════════╝")
+    print("  ╔══════════════════════════════════════════════╗")
+    print("  ║        🦴  THE GREAT PAPYRUS  🦴             ║")
+    print("  ║              SYSTEM ONLINE                   ║")
+    print("  ╠══════════════════════════════════════════════╣")
+    print(f"  ║  User       {str(bot.user)[:32]:<32} ║")
+    print(f"  ║  Bot ID     {str(bot.user.id):<32} ║")
+    print(f"  ║  Servers    {len(bot.guilds):<32} ║")
+    print(f"  ║  Commands   {len(registered_names):<32} ║")
+    print("  ╠══════════════════════════════════════════════╣")
+    print("  ║  🎒 Backpack   📡 Undernet   ⚔️ Bosses       ║")
+    print("  ║  🌀 Portals     💰 Economy    🛡️ Safety       ║")
+    print("  ╚══════════════════════════════════════════════╝")
     print()
-    print(f"  Logged in : {bot.user}")
-    print(f"  Bot ID    : {bot.user.id}")
-    print(f"  Guilds    : {len(bot.guilds)}")
-    print(f"  Commands  : {len(registered_names)} on tree")
     try:
         print(f"  Subscribed: {sorted(ALLOWED_GUILD_IDS) if ALLOWED_GUILD_IDS else '(none - all locked)'}")
     except Exception:
@@ -5720,7 +5725,7 @@ async def on_ready():
     print("  Repair    : running in background...")
 
     print()
-    print("  Status    : Ready - Ctrl+C to stop (60s notice)")
+    print("  Status    : ✅ READY · Ctrl+C for safe shutdown")
     if not _online_notice_sent:
         _online_notice_sent = True
         try:

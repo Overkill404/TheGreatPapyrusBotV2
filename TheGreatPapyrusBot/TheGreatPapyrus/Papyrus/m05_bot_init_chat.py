@@ -14,9 +14,17 @@ try:
 except Exception:
     pass
 
+class PapyrusCommandTree(app_commands.CommandTree):
+    """Command tree that applies the server's configured channel locks."""
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return await command_channel_gate(interaction)
+
+
 bot = commands.Bot(
     command_prefix="!",
-    intents=intents
+    intents=intents,
+    tree_cls=PapyrusCommandTree,
 )
 
 
@@ -1172,9 +1180,7 @@ def fight_busy_message(user_id):
     kind = ACTIVE_FIGHTERS.get(int(user_id), "a fight")
     return (
         f"❌ You're already in **{kind}**.\n"
-        "Finish or **Flee** that fight, or open **/inventory -> Clear Fights** to unlock."
+        "Finish or **Flee** that fight, or open **/backpack -> Clear Fights** to unlock."
     )
-
-
 
 
