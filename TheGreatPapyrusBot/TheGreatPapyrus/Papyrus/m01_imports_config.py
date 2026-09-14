@@ -14,13 +14,31 @@ import re
 import asyncio
 from typing import Optional
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+
+# Wispbyte's environment editor writes secrets to /home/container/.env rather
+# than exporting them to the process. Load that file without overriding real
+# environment variables supplied by other hosts.
+if load_dotenv is not None:
+    _dotenv_candidates = [
+        os.path.join(os.getcwd(), ".env"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+    ]
+    for _dotenv_path in dict.fromkeys(_dotenv_candidates):
+        if os.path.isfile(_dotenv_path):
+            load_dotenv(_dotenv_path, override=False)
+
 
 
 # ============================================================
 # CONFIG
 # ============================================================
 
-# Put your bot token here OR set DISCORD_TOKEN / TOKEN in the host env.
+# Put your bot token here OR set DISCORD_TOKEN / BOT_TOKEN / TOKEN in the host env.
 # Example: TOKEN = "MTAx....your.bot.token....xyz"
 TOKEN = ""
 
@@ -553,5 +571,3 @@ async def send_not_subscribed(interaction: discord.Interaction) -> None:
                 await interaction.response.send_message(msg, ephemeral=True)
         except Exception:
             pass
-
-
