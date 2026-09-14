@@ -505,11 +505,7 @@ class TeamBossLobbyView(CooldownView):
         try:
             url = (self.boss["image_url"] if "image_url" in self.boss.keys() else "") or ""
             if url:
-                embed.set_image(url=url)
-                try:
-                    embed.set_thumbnail(url=url)
-                except Exception:
-                    pass
+                embed.set_thumbnail(url=url)
         except Exception:
             pass
         guild = None
@@ -693,6 +689,8 @@ class TeamBattle:
         self.fighters = {}  # user_id -> dict
         self.boss_max_hp = boss["hp"]
         self.boss_hp = boss["hp"]
+        self.mercy_required = boss_mercy_requirement(boss)
+        self.mercy_progress = 0
         self.log = []
         self.turn_index = 0
         self.finished = False
@@ -845,17 +843,18 @@ class TeamBattle:
         theme = get_boss_ui_color(self.boss)
         boss_hp = max(0, int(self.boss_hp))
         boss_max = max(1, int(self.boss_max_hp))
-        boss_pct = int((boss_hp / boss_max) * 100)
-        line = themed_divider("─", 24)
+        boss_pct = max(0, min(100, int((boss_hp / boss_max) * 100)))
+        mercy_required = max(1, int(getattr(self, "mercy_required", 5) or 5))
+        mercy_progress = max(0, min(mercy_required, int(getattr(self, "mercy_progress", 0) or 0)))
+        mercy_pct = int((mercy_progress / mercy_required) * 100)
         embed = discord.Embed(
             title=f"👥  {self.boss['name']}",
             description=(
-                f"{line}\n"
-                f"{hp_bar(boss_hp, boss_max, length=8)} **{boss_pct}%**\n"
-                f"❤️ `{boss_hp:,}` / `{boss_max:,}`\n"
+                f"❤️ {hp_bar(boss_hp, boss_max, length=8)} **{boss_hp:,}/{boss_max:,}** · {boss_pct}%\n"
+                f"💛 `{mercy_progress_bar(mercy_progress, mercy_required, length=8)}` "
+                f"**{mercy_progress}/{mercy_required}** · {mercy_pct}% MERCY\n"
                 f"⚔️ `{int(self.boss['attack'] or 0):,}`  -  🛡️ `{int(self.boss['defense'] or 0):,}`\n"
-                f"**Turn:** ▶️ **{turn}**\n"
-                f"{line}"
+                f"▶️ **Turn: {turn}**"
             ),
             color=theme
         )
@@ -876,10 +875,10 @@ class TeamBattle:
         embed.add_field(name="‌", value=right[:900], inline=True)
         embed.add_field(
             name="📜 Log",
-            value="```ansi\n" + ("\n".join(self.log[-6:])[:500] or "...") + "\n```",
+            value="\n".join(f"> {str(entry).replace(chr(10), ' ')[:90]}" for entry in self.log[-3:]) or "> Battle begins...",
             inline=False
         )
-        embed.set_footer(text="FIGHT  -  ABILITY  -  FLEE  -  END FIGHT (leader only)")
+        embed.set_footer(text="FIGHT · ABILITY · ITEM · ACT · FLEE · END (leader)")
         return embed
 
 
@@ -1161,11 +1160,14 @@ class TeamBattleView(CooldownView):
         view.add_item(TeamRagebaitButton(battle))
         view.add_item(TeamEnrageButton(battle))
         view.add_item(TeamTauntButton(battle))
+        view.add_item(TeamMercyButton(battle))
         try:
             _gid = interaction.guild.id if interaction.guild else 0
         except Exception:
             _gid = 0
         _rb = get_ragebait_settings(_gid)
+        required = max(1, int(getattr(battle, "mercy_required", 5) or 5))
+        progress = max(0, min(required, int(getattr(battle, "mercy_progress", 0) or 0)))
         embed = discord.Embed(
             title="💬 ACT",
             description=(
@@ -1173,7 +1175,9 @@ class TeamBattleView(CooldownView):
                     f"**RAGEBAIT** - Full heal - next attack **{format_mult(_rb['ragebait_damage_mult'])}** - "
                     f"loot **{format_mult(_rb['ragebait_loot_mult'])}**\n"
                     f"**ENRAGE** - Boss HP **{format_mult(_er['enrage_hp_mult'])}** - "
-                    f"loot **{format_mult(_er['enrage_loot_mult'])}**"
+                    f"loot **{format_mult(_er['enrage_loot_mult'])}**\n"
+                    f"**TAUNT** - Cut your HP for extra loot.\n"
+                    f"**MERCY** - `{mercy_progress_bar(progress, required)}` **{progress}/{required}**"
                 ))(get_enrage_settings(_gid))
             ),
             color=discord.Color.gold()
@@ -1526,6 +1530,70 @@ class TeamTauntButton(discord.ui.Button):
             pass
 
 
+class TeamMercyButton(discord.ui.Button):
+    """Advance the shared Mercy bar as the acting player's team action."""
+
+    def __init__(self, battle):
+        super().__init__(label="MERCY", emoji="💛", style=discord.ButtonStyle.success)
+        self.battle = battle
+
+    async def callback(self, interaction: discord.Interaction):
+        battle = self.battle
+        ok, reason = team_can_act(battle, interaction.user.id)
+        if not ok:
+            await interaction.response.send_message(f"❌ {reason}", ephemeral=True)
+            return
+
+        required = max(1, int(getattr(battle, "mercy_required", 5) or 5))
+        battle.mercy_progress = min(
+            required,
+            int(getattr(battle, "mercy_progress", 0) or 0) + 1,
+        )
+        battle.add_log(
+            f"💛 **{label_for_member(interaction.user)}** appealed to "
+            f"**{battle.boss['name']}**! MERCY {battle.mercy_progress}/{required}"
+        )
+
+        if battle.mercy_progress >= required:
+            battle.finished = True
+            battle.add_log(f"✨ **{battle.boss['name']}** accepted the team's MERCY!")
+            await interaction.response.edit_message(
+                content="💛 MERCY accepted - the team spared the boss!",
+                embed=None,
+                view=None,
+            )
+            await team_victory(interaction, battle, from_ephemeral=True, spared=True)
+            return
+
+        battle.tick_cooldowns_for(interaction.user.id)
+        phase = battle.advance_turn(interaction.user.id)
+        if phase == "boss":
+            await team_boss_turn(battle)
+            tick_boss_dots(battle)
+            if battle.boss_hp <= 0:
+                battle.finished = True
+                await interaction.response.edit_message(content="💛 MERCY attempted.", embed=None, view=None)
+                await team_victory(interaction, battle, from_ephemeral=True)
+                return
+            if not battle.alive_ids():
+                battle.finished = True
+                await interaction.response.edit_message(content="💛 MERCY attempted.", embed=None, view=None)
+                await team_defeat(interaction, battle, from_ephemeral=True)
+                return
+        elif phase == "none":
+            battle.finished = True
+            await interaction.response.edit_message(content="💛 MERCY attempted.", embed=None, view=None)
+            await team_defeat(interaction, battle, from_ephemeral=True)
+            return
+
+        await interaction.response.edit_message(
+            content=f"💛 MERCY **{battle.mercy_progress}/{required}**",
+            embed=None,
+            view=None,
+        )
+        await safe_refresh_team_battle(battle, interaction)
+
+
 
 class TeamAbilitySelect(discord.ui.Select):
 
@@ -1868,7 +1936,7 @@ async def team_defeat(interaction, battle: TeamBattle, from_ephemeral=False):
         pass
 
 
-async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
+async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False, spared=False):
     boss = battle.boss
     participants = list(battle.fighters.values())
     members = [f["member"] for f in participants if f.get("member")]
@@ -1884,7 +1952,7 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
     # Scale gold slightly down per person already via economy; still full XP
     raw_gold = max(0, int(boss["gold"] or 0))
     gold_gain = max(0, int(raw_gold or 0))
-    xp_gain = max(0, int(boss["xp"] or 0))
+    xp_gain = 0 if spared else max(0, int(boss["xp"] or 0))
 
     reward_lines = []
     for f in participants:
@@ -1919,15 +1987,21 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
             WHERE guild_id = ? AND user_id = ?
         """, (p_gold, guild_id, user_id))
         full_heal_player(guild_id, user_id)
-        record_boss_kill(guild_id, user_id, boss["id"])
+        if spared:
+            record_boss_spare(guild_id, user_id, boss["id"])
+        else:
+            record_boss_kill(guild_id, user_id, boss["id"])
         try:
-            update_route_on_boss(guild_id, user_id, boss["id"], killed=True)
+            update_route_on_boss(guild_id, user_id, boss["id"], killed=not spared)
         except Exception:
             pass
 
         levelups = add_xp(guild_id, user_id, p_xp)
         try:
-            papyrus_on_battle_win(guild_id, user_id)
+            if spared:
+                papyrus_on_battle_spare(guild_id, user_id)
+            else:
+                papyrus_on_battle_win(guild_id, user_id)
         except Exception:
             pass
         try:
@@ -1936,6 +2010,8 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
             rx = 1.0
         final_xp = max(0, int(p_xp * rx))
         line = f"**{label_for_member(member)}** - 💰+{p_gold:,} ⭐+{final_xp:,}"
+        if spared:
+            line += " 💛 SPARED"
         try:
             bits = []
             rg = float(pm.get("rebirth_gold_mult") or pm.get("gold_mult") or 1)
@@ -1959,7 +2035,7 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
             line += f" 🎉 Lv{levelups[-1]}"
 
         # Ability drops (double roll if ragebait)
-        for drop in boss_ability_rows(guild_id, boss["id"]):
+        for drop in ([] if spared else boss_ability_rows(guild_id, boss["id"])):
             chance = max(0, min(100, float(drop["drop_chance"] or 0)))
             rolls = 2 if loot_mult > 1 else 1
             for _ in range(rolls):
@@ -1969,7 +2045,7 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
                     break
 
         # Item/gear loot
-        loot_rows = db.execute("""
+        loot_rows = [] if spared else db.execute("""
             SELECT * FROM boss_loot WHERE guild_id = ? AND boss_id = ?
         """, (guild_id, boss["id"])).fetchall()
         for loot in loot_rows:
@@ -2001,7 +2077,7 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
                         line += f" | 🎁{item['name']}"
 
         # Role drops
-        role_rows = db.execute("""
+        role_rows = [] if spared else db.execute("""
             SELECT * FROM boss_role_drops WHERE guild_id = ? AND boss_id = ?
         """, (guild_id, boss["id"])).fetchall()
         for row in role_rows:
@@ -2019,7 +2095,7 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
     # Team boss phase transition - keep the raid going on the next phase boss
     next_boss = None
     try:
-        if guild_id is not None:
+        if guild_id is not None and not spared:
             next_boss = roll_next_boss_phase(guild_id, boss["id"])
     except Exception as e:
         print(f"team phase roll failed: {e}")
@@ -2090,8 +2166,12 @@ async def team_victory(interaction, battle: TeamBattle, from_ephemeral=False):
         pass
 
     embed = battle.make_embed()
-    embed.title = "🎉 TEAM VICTORY"
-    embed.description = f"**{boss['name']}** has been defeated by the raid team!"
+    embed.title = "💛 TEAM MERCY" if spared else "🎉 TEAM VICTORY"
+    embed.description = (
+        f"**{boss['name']}** accepted the team's MERCY! No EXP or combat drops were awarded."
+        if spared else
+        f"**{boss['name']}** has been defeated by the raid team!"
+    )
     embed.color = discord.Color.gold()
     embed.add_field(
         name="🎁 REWARDS (all raiders, including downed)",
