@@ -312,10 +312,254 @@ def _econ_bal_embed(guild_id, user):
     return emb
 
 
+ECONOMY_PANEL_PAGES = (
+    {
+        "title": "Earn & Overview",
+        "emoji": "💰",
+        "description": (
+            "Check your wallet, collect timed rewards, earn currency, or compare "
+            "your total with the server leaderboard."
+        ),
+        "actions": (
+            ("Balance", "bal", "💳", "View your cash, bank, and lifetime stats"),
+            ("Daily", "daily", "🎁", "Claim your daily currency reward"),
+            ("Work", "work", "🛠️", "Work a job for currency"),
+            ("Crime", "crime", "🕵️", "Risk a fine for a larger reward"),
+            ("Leaderboard", "lb", "🏆", "View the richest players"),
+        ),
+    },
+    {
+        "title": "Bank & Players",
+        "emoji": "🏦",
+        "description": (
+            "Move currency through the bank, pay another player, attempt a robbery, "
+            "or convert economy currency into RPG rewards."
+        ),
+        "actions": (
+            ("Deposit", "dep", "📥", "Move cash into your bank"),
+            ("Withdraw", "wd", "📤", "Move banked currency into cash"),
+            ("Pay Player", "pay", "💸", "Choose a player and amount to pay"),
+            ("Rob Player", "rob", "🥷", "Choose a player to attempt to rob"),
+            ("Convert to Gold", "togold", "🪙", "Convert currency into RPG gold"),
+            ("Convert to Shards", "toshards", "💎", "Convert currency into shards"),
+        ),
+    },
+    {
+        "title": "Games & Shop",
+        "emoji": "🎰",
+        "description": (
+            "Place a bet, buy a lottery ticket, or browse the server's economy shop. "
+            "Bet limits and shop stock are controlled by server admins."
+        ),
+        "actions": (
+            ("Coinflip", "cf", "🪙", "Enter a wager for a coin flip"),
+            ("Slots", "slots", "🎰", "Enter a wager for the slot machine"),
+            ("Dice", "dice", "🎲", "Enter a wager against the house"),
+            ("Lottery", "lotto", "🎟️", "Buy one lottery ticket"),
+            ("Shop", "shop", "🛒", "Browse and buy economy shop items"),
+            ("Help", "help", "❓", "Show every economy command"),
+        ),
+    },
+)
+
+
+def build_economy_panel_embed(guild_id, page=0):
+    page = max(0, min(int(page), len(ECONOMY_PANEL_PAGES) - 1))
+    data = ECONOMY_PANEL_PAGES[page]
+    em, currency_name = _econ_cur(guild_id)
+    actions = "\n".join(
+        f"{emoji} **{label}** — {description}"
+        for label, _value, emoji, description in data["actions"]
+    )
+    embed = discord.Embed(
+        title=f"{em} ECONOMY PANEL · {data['title']}",
+        description=(
+            f"**Currency:** {em} {currency_name}\n"
+            f"Use the action menu below—no command options to remember.\n\n{actions}"
+        ),
+        color=discord.Color.dark_green(),
+    )
+    embed.set_footer(text=f"Page {page + 1}/{len(ECONOMY_PANEL_PAGES)} · Actions use the player who clicks them")
+    return embed
+
+
+async def _run_economy_panel_action(interaction, action, *, amount=None, target=None):
+    command = globals().get("econ_cmd")
+    callback = getattr(command, "callback", command)
+    if callback is None:
+        await interaction.response.send_message("Economy action is unavailable.", ephemeral=True)
+        return
+    await callback(interaction, action, amount=amount, target=target)
+
+
+class EconomyAmountModal(discord.ui.Modal):
+    def __init__(self, action, target=None):
+        labels = {
+            "dep": "Deposit",
+            "wd": "Withdraw",
+            "pay": "Pay Player",
+            "cf": "Coinflip Bet",
+            "slots": "Slots Bet",
+            "dice": "Dice Bet",
+            "togold": "Convert to Gold",
+            "toshards": "Convert to Shards",
+        }
+        super().__init__(title=labels.get(action, "Economy Amount"), timeout=120)
+        self.action = action
+        self.target = target
+        self.amount_input = discord.ui.TextInput(
+            label="Amount",
+            placeholder="Enter a positive whole number",
+            min_length=1,
+            max_length=12,
+        )
+        self.add_item(self.amount_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            amount = int(str(self.amount_input.value).replace(",", "").strip())
+        except (TypeError, ValueError):
+            amount = 0
+        if amount <= 0:
+            await interaction.response.send_message("Enter a positive whole-number amount.", ephemeral=True)
+            return
+        await _run_economy_panel_action(
+            interaction,
+            self.action,
+            amount=amount,
+            target=self.target,
+        )
+
+
+class EconomyTargetView(CooldownView):
+    def __init__(self, action):
+        super().__init__(timeout=90)
+        self.action = action
+        picker = discord.ui.UserSelect(
+            placeholder="Choose a player…",
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+        async def pick_target(interaction: discord.Interaction):
+            target = picker.values[0]
+            if self.action == "pay":
+                await interaction.response.send_modal(EconomyAmountModal("pay", target=target))
+                return
+            await _run_economy_panel_action(interaction, self.action, target=target)
+
+        picker.callback = pick_target
+        self.add_item(picker)
+
+
+class EconomyPanelPageSelect(discord.ui.Select):
+    def __init__(self, page):
+        super().__init__(
+            placeholder="Choose an economy page…",
+            options=[
+                discord.SelectOption(
+                    label=data["title"],
+                    value=str(index),
+                    emoji=data["emoji"],
+                    default=(index == page),
+                )
+                for index, data in enumerate(ECONOMY_PANEL_PAGES)
+            ],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        page = int(self.values[0])
+        await interaction.response.edit_message(
+            embed=build_economy_panel_embed(interaction.guild.id, page),
+            view=EconomyPanelView(interaction.guild.id, page),
+        )
+
+
+class EconomyPanelActionSelect(discord.ui.Select):
+    AMOUNT_ACTIONS = {"dep", "wd", "cf", "slots", "dice", "togold", "toshards"}
+    TARGET_ACTIONS = {"pay", "rob"}
+
+    def __init__(self, page):
+        actions = ECONOMY_PANEL_PAGES[page]["actions"]
+        super().__init__(
+            placeholder="Choose an action…",
+            options=[
+                discord.SelectOption(
+                    label=label,
+                    value=value,
+                    emoji=emoji,
+                    description=description[:100],
+                )
+                for label, value, emoji, description in actions
+            ],
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        action = self.values[0]
+        if action in self.AMOUNT_ACTIONS:
+            await interaction.response.send_modal(EconomyAmountModal(action))
+            return
+        if action in self.TARGET_ACTIONS:
+            await interaction.response.send_message(
+                "Choose the player for this action.",
+                view=EconomyTargetView(action),
+                ephemeral=True,
+            )
+            return
+        await _run_economy_panel_action(interaction, action)
+
+
+class EconomyPanelView(CooldownView):
+    def __init__(self, guild_id, page=0):
+        super().__init__(timeout=300)
+        self.guild_id = int(guild_id)
+        self.page = max(0, min(int(page), len(ECONOMY_PANEL_PAGES) - 1))
+        self.add_item(EconomyPanelPageSelect(self.page))
+        self.add_item(EconomyPanelActionSelect(self.page))
+
+        previous = discord.ui.Button(
+            label="Previous",
+            emoji="◀️",
+            style=discord.ButtonStyle.secondary,
+            disabled=(self.page == 0),
+            row=2,
+        )
+        next_page = discord.ui.Button(
+            label="Next",
+            emoji="▶️",
+            style=discord.ButtonStyle.secondary,
+            disabled=(self.page == len(ECONOMY_PANEL_PAGES) - 1),
+            row=2,
+        )
+
+        async def previous_page(interaction: discord.Interaction):
+            page_number = self.page - 1
+            await interaction.response.edit_message(
+                embed=build_economy_panel_embed(self.guild_id, page_number),
+                view=EconomyPanelView(self.guild_id, page_number),
+            )
+
+        async def next_panel_page(interaction: discord.Interaction):
+            page_number = self.page + 1
+            await interaction.response.edit_message(
+                embed=build_economy_panel_embed(self.guild_id, page_number),
+                view=EconomyPanelView(self.guild_id, page_number),
+            )
+
+        previous.callback = previous_page
+        next_page.callback = next_panel_page
+        self.add_item(previous)
+        self.add_item(next_page)
+
+
 @bot.tree.command(name="econ", description="Economy hub (balance, daily, work, crime, games…) — economy channel only.")
 @app_commands.describe(action="What to do", amount="Amount (bet / deposit / etc.)", target="Target player (rob / pay)")
 @app_commands.choices(
     action=[
+        app_commands.Choice(name="panel", value="panel"),
         app_commands.Choice(name="balance", value="bal"),
         app_commands.Choice(name="daily", value="daily"),
         app_commands.Choice(name="work", value="work"),
@@ -337,7 +581,7 @@ def _econ_bal_embed(guild_id, user):
 )
 async def econ_cmd(
     interaction: discord.Interaction,
-    action: app_commands.Choice[str],
+    action: Optional[app_commands.Choice[str]] = None,
     amount: Optional[int] = None,
     target: Optional[discord.Member] = None,
 ):
@@ -347,9 +591,16 @@ async def econ_cmd(
     uid = interaction.user.id
     cfg = _econ_cfg(gid)
     em, cname = _econ_cur(gid)
-    act = action.value if hasattr(action, "value") else str(action)
+    act = action.value if hasattr(action, "value") else (str(action) if action else "panel")
     mult = _econ_season_mult(gid)
     now = time.time()
+
+    if act == "panel":
+        await interaction.response.send_message(
+            embed=build_economy_panel_embed(gid, 0),
+            view=EconomyPanelView(gid, 0),
+        )
+        return
 
     if act == "help":
         await interaction.response.send_message(
@@ -405,17 +656,13 @@ async def econ_cmd(
             return
         lo, hi = int(cfg["daily_min"] or 50), int(cfg["daily_max"] or 150)
         gain = int(random.randint(lo, hi) * mult)
-        execute("UPDATE economy_wallets SET last_work = ? WHERE guild_id = ? AND user_id = ?", (now, gid, uid))
-        _econ_add_cash(gid, uid, gain, note="work")
-        try:
-            add_royal_points(gid, uid, 5, reason="work")
-        except Exception:
-            pass
+        execute("UPDATE economy_wallets SET last_daily = ? WHERE guild_id = ? AND user_id = ?", (now, gid, uid))
+        _econ_add_cash(gid, uid, gain, note="daily")
         try:
             add_royal_points(gid, uid, 3, reason="daily")
         except Exception:
             pass
-        await interaction.response.send_message(f"{em} You {random.choice(jobs)} and earned **+{gain:,}** {cname}")
+        await interaction.response.send_message(f"{em} Daily reward claimed: **+{gain:,}** {cname}")
         return
 
     if act == "work":
