@@ -42,10 +42,16 @@ if load_dotenv is not None:
 # Example: TOKEN = "MTAx....your.bot.token....xyz"
 TOKEN = ""
 
-# Keep the historical relative-path default, but allow hosts to select an
-# existing database explicitly. This prevents a changed startup directory from
-# making a healthy guild look like all of its saves disappeared.
-DATABASE = (os.getenv("DATABASE_PATH") or "undertale_au_rpg.db").strip()
+# The split modules are executed by Bot.py, so __file__ normally points to
+# Bot.py while _MODULE_DIR points at the Papyrus data folder. Resolve the
+# default database from that folder instead of the process working directory;
+# hosts such as Wispbyte start in /home/container and would otherwise create a
+# second, empty database there.
+_papyrus_data_dir = os.fspath(
+    globals().get("_MODULE_DIR", os.path.dirname(os.path.abspath(__file__)))
+)
+_default_database = os.path.join(_papyrus_data_dir, "undertale_au_rpg.db")
+DATABASE = (os.getenv("DATABASE_PATH") or _default_database).strip()
 if not os.path.isabs(DATABASE):
     DATABASE = os.path.abspath(DATABASE)
 
