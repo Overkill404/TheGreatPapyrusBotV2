@@ -476,6 +476,167 @@ def is_in_jail(guild_id, user_id):
         return False
 
 
+JAIL_PANEL_PAGES = (
+    {
+        "title": "Prisoner Actions",
+        "emoji": "🦴",
+        "description": "Check jail status, work, attempt an escape, or ask Papyrus for judgment.",
+        "actions": (
+            ("Status", "status", "📋", "View the enabled Cool Jail systems"),
+            ("Work", "work", "🧹", "Complete jail work for economy currency"),
+            ("Escape", "escape", "🏃", "Attempt to escape The Cool Jail"),
+            ("Judgment", "judgment", "⚖️", "Ask Papyrus to judge your behavior"),
+        ),
+    },
+    {
+        "title": "Visitors & Shop",
+        "emoji": "🛒",
+        "description": "Visit a prisoner or browse the paginated Cool Jail shop.",
+        "actions": (
+            ("Visit Prisoner", "visit", "👋", "Choose a prisoner to visit"),
+            ("Jail Shop", "shop", "🛒", "Browse and buy jail shop items"),
+        ),
+    },
+)
+
+
+def build_jail_panel_embed(guild_id, page=0):
+    page = max(0, min(int(page), len(JAIL_PANEL_PAGES) - 1))
+    data = JAIL_PANEL_PAGES[page]
+    actions = "\n".join(
+        f"{emoji} **{label}** — {description}"
+        for label, _value, emoji, description in data["actions"]
+    )
+    embed = discord.Embed(
+        title=f"🦴 COOL JAIL PANEL · {data['title']}",
+        description=f"Use the menus below to navigate and act.\n\n{actions}",
+        color=theme_color_dark(),
+    )
+    embed.set_footer(text=f"Page {page + 1}/{len(JAIL_PANEL_PAGES)} · NYEH HEH HEH!")
+    return embed
+
+
+async def _run_jail_panel_action(interaction, action, *, target=None):
+    command = globals().get("jail_cmd")
+    callback = getattr(command, "callback", command)
+    if callback is None:
+        await interaction.response.send_message("Cool Jail action is unavailable.", ephemeral=True)
+        return
+    await callback(interaction, action, target=target)
+
+
+class JailVisitorView(CooldownView):
+    def __init__(self):
+        super().__init__(timeout=90)
+        picker = discord.ui.UserSelect(
+            placeholder="Choose a prisoner to visit…",
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+        async def choose_prisoner(interaction: discord.Interaction):
+            await _run_jail_panel_action(interaction, "visit", target=picker.values[0])
+
+        picker.callback = choose_prisoner
+        self.add_item(picker)
+
+
+class JailPanelPageSelect(discord.ui.Select):
+    def __init__(self, page):
+        super().__init__(
+            placeholder="Choose a Cool Jail page…",
+            options=[
+                discord.SelectOption(
+                    label=data["title"],
+                    value=str(index),
+                    emoji=data["emoji"],
+                    default=(index == page),
+                )
+                for index, data in enumerate(JAIL_PANEL_PAGES)
+            ],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        page = int(self.values[0])
+        await interaction.response.edit_message(
+            embed=build_jail_panel_embed(interaction.guild.id, page),
+            view=JailPanelView(interaction.guild.id, page),
+        )
+
+
+class JailPanelActionSelect(discord.ui.Select):
+    def __init__(self, page):
+        super().__init__(
+            placeholder="Choose an action…",
+            options=[
+                discord.SelectOption(
+                    label=label,
+                    value=value,
+                    emoji=emoji,
+                    description=description[:100],
+                )
+                for label, value, emoji, description in JAIL_PANEL_PAGES[page]["actions"]
+            ],
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        action = self.values[0]
+        if action == "visit":
+            await interaction.response.send_message(
+                "Choose the prisoner you want to visit.",
+                view=JailVisitorView(),
+                ephemeral=True,
+            )
+            return
+        await _run_jail_panel_action(interaction, action)
+
+
+class JailPanelView(CooldownView):
+    def __init__(self, guild_id, page=0):
+        super().__init__(timeout=300)
+        self.guild_id = int(guild_id)
+        self.page = max(0, min(int(page), len(JAIL_PANEL_PAGES) - 1))
+        self.add_item(JailPanelPageSelect(self.page))
+        self.add_item(JailPanelActionSelect(self.page))
+
+        previous = discord.ui.Button(
+            label="Previous",
+            emoji="◀️",
+            style=discord.ButtonStyle.secondary,
+            disabled=(self.page == 0),
+            row=2,
+        )
+        next_page = discord.ui.Button(
+            label="Next",
+            emoji="▶️",
+            style=discord.ButtonStyle.secondary,
+            disabled=(self.page == len(JAIL_PANEL_PAGES) - 1),
+            row=2,
+        )
+
+        async def previous_page(interaction: discord.Interaction):
+            page_number = self.page - 1
+            await interaction.response.edit_message(
+                embed=build_jail_panel_embed(self.guild_id, page_number),
+                view=JailPanelView(self.guild_id, page_number),
+            )
+
+        async def next_panel_page(interaction: discord.Interaction):
+            page_number = self.page + 1
+            await interaction.response.edit_message(
+                embed=build_jail_panel_embed(self.guild_id, page_number),
+                view=JailPanelView(self.guild_id, page_number),
+            )
+
+        previous.callback = previous_page
+        next_page.callback = next_panel_page
+        self.add_item(previous)
+        self.add_item(next_page)
+
+
 @bot.tree.command(
     name="jail",
     description="The Cool Jail - visit, work, escape, or shop while imprisoned."
@@ -486,6 +647,7 @@ def is_in_jail(guild_id, user_id):
 )
 @app_commands.choices(
     action=[
+        app_commands.Choice(name="panel", value="panel"),
         app_commands.Choice(name="status", value="status"),
         app_commands.Choice(name="visit", value="visit"),
         app_commands.Choice(name="work", value="work"),
@@ -496,7 +658,7 @@ def is_in_jail(guild_id, user_id):
 )
 async def jail_cmd(
     interaction: discord.Interaction,
-    action: app_commands.Choice[str],
+    action: Optional[app_commands.Choice[str]] = None,
     target: Optional[discord.Member] = None
 ):
     if not interaction.guild:
@@ -505,9 +667,16 @@ async def jail_cmd(
     
     guild_id = interaction.guild.id
     user_id = interaction.user.id
-    act = action.value if hasattr(action, "value") else str(action)
+    act = action.value if hasattr(action, "value") else (str(action) if action else "panel")
     cfg = get_jail_config(guild_id)
     now = time.time()
+
+    if act == "panel":
+        await interaction.response.send_message(
+            embed=build_jail_panel_embed(guild_id, 0),
+            view=JailPanelView(guild_id, 0),
+        )
+        return
     
     if act == "status":
         # For testing purposes, allow checking status even if not in jail
@@ -1571,6 +1740,276 @@ def build_undernet_groups_embed(user_id):
     return embed
 
 
+UNDERNET_PANEL_PAGES = (
+    {
+        "title": "Feed & Posts",
+        "emoji": "📡",
+        "description": "Browse the shared network, publish a post, search, like posts, or review your history.",
+        "actions": (
+            ("Open Feed", "feed", "📰", "Browse recent posts with page controls"),
+            ("Create Post", "post", "✍️", "Publish a post to the shared Undernet"),
+            ("Search Posts", "search", "🔎", "Search the network by words"),
+            ("Like Post", "like", "❤️", "Like a post using its ID"),
+            ("My Posts", "myposts", "🗂️", "Browse your posts with page controls"),
+        ),
+    },
+    {
+        "title": "Private Messages",
+        "emoji": "📨",
+        "description": "Read your private inbox or message a registered player by handle, mention, or Discord ID.",
+        "actions": (
+            ("Open Inbox", "inbox", "📬", "Read your latest private messages"),
+            ("Send Message", "dm", "✉️", "Message another connected player"),
+        ),
+    },
+    {
+        "title": "Private Groups",
+        "emoji": "👥",
+        "description": "Create private cross-server groups, invite members, and read or send group messages.",
+        "actions": (
+            ("My Groups", "groups", "📋", "List groups you have joined"),
+            ("Create Group", "group-create", "➕", "Create a new private group"),
+            ("Read Group", "group-read", "📖", "Read a group by its ID"),
+            ("Send to Group", "group-send", "💬", "Send a message to a group"),
+            ("Invite Player", "group-invite", "🤝", "Invite a player to a group you own"),
+        ),
+    },
+)
+
+
+def build_undernet_panel_embed(guild_id, page=0):
+    page = max(0, min(int(page), len(UNDERNET_PANEL_PAGES) - 1))
+    data = UNDERNET_PANEL_PAGES[page]
+    cfg = get_undernet_config(guild_id) or {}
+    status = "ONLINE" if int(cfg.get("enabled", 1)) else "OFFLINE"
+    actions = "\n".join(
+        f"{emoji} **{label}** — {description}"
+        for label, _value, emoji, description in data["actions"]
+    )
+    embed = discord.Embed(
+        title=f"📡 UNDERNET PANEL · {data['title']}",
+        description=(
+            f"**Connection:** `{status}`\n"
+            f"Use the menus below to navigate and act.\n\n{actions}"
+        ),
+        color=theme_color(),
+    )
+    embed.set_footer(text=f"Page {page + 1}/{len(UNDERNET_PANEL_PAGES)} · Connected servers share one network")
+    return embed
+
+
+async def _run_undernet_panel_action(
+    interaction,
+    action,
+    *,
+    content=None,
+    post_id=None,
+    target=None,
+    group_id=None,
+):
+    command = globals().get("undernet_cmd")
+    callback = getattr(command, "callback", command)
+    if callback is None:
+        await interaction.response.send_message("Undernet action is unavailable.", ephemeral=True)
+        return
+    await callback(
+        interaction,
+        action,
+        content=content,
+        post_id=post_id,
+        target=target,
+        group_id=group_id,
+    )
+
+
+class UndernetInputModal(discord.ui.Modal):
+    def __init__(self, action):
+        titles = {
+            "post": "Create Undernet Post",
+            "search": "Search Undernet",
+            "like": "Like Undernet Post",
+            "dm": "Send Private Message",
+            "group-create": "Create Private Group",
+            "group-read": "Read Private Group",
+            "group-send": "Send Group Message",
+            "group-invite": "Invite to Private Group",
+        }
+        super().__init__(title=titles.get(action, "Undernet Action"), timeout=180)
+        self.action = action
+        self.primary = None
+        self.secondary = None
+
+        if action == "post":
+            self.primary = discord.ui.TextInput(
+                label="Post",
+                placeholder="What do you want to share?",
+                style=discord.TextStyle.paragraph,
+                max_length=1000,
+            )
+        elif action == "search":
+            self.primary = discord.ui.TextInput(label="Search words", max_length=80)
+        elif action == "like":
+            self.primary = discord.ui.TextInput(label="Post ID", placeholder="Example: 42", max_length=12)
+        elif action == "dm":
+            self.primary = discord.ui.TextInput(label="Player", placeholder="@handle, mention, or Discord ID", max_length=100)
+            self.secondary = discord.ui.TextInput(
+                label="Message",
+                style=discord.TextStyle.paragraph,
+                max_length=1000,
+            )
+        elif action == "group-create":
+            self.primary = discord.ui.TextInput(label="Group name", max_length=80)
+        elif action == "group-read":
+            self.primary = discord.ui.TextInput(label="Group ID", placeholder="Example: 3", max_length=12)
+        elif action == "group-send":
+            self.primary = discord.ui.TextInput(label="Group ID", placeholder="Example: 3", max_length=12)
+            self.secondary = discord.ui.TextInput(
+                label="Message",
+                style=discord.TextStyle.paragraph,
+                max_length=1000,
+            )
+        elif action == "group-invite":
+            self.primary = discord.ui.TextInput(label="Group ID", placeholder="Example: 3", max_length=12)
+            self.secondary = discord.ui.TextInput(label="Player", placeholder="@handle, mention, or Discord ID", max_length=100)
+
+        if self.primary is not None:
+            self.add_item(self.primary)
+        if self.secondary is not None:
+            self.add_item(self.secondary)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        primary = str(self.primary.value).strip() if self.primary is not None else ""
+        secondary = str(self.secondary.value).strip() if self.secondary is not None else ""
+        kwargs = {}
+        if self.action in {"post", "search", "group-create"}:
+            kwargs["content"] = primary
+        elif self.action == "like":
+            try:
+                kwargs["post_id"] = int(primary)
+            except ValueError:
+                await interaction.response.send_message("Enter a valid numeric post ID.", ephemeral=True)
+                return
+        elif self.action == "dm":
+            kwargs.update(target=primary, content=secondary)
+        elif self.action == "group-read":
+            try:
+                kwargs["group_id"] = int(primary)
+            except ValueError:
+                await interaction.response.send_message("Enter a valid numeric group ID.", ephemeral=True)
+                return
+        elif self.action == "group-send":
+            try:
+                kwargs["group_id"] = int(primary)
+            except ValueError:
+                await interaction.response.send_message("Enter a valid numeric group ID.", ephemeral=True)
+                return
+            kwargs["content"] = secondary
+        elif self.action == "group-invite":
+            try:
+                kwargs["group_id"] = int(primary)
+            except ValueError:
+                await interaction.response.send_message("Enter a valid numeric group ID.", ephemeral=True)
+                return
+            kwargs["target"] = secondary
+        await _run_undernet_panel_action(interaction, self.action, **kwargs)
+
+
+class UndernetPanelPageSelect(discord.ui.Select):
+    def __init__(self, page):
+        super().__init__(
+            placeholder="Choose an Undernet page…",
+            options=[
+                discord.SelectOption(
+                    label=data["title"],
+                    value=str(index),
+                    emoji=data["emoji"],
+                    default=(index == page),
+                )
+                for index, data in enumerate(UNDERNET_PANEL_PAGES)
+            ],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        page = int(self.values[0])
+        await interaction.response.edit_message(
+            embed=build_undernet_panel_embed(interaction.guild.id, page),
+            view=UndernetPanelView(interaction.guild.id, page),
+        )
+
+
+class UndernetPanelActionSelect(discord.ui.Select):
+    MODAL_ACTIONS = {
+        "post", "search", "like", "dm", "group-create",
+        "group-read", "group-send", "group-invite",
+    }
+
+    def __init__(self, page):
+        super().__init__(
+            placeholder="Choose an action…",
+            options=[
+                discord.SelectOption(
+                    label=label,
+                    value=value,
+                    emoji=emoji,
+                    description=description[:100],
+                )
+                for label, value, emoji, description in UNDERNET_PANEL_PAGES[page]["actions"]
+            ],
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        action = self.values[0]
+        if action in self.MODAL_ACTIONS:
+            await interaction.response.send_modal(UndernetInputModal(action))
+            return
+        await _run_undernet_panel_action(interaction, action)
+
+
+class UndernetPanelView(CooldownView):
+    def __init__(self, guild_id, page=0):
+        super().__init__(timeout=300)
+        self.guild_id = int(guild_id)
+        self.page = max(0, min(int(page), len(UNDERNET_PANEL_PAGES) - 1))
+        self.add_item(UndernetPanelPageSelect(self.page))
+        self.add_item(UndernetPanelActionSelect(self.page))
+
+        previous = discord.ui.Button(
+            label="Previous",
+            emoji="◀️",
+            style=discord.ButtonStyle.secondary,
+            disabled=(self.page == 0),
+            row=2,
+        )
+        next_page = discord.ui.Button(
+            label="Next",
+            emoji="▶️",
+            style=discord.ButtonStyle.secondary,
+            disabled=(self.page == len(UNDERNET_PANEL_PAGES) - 1),
+            row=2,
+        )
+
+        async def previous_page(interaction: discord.Interaction):
+            page_number = self.page - 1
+            await interaction.response.edit_message(
+                embed=build_undernet_panel_embed(self.guild_id, page_number),
+                view=UndernetPanelView(self.guild_id, page_number),
+            )
+
+        async def next_panel_page(interaction: discord.Interaction):
+            page_number = self.page + 1
+            await interaction.response.edit_message(
+                embed=build_undernet_panel_embed(self.guild_id, page_number),
+                view=UndernetPanelView(self.guild_id, page_number),
+            )
+
+        previous.callback = previous_page
+        next_page.callback = next_panel_page
+        self.add_item(previous)
+        self.add_item(next_page)
+
+
 @bot.tree.command(
     name="undernet",
     description="Use the cross-server Undernet for posts, search, private messages, and groups."
@@ -1584,6 +2023,7 @@ def build_undernet_groups_embed(user_id):
 )
 @app_commands.choices(
     action=[
+        app_commands.Choice(name="panel", value="panel"),
         app_commands.Choice(name="feed", value="feed"),
         app_commands.Choice(name="post", value="post"),
         app_commands.Choice(name="search", value="search"),
@@ -1600,7 +2040,7 @@ def build_undernet_groups_embed(user_id):
 )
 async def undernet_cmd(
     interaction: discord.Interaction,
-    action: app_commands.Choice[str],
+    action: Optional[app_commands.Choice[str]] = None,
     content: Optional[str] = None,
     post_id: Optional[int] = None,
     target: Optional[str] = None,
@@ -1612,7 +2052,7 @@ async def undernet_cmd(
     
     guild_id = interaction.guild.id
     user_id = interaction.user.id
-    act = action.value if hasattr(action, "value") else str(action)
+    act = action.value if hasattr(action, "value") else (str(action) if action else "panel")
     cfg = get_undernet_config(guild_id)
     profile = register_undernet_profile(interaction.user)
     now = time.time()
@@ -1621,6 +2061,13 @@ async def undernet_cmd(
         await interaction.response.send_message(
             "📡 Undernet is currently disabled! Connection lost...",
             ephemeral=True
+        )
+        return
+
+    if act == "panel":
+        await interaction.response.send_message(
+            embed=build_undernet_panel_embed(guild_id, 0),
+            view=UndernetPanelView(guild_id, 0),
         )
         return
 
