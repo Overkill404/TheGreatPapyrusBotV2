@@ -28,6 +28,9 @@ only `Bot.py`, so the `Papyrus/` modules remain beside the entrypoint.
      Wispbyte template provides a built-in `BOT_TOKEN` field, that also works.
    - `SUBSCRIBED_GUILD_IDS`: comma-separated Discord server IDs allowed to use
      the bot, for example `123456789012345678,987654321098765432`.
+   - `DATABASE_PATH`: optional exact path to an existing save database. For the
+     database included in this project, use
+     `/home/container/TheGreatPapyrusBot/TheGreatPapyrus/Papyrus/undertale_au_rpg.db`.
 
    If Wispbyte shows a **File location** box, leave it as `.env`, add both
    variables, and click **Save changes**. The bot loads that file automatically.
@@ -38,14 +41,29 @@ only `Bot.py`, so the `Papyrus/` modules remain beside the entrypoint.
    scopes, start the Wispbyte server, and watch **Console** for the Papyrus
    `SYSTEM ONLINE` banner and a successful slash-command sync.
 
-The SQLite database is created as `undertale_au_rpg.db` in the Wispbyte server
-root. Include that file in backups. Never upload or commit the bot token.
+The console prints the exact active database path during startup. Include that
+file in backups. Never upload or commit the bot token.
 
 ## Updating
 
 Stop the server, back up `undertale_au_rpg.db`, replace the code files while
 preserving the database, then start the server again. New tables are created
 automatically without deleting existing player data.
+
+## Recovering existing guild saves
+
+If an update makes players appear new, stop the server immediately and do not
+delete or replace any `.db` files. A changed startup folder may have created a
+second empty database.
+
+1. In Wispbyte **Files**, locate every `undertale_au_rpg.db` and compare their
+   paths and sizes.
+2. Back up every copy before continuing.
+3. In the `.env` editor, add `DATABASE_PATH` with the full path to the older,
+   populated file. The database shipped in this repository is at:
+   `/home/container/TheGreatPapyrusBot/TheGreatPapyrus/Papyrus/undertale_au_rpg.db`.
+4. Save and restart. Confirm the console's `Database:` line shows that path.
+5. Verify one existing player before creating or editing new data.
 
 ## Common fixes
 

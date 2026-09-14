@@ -42,7 +42,12 @@ if load_dotenv is not None:
 # Example: TOKEN = "MTAx....your.bot.token....xyz"
 TOKEN = ""
 
-DATABASE = "undertale_au_rpg.db"
+# Keep the historical relative-path default, but allow hosts to select an
+# existing database explicitly. This prevents a changed startup directory from
+# making a healthy guild look like all of its saves disappeared.
+DATABASE = (os.getenv("DATABASE_PATH") or "undertale_au_rpg.db").strip()
+if not os.path.isabs(DATABASE):
+    DATABASE = os.path.abspath(DATABASE)
 
 # Local media folder (images / gifs / videos) — drag files here for Error to use.
 # Path is next to Bot.py so it works on any host.
