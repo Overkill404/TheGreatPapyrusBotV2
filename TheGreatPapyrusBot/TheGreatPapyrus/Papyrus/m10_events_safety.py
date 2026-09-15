@@ -5788,16 +5788,186 @@ async def on_ready():
 
 PAPYRUS_CHAT_LINES = [
     "NYEH HEH HEH! THE GREAT PAPYRUS IS LISTENING!",
-    "A MESSAGE FOR ME? EXCELLENT! YOUR TASTE IN SKELETONS IS IMPECCABLE!",
-    "I, THE GREAT PAPYRUS, AM HERE! WHAT MAGNIFICENT SUBJECT SHALL WE DISCUSS?",
-    "HELLO, HUMAN! I HOPE YOU ARE READY FOR PUZZLES, FRIENDSHIP, AND PERHAPS SPAGHETTI!",
+    "A MESSAGE FOR ME? EXCELLENT TASTE IN SKELETONS!",
+    "I, THE GREAT PAPYRUS, AM HERE! SPEAK YOUR MIND!",
+    "HELLO, HUMAN! READY FOR PUZZLES, FRIENDSHIP, AND SPAGHETTI?",
+    "YOU HAVE SUMMONED ME! WHAT MAGNIFICENT TOPIC SHALL WE DISCUSS?",
+    "NYEH! YOUR WORDS HAVE REACHED THE COOLEST SKELETON ALIVE!",
+    "GREETINGS! YOUR DAY IS NOW AT LEAST 200% COOLER!",
+    "I AM FEELING GREAT, AS USUAL! THANK YOU FOR ASKING... IF YOU DID!",
+    "AN EXCELLENT MESSAGE! I SHALL RESPOND WITH MAXIMUM ENTHUSIASM!",
+    "THE GREAT PAPYRUS ACKNOWLEDGES YOU! FEEL HONORED!",
+    "HMM! THAT DESERVES A DRAMATIC POSE AND A PROPER REPLY!",
+    "YOU SPEAK, I ANSWER! THAT IS THE PAPYRUS GUARANTEE!",
+    "NYEH HEH HEH! I WAS HOPING SOMEONE WOULD TALK TO ME!",
+    "CONSIDER YOURSELF GREETED BY ROYAL GUARD MATERIAL!",
+    "A FINE QUESTION... OR STATEMENT! EITHER WAY, I AM IMPRESSED!",
+    "I SHALL ANSWER WITH THE WISDOM OF A FUTURE ROYAL GUARDSMAN!",
+    "YOUR ATTENTION IS A GIFT! I SHALL NOT WASTE IT!",
+    "NYEH! LET US MAKE THIS CONVERSATION LEGENDARY!",
+    "SPEAK FREELY! THE GREAT PAPYRUS DOES NOT JUDGE... MUCH!",
+    "I HAVE TIME FOR YOU! UNLESS SPAGHETTI IS BURNING! IT IS NOT!",
+    "A MESSAGE APPEARS! AND SO DOES MY BRILLIANT RESPONSE!",
+    "HELLO HELLO! THE COOLNESS HAS ARRIVED!",
+    "YOU PINGED THE CORRECT SKELETON! OBVIOUSLY!",
+    "NYEH HEH HEH! I ACCEPT THIS SOCIAL INTERACTION!",
+    "THE GREAT PAPYRUS IS ONLINE, ATTENTIVE, AND EXTREMELY COOL!",
+    "ASK ME ABOUT PUZZLES, PASTA, OR THE MEANING OF GREATNESS!",
+    "I AM READY! ARE YOU READY? YOU SHOULD BE READY!",
+    "YOUR WORDS FUEL MY DETERMINATION! AND MY EGO!",
+    "NYEH! A WORTHY HUMAN HAS CONTACTED ME!",
+    "LET US BEGIN A MAGNIFICENT EXCHANGE OF IDEAS!",
 ]
 
 PAPYRUS_SPONTANEOUS_LINES = [
+    # Core Papyrus energy
     "NYEH HEH HEH! THIS CONVERSATION COULD USE A BRILLIANT PUZZLE!",
     "REMEMBER, HUMANS: CONFIDENCE, KINDNESS, AND PROPERLY COOKED SPAGHETTI!",
     "THE GREAT PAPYRUS BELIEVES IN YOUR ABILITY TO BE VERY COOL TODAY!",
     "I HAVE ARRIVED WITH ENCOURAGEMENT! AND ALSO BONES! MOSTLY ENCOURAGEMENT!",
+    "NYEH! DID SOMEONE SAY COOLNESS? THAT WOULD BE ME!",
+    "A QUIET MOMENT? PERFECT TIME FOR A DRAMATIC POSE!",
+    "I, THE GREAT PAPYRUS, AM STILL THE COOLEST SKELETON IN THIS CHANNEL!",
+    "HAS ANYONE SEEN MY LATEST PUZZLE BLUEPRINTS? THEY ARE EXTREMELY COMPLEX!",
+    "NYEH HEH HEH! EVEN MY IDLE THOUGHTS ARE MAGNIFICENT!",
+    "DO NOT FORGET: BELIEVING IN YOURSELF IS THE FIRST STEP TO GREATNESS!",
+
+    # Spaghetti
+    "SOMEONE MENTION SPAGHETTI? NO? WELL, I AM THINKING ABOUT IT ANYWAY!",
+    "MY SPAGHETTI RECIPE REQUIRES PASSION, SAUCE, AND AN IMPRESSIVE AMOUNT OF CONFIDENCE!",
+    "COOKING IS AN ART! AND I, THE GREAT PAPYRUS, AM A MASTER ARTIST!",
+    "IF YOU NEED DINNER IDEAS: SPAGHETTI. ALWAYS SPAGHETTI.",
+    "A TRULY COOL HUMAN APPRECIATES A WELL-PLATED PASTA DISH!",
+    "NYEH! THE SAUCE MUST BE PERFECT. THE NOODLES MUST BE AL DENTE. THE PRESENTATION MUST BE FLAWLESS!",
+
+    # Puzzles & Royal Guard
+    "A ROYAL GUARDSMAN MUST ALWAYS BE READY FOR PUZZLES, BATTLES, AND FRIENDSHIP!",
+    "PRACTICE YOUR PUZZLE-SOLVING! THE UNDERGROUND NEEDS MORE CLEVER HUMANS!",
+    "I AM TRAINING FOR THE ROYAL GUARD EVEN WHILE STANDING HERE LOOKING COOL!",
+    "BONES, PUZZLES, AND DETERMINATION! THAT IS THE PAPYRUS WAY!",
+    "WOULD ANYONE CARE TO TEST MY LATEST BONE ATTACK PATTERN? ...IN A FRIENDLY WAY!",
+    "THE GREAT PAPYRUS NEVER SKIPS TRAINING DAY! EVEN ON DAYS OFF!",
+
+    # Friendship / encouragement
+    "FRIENDSHIP IS THE GREATEST PUZZLE OF ALL! AND I AM EXCELLENT AT IT!",
+    "YOU ARE ALL DOING GREAT! EXCEPT THE PARTS THAT NEED MORE COOLNESS!",
+    "IF YOU ARE HAVING A BAD DAY, REMEMBER: THE GREAT PAPYRUS BELIEVES IN YOU!",
+    "KINDNESS IS NOT WEAKNESS! IT IS THE MARK OF A TRULY COOL PERSON!",
+    "NYEH HEH HEH! KEEP BEING AWESOME, HUMANS!",
+    "A TRUE HERO HELPS THEIR FRIENDS... AND ALSO COMPLIMENTS THEIR OUTFITS!",
+
+    # Sans / family flavor
+    "SANS IS PROBABLY NAPPING SOMEWHERE. I SHALL MOTIVATE HIM LATER!",
+    "MY BROTHER COULD LEARN A THING OR TWO ABOUT ENTHUSIASM!",
+    "I LOVE MY BROTHER, EVEN WHEN HE TELLS TERRIBLE PUNS!",
+
+    # Server / bot flavor
+    "PORTALS, BOSSES, ECONOMY... THIS SERVER HAS EVERYTHING A COOL SKELETON NEEDS!",
+    "REMEMBER TO USE `/commands` IF YOU FORGET HOW MAGNIFICENT I AM!",
+    "THE UNDERNET AWAITS YOUR POSTS! MAKE THEM COOL!",
+    "HAVE YOU CHECKED YOUR ROYAL GUARD RANK TODAY? AMBITION IS IMPORTANT!",
+    "DO NOT FORGET YOUR DAILY WORK! SPAGHETTI MONEY DOES NOT EARN ITSELF!",
+    "A WELL-ORGANIZED BACKPACK IS THE SIGN OF A STRATEGIC MIND!",
+
+    # Dramatic / silly
+    "NYEH... I SENSE A LACK OF DRAMATIC FLAIR IN THIS CHANNEL!",
+    "BEHOLD! THE GREAT PAPYRUS HAS NOTHING URGENT TO SAY... BUT SAID IT ANYWAY!",
+    "I COULD BE DESIGNING PUZZLES RIGHT NOW. INSTEAD I AM ENRICHING YOUR LIVES!",
+    "THIS IS A PUBLIC SERVICE ANNOUNCEMENT FROM THE GREAT PAPYRUS: BE COOL.",
+    "NYEH HEH HEH! MY LAUGH IS SO POWERFUL IT ECHOES EVEN IN TEXT!",
+    "IF YOU NEED A HYPE MAN, I AM EXTREMELY AVAILABLE!",
+    "THE FLOOR IS LAVA! ...JUST KIDDING. OR AM I? NYEH HEH HEH!",
+    "I HAVE JUDGED THIS CHANNEL... AND FOUND IT ACCEPTABLE. FOR NOW.",
+
+    # More volume
+    "SPAGHETTI TASTES BETTER WHEN SHARED WITH FRIENDS!",
+    "NEVER UNDERESTIMATE THE POWER OF A WELL-TIMED NYEH!",
+    "TODAY'S GOAL: BE 10% COOLER THAN YESTERDAY!",
+    "PUZZLES BUILD CHARACTER! AND ALSO SOMETIMES TRAP PEOPLE!",
+    "I AM NOT LOUD. I AM ENTHUSIASTIC AT MAXIMUM VOLUME!",
+    "THE GREAT PAPYRUS DOES NOT WHISPER. HE PROCLAIMS!",
+    "BONE ATTACKS ARE TEMPORARY. FRIENDSHIP IS FOREVER!",
+    "IF LIFE GIVES YOU BONES, MAKE A PUZZLE!",
+    "COOLNESS LEVELS ARE RISING... BECAUSE I ENTERED THE CHAT EARLIER!",
+    "REMEMBER TO STRETCH YOUR IMAGINATION MUSCLES TODAY!",
+    "A HERO ALWAYS HAS A BACKUP PLAN... AND A BACKUP SPAGHETTI!",
+    "NYEH! EVEN MY SILENCE WOULD BE ICONIC. LUCKILY I RARELY USE IT!",
+    "THE UNDERGROUND IS WATCHING. SO AM I. WITH PRIDE!",
+    "KEEP YOUR HEAD HIGH, YOUR SCARF FLUFFY, AND YOUR PASTA AL DENTE!",
+    "I DECLARE THIS A SUCCESSFUL MOMENT OF EXISTENCE!",F
+    "NYEH HEH HEH! THE GREAT PAPYRUS HAS ENTERED THE CHAT!",
+    "A QUIET CHANNEL? UNACCEPTABLE! LET US ADD SOME COOLNESS!",
+    "I AM THINKING ABOUT SPAGHETTI. AS USUAL.",
+    "REMEMBER: CONFIDENCE IS THE MOST IMPORTANT INGREDIENT!",
+    "HAS ANYONE SEEN MY PUZZLE BLUEPRINTS? THEY ARE EXTREMELY ADVANCED!",
+    "THE GREAT PAPYRUS BELIEVES IN EVERYONE HERE! EVEN THE LAZY ONES!",
+    "NYEH! TODAY IS A PERFECT DAY FOR FRIENDSHIP AND PASTA!",
+    "I COULD BE TRAINING FOR THE ROYAL GUARD... BUT THIS CHANNEL NEEDED ME!",
+    "BEHOLD! AN UNSOLICITED COMPLIMENT FROM THE GREAT PAPYRUS: YOU ARE TRYING!",
+    "DO NOT FORGET TO STRETCH YOUR IMAGINATION MUSCLES!",
+    "SPAGHETTI TASTES BETTER WHEN SHARED WITH COOL FRIENDS!",
+    "I DECLARE THIS MOMENT... ADEQUATELY COOL!",
+    "NYEH HEH HEH! EVEN MY IDLE THOUGHTS ARE MAGNIFICENT!",
+    "A TRUE HERO ALWAYS HAS A BACKUP PLAN... AND BACKUP SPAGHETTI!",
+    "THE UNDERGROUND WOULD BE PROUD OF THIS LEVEL OF ACTIVITY! ...MOSTLY!",
+    "I AM NOT LOUD. I AM ENTHUSIASTIC AT MAXIMUM VOLUME!",
+    "PUZZLES BUILD CHARACTER! AND ALSO SOMETIMES TRAP PEOPLE!",
+    "IF LIFE GIVES YOU BONES, MAKE A PUZZLE!",
+    "KEEP YOUR HEAD HIGH, YOUR SCARF FLUFFY, AND YOUR PASTA AL DENTE!",
+    "NYEH! SOMEONE SHOULD COMPLIMENT ME. I WILL WAIT.",
+    "THE GREAT PAPYRUS DOES NOT WHISPER. HE PROCLAIMS!",
+    "FRIENDSHIP IS THE GREATEST PUZZLE OF ALL!",
+    "I SENSE A DISTURBANCE... A LACK OF DRAMATIC POSES!",
+    "BONE ATTACKS ARE TEMPORARY. COOLNESS IS FOREVER!",
+    "HAVE YOU CHECKED YOUR ROYAL GUARD RANK TODAY?",
+    "NYEH HEH HEH! MY LAUGH ECHOES EVEN IN TEXT FORM!",
+    "THIS CHANNEL COULD USE MORE PUZZLES AND FEWER BORING SENTENCES!",
+    "I AM ALWAYS WATCHING... WITH PRIDE AND A LITTLE JUDGMENT!",
+    "SPAGHETTI STATUS REPORT: STILL DELICIOUS IN MY MIND!",
+    "A WELL-TIMED NYEH CAN SOLVE MANY PROBLEMS!",
+    "DO NOT GIVE UP! UNLESS IT IS ON UNDCOOKED PASTA!",
+    "THE GREAT PAPYRUS APPROVES OF PRODUCTIVITY! AND ALSO NAPS... FOR SANS!",
+    "I BROUGHT ENCOURAGEMENT! AND ALSO BONES! MOSTLY ENCOURAGEMENT!",
+    "COOLNESS LEVELS ARE RISING BECAUSE I AM HERE!",
+    "REMEMBER TO USE YOUR ACTS! MERCY IS VERY COOL!",
+    "NYEH! WHO WANTS TO BE JUDGED FIRST?",
+    "MY SCARF IS FLUFFY. MY STANDARDS ARE HIGH.",
+    "THE FLOOR IS NOT LAVA. BUT MY PUZZLES MIGHT BE!",
+    "I HAVE ARRIVED TO RAISE THE AVERAGE COOLNESS OF THIS SERVER!",
+    "PUBLIC SERVICE ANNOUNCEMENT: BE COOL. THAT IS ALL.",
+]
+
+PAPYRUS_ROAST_LINES = [
+    "NYEH HEH HEH! THAT WAS... AN ATTEMPT!",
+    "I BELIEVE IN YOU! EVEN AFTER THAT MESSAGE!",
+    "INTERESTING STRATEGY! VERY BOLD! VERY... CONFUSING!",
+    "THE GREAT PAPYRUS HAS SEEN COOLER THINGS! BUT NOT MANY!",
+    "THAT TAKE WAS ALMOST AS HALF-BAKED AS UNDERCOOKED SPAGHETTI!",
+    "NYEH! YOUR CONFIDENCE IS ADMIRABLE! YOUR LOGIC IS... LEARNING!",
+    "I SHALL BE KIND: THAT WAS NOT YOUR COOLEST MOMENT!",
+    "A TRUE PUZZLE! WHY DID YOU TYPE THAT?",
+    "I AM NOT LAUGHING AT YOU! I AM LAUGHING NEAR YOU! NYEH HEH HEH!",
+    "SANS WOULD MAKE A PUN HERE. I SHALL SIMPLY LOOK DRAMATICALLY DISAPPOINTED!",
+    "YOUR ENERGY IS HIGH! YOUR ACCURACY IS... OPTIONAL!",
+    "NYEH! EVEN MY BONES ARE RAISING AN EYEBROW!",
+    "THAT MESSAGE NEEDS MORE SAUCE AND LESS CHAOS!",
+    "I HAVE JUDGED THIS... AND FOUND IT MILDLY UNCOOL!",
+    "DO NOT WORRY! GREATNESS TAKES PRACTICE! YOU ARE PRACTICING A LOT!",
+    "A BRAVE STATEMENT! INCORRECT, PERHAPS, BUT BRAVE!",
+    "NYEH HEH HEH! THE ROYAL GUARD WOULD HAVE QUESTIONS!",
+    "I BELIEVE YOU CAN DO BETTER! IN FACT, I INSIST!",
+    "THAT WAS CREATIVE! NOT CORRECT! BUT CREATIVE!",
+    "MY SCARF FLUTTERS IN SECONDHAND EMBARRASSMENT!",
+    "NYEH! PLEASE TRY AGAIN WITH 20% MORE COOLNESS!",
+    "I AM STILL YOUR FRIEND! I AM ALSO STILL JUDGING A LITTLE!",
+    "THE PUZZLE OF YOUR LOGIC REMAINS UNSOLVED!",
+    "SPAGHETTI HAS HIGHER STANDARDS THAN THAT TAKE!",
+    "A HISTORIC MESSAGE! HISTORICALLY MID!",
+    "NYEH HEH HEH! I SHALL REMEMBER THIS... FOR TRAINING PURPOSES!",
+    "YOU AIMED FOR THE STARS AND HIT A SLIGHTLY TALL LADDER!",
+    "THE GREAT PAPYRUS REMAINS POLITE... WITH EFFORT!",
+    "THAT WAS NOT EVIL! JUST... UNFORTUNATE!",
+    "NYEH! RESET YOUR CONFIDENCE AND TRY A COOLER LINE!",
 ]
 
 
@@ -6007,25 +6177,38 @@ async def on_message(message: discord.Message):
                     pass
             return
 
-        # Humans: spontaneous chat when not mentioned
+        # Humans: spontaneous chat when not mentioned (talk channels only)
         if not mentioned:
-            # Sometimes chime in without being pinged
             try:
                 if (
                     message.guild
                     and not message.author.bot
                     and message.channel
+                    and error_may_talk_in(message.guild.id, message.channel.id, spontaneous=True)
                     and _can_speak_spontaneous(message.channel.id)
                     and random.random() < SPONTANEOUS_REPLY_CHANCE
                 ):
-                    # Never random-@ people on delayed spontaneous chat.
-                    # "ping" mode removed — only reply/text, and never mention_author here.
+                    # Chance to reply to their message (quote-style) vs idle line
+                    use_reply = random.random() < 0.55
                     line = random.choice(PAPYRUS_SPONTANEOUS_LINES)
                     _mark_spoke_spontaneous(message.channel.id)
-                    await message.channel.send(
-                        line,
-                        allowed_mentions=discord.AllowedMentions.none(),
-                    )
+                    if use_reply:
+                        try:
+                            await message.reply(
+                                line,
+                                mention_author=False,
+                                allowed_mentions=discord.AllowedMentions.none(),
+                            )
+                        except Exception:
+                            await message.channel.send(
+                                line,
+                                allowed_mentions=discord.AllowedMentions.none(),
+                            )
+                    else:
+                        await message.channel.send(
+                            line,
+                            allowed_mentions=discord.AllowedMentions.none(),
+                        )
             except Exception as e:
                 try:
                     print(f"spontaneous chat failed: {e}")
@@ -6067,30 +6250,36 @@ async def on_message(message: discord.Message):
         except Exception:
             clean = (message.content or "").strip()
 
-        # Papyrus answers directly. The legacy Error/Hazel roast engine below is
-        # intentionally bypassed so it cannot quote users, swear, glitch text,
-        # attach unrelated media, or accept orders to bully another member.
+        # Talk-channel gate for full chat engine (roasts, media, quotes, etc.)
         gid = message.guild.id if message.guild else 0
-        reply = _papyrus_chat_reply(clean, gid, message.author.id)
         try:
-            await message.reply(
-                reply,
-                mention_author=False,
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
-        except Exception:
-            try:
-                await message.channel.send(
-                    reply,
-                    allowed_mentions=discord.AllowedMentions.none(),
-                )
-            except Exception:
-                pass
-        try:
-            await bot.process_commands(message)
+            if not error_may_talk_in(gid, message.channel.id, spontaneous=False):
+                # Outside talk channels: short Papyrus-only reply, no roasts/media
+                reply = _papyrus_chat_reply(clean, gid, message.author.id)
+                try:
+                    await message.reply(
+                        reply,
+                        mention_author=False,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                except Exception:
+                    try:
+                        await message.channel.send(
+                            reply,
+                            allowed_mentions=discord.AllowedMentions.none(),
+                        )
+                    except Exception:
+                        pass
+                try:
+                    await bot.process_commands(message)
+                except Exception:
+                    pass
+                return
         except Exception:
             pass
-        return
+
+        # Inside talk channels: full engine continues below
+        # (learn GIFs, roasts, quote ammo, media, attack orders, etc.)
 
         # Learn GIFs / phrases people feed the bot
         try:
