@@ -5490,10 +5490,11 @@ async def open_safety_admin(interaction, guild_id, tool: str = "hub"):
         class M(discord.ui.Modal, title="Welcome setup"):
             ch = discord.ui.TextInput(label="Channel ID (0 = off)", default=str(int(cfg["welcome_channel_id"] or 0)))
             msg = discord.ui.TextInput(
-                label="Message ({user} {user_name} {server} {member_count})",
+                label="Message (see placeholders below)",
                 style=discord.TextStyle.paragraph,
                 default=str(cfg["welcome_message"] or "Welcome {user}!")[:500],
                 max_length=500,
+                placeholder="{user} {user_name} {server} {member_count}",
             )
 
             async def on_submit(self, inter):
@@ -5521,10 +5522,11 @@ async def open_safety_admin(interaction, guild_id, tool: str = "hub"):
         class M(discord.ui.Modal, title="Goodbye setup"):
             ch = discord.ui.TextInput(label="Channel ID (0 = off)", default=str(int(cfg["goodbye_channel_id"] or 0)))
             msg = discord.ui.TextInput(
-                label="Message ({user} {user_name} {server} {member_count})",
+                label="Message (see placeholders below)",
                 style=discord.TextStyle.paragraph,
                 default=str(cfg["goodbye_message"] or "{user} left.")[:500],
                 max_length=500,
+                placeholder="{user} {user_name} {server} {member_count}",
             )
 
             async def on_submit(self, inter):
@@ -5894,7 +5896,7 @@ PAPYRUS_SPONTANEOUS_LINES = [
     "NYEH! EVEN MY SILENCE WOULD BE ICONIC. LUCKILY I RARELY USE IT!",
     "THE UNDERGROUND IS WATCHING. SO AM I. WITH PRIDE!",
     "KEEP YOUR HEAD HIGH, YOUR SCARF FLUFFY, AND YOUR PASTA AL DENTE!",
-    "I DECLARE THIS A SUCCESSFUL MOMENT OF EXISTENCE!",F
+    "I DECLARE THIS A SUCCESSFUL MOMENT OF EXISTENCE!",
     "NYEH HEH HEH! THE GREAT PAPYRUS HAS ENTERED THE CHAT!",
     "A QUIET CHANNEL? UNACCEPTABLE! LET US ADD SOME COOLNESS!",
     "I AM THINKING ABOUT SPAGHETTI. AS USUAL.",
@@ -6092,7 +6094,7 @@ async def on_message(message: discord.Message):
                     pass
                 try:
                     await message.author.send(
-                        f"🧵 You're **strung up**. You can only talk in the Holding Cell"
+                        f"🦴 You've been **captured** by The Great Papyrus. You can only talk in the Holding Cell"
                         + (f" (<#{jail_id}>)" if jail_id else "")
                         + "."
                     )
