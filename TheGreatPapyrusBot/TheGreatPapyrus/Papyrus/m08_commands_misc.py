@@ -4765,7 +4765,7 @@ class StringAppealTicketView(discord.ui.View):
             return
         await unstring_member(guild, member, reason=f"Appeal accepted by {interaction.user}")
         try:
-            await member.send(f"✅ Your string appeal in **{guild.name}** was **accepted**. You're free.")
+            await notify_string_release(guild, member, released_by=interaction.user, reason="Appeal accepted.")
         except Exception:
             pass
         try:
@@ -4776,7 +4776,7 @@ class StringAppealTicketView(discord.ui.View):
         except Exception:
             pass
         try:
-            await interaction.channel.send(f"🧵 Appeal **accepted** by {interaction.user.mention}. Strings cut.")
+            await interaction.channel.send(f"🦴 Appeal **accepted** by {interaction.user.mention}. Case closed.")
         except Exception:
             pass
         await asyncio.sleep(2)
@@ -4795,8 +4795,8 @@ class StringAppealTicketView(discord.ui.View):
         try:
             if member:
                 await member.send(
-                    f"⛔ Your string appeal in **{guild.name}** was **denied**. "
-                    f"Stay strung. Use the **Appeal** button in jail again later if you must."
+                    f"⛔ Your appeal in **{guild.name}** was **denied** by The Great Papyrus. "
+                    f"Stay in the holding cell. Use the **Appeal** button again later if you must."
                 )
         except Exception:
             pass
@@ -4807,7 +4807,7 @@ class StringAppealTicketView(discord.ui.View):
         try:
             if member:
                 await interaction.channel.send(
-                    f"🧵 Appeal **denied** by {interaction.user.mention}. {member.mention} stays strung."
+                    f"🦴 Appeal **denied** by {interaction.user.mention}. {member.mention} stays held."
                 )
         except Exception:
             pass
@@ -4859,13 +4859,9 @@ class AdminStringTargetSelect(discord.ui.UserSelect):
                 await interaction.response.send_message("Member not in server.", ephemeral=True)
                 return
             await unstring_member(interaction.guild, member, reason=f"Release by {interaction.user}")
-            await interaction.response.send_message(f"✂️ Released {member.mention}.", ephemeral=True)
+            await interaction.response.send_message(f"🦴 Released {member.mention}.", ephemeral=True)
             try:
-                cfg = get_string_config(interaction.guild.id)
-                if cfg and cfg["channel_id"]:
-                    ch = interaction.guild.get_channel(int(cfg["channel_id"]))
-                    if ch:
-                        await ch.send(f"🚔 {member.mention} was released by {interaction.user.mention}.")
+                await notify_string_release(interaction.guild, member, released_by=interaction.user)
             except Exception:
                 pass
             return
@@ -4875,7 +4871,7 @@ class AdminStringTargetSelect(discord.ui.UserSelect):
 class AdminStringModal(discord.ui.Modal, title="String Up"):
     reason_in = discord.ui.TextInput(
         label="Reason",
-        placeholder="Why are they strung up?",
+        placeholder="Why are they being captured?",
         max_length=300,
         style=discord.TextStyle.paragraph,
     )
@@ -4931,7 +4927,7 @@ class AdminStringModal(discord.ui.Modal, title="String Up"):
         try:
             dur = _format_duration_left((time.time() + secs) if secs else 0)
             await interaction.followup.send(
-                f"🚔 Arrested {member.mention} for **{dur}**. Reason: {reason[:200]}",
+                f"🦴 Captured {member.mention} for **{dur}**. Reason: {reason[:200]}",
                 ephemeral=True,
             )
         except Exception as e:
