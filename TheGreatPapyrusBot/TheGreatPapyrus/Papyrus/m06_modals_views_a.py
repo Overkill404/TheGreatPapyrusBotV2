@@ -1173,42 +1173,45 @@ SWISS_CHEESE_IMAGE = "https://cdn.phototourl.com/free/2026-09-02-bae776c9-d7cd-4
 VAPORIZE_ANNOUNCE_GIF = "https://cdn.phototourl.com/free/2026-09-02-bcffd080-bb0a-4219-b020-ae6be9aab8d5.gif"
 
 STRING_NOTIF_QUOTES = [
-    "heh. another one for the holding cell.",
-    "glitch in the timeline? no. this one earned it.",
-    "bot.exe executed: string protocol.",
-    "they thought the void was optional. cute.",
-    "determination? try appealing. or don't.",
-    "another puppet on the line.",
-    "the multiverse is quieter with them strung up.",
-    "i don't jail. i *string*. learn the difference.",
-    "save file locked. load unavailable.",
-    "blue strings. red regret.",
-    "they can still type. just not escape.",
-    "ERROR: freedom not found.",
-    "the void keeps receipts.",
-    "strung up. not gone. worse.",
-    "ink would paint a pretty cell. i prefer wire.",
-    "get dunked on. permanently. by wire.",
-    "your AU ends here. mine keeps going.",
-    "sans left. even he got bored of you.",
-    "404: escape route not found.",
-    "the anti-void filed a complaint. against you.",
-    "strings tight. ego tighter. both break eventually.",
-    "you wanted attention. congratulations.",
-    "i collect puppets. you were next on the list.",
-    "LOAD failed. try being less mid.",
-    "the void is not a timeout. it is a lifestyle.",
+    "NYEH HEH HEH! ANOTHER VILLAIN CAPTURED BY THE GREAT PAPYRUS!",
+    "A TRUE HERO ALWAYS CATCHES THE CULPRIT. IT IS SIMPLY SCIENCE.",
+    "THIS PUZZLE HAD ONE SOLUTION: A HOLDING CELL. WOWIE.",
+    "SANS WOULD MAKE A PUN HERE. THE GREAT PAPYRUS WILL NOT STOOP THAT LOW.",
+    "NOT EVEN A PLATE OF SPAGHETTI CAN SAVE YOU NOW.",
+    "THE GREAT PAPYRUS DOES NOT MISS. HE MERELY GIVES SECOND CHANCES. LATER.",
+    "UNDYNE WOULD BE PROUD. PROBABLY. SHE IS HARD TO READ SOMETIMES.",
+    "A HUMAN ONCE TOLD ME RULES ARE OPTIONAL. THEY WERE WRONG, AND NOW SO ARE YOU.",
+    "CAPTURED WITH HONOR, HELD WITH HOSPITALITY. THERE IS EVEN A CHAIR.",
+    "THE GREAT PAPYRUS ALWAYS FINISHES HIS PUZZLES. THIS ONE INCLUDED YOU.",
+    "NGAHHH! JUSTICE, SERVED WARM, LIKE SPAGHETTI SHOULD BE.",
 ]
 
 ERROR_STRING_FLAVOR = [
-    "*the blue strings hum in a frequency only the guilty hear.*",
-    "*glitch-static crawls across the timeline.*",
-    "*somewhere, a save file refuses to load.*",
-    "*Error tilts his skull. the void answers.*",
-    "*wires tighten. the multiverse watches.*",
-    "*a broken laugh echoes from nowhere and everywhere.*",
-    "*pixel dust falls where freedom used to be.*",
-    "*the strings remember every crime. so does he.*",
+    "*bones rattle somewhere nearby, quite pleased with themselves.*",
+    "*Papyrus strikes a dramatic, heroic pose.*",
+    "*somewhere, a plate of spaghetti goes cold and unappreciated.*",
+    "*a distant 'NYEH HEH HEH' echoes through the halls.*",
+    "*the great papyrus dusts off his gloves. justice complete.*",
+    "*a bone-shaped sign reading 'CAPTURED' flips into view.*",
+    "*sans, somewhere, snickers. papyrus does not notice.*",
+    "*a single spaghetti noodle drifts to the floor, dramatically.*",
+]
+
+RELEASE_NOTIF_QUOTES = [
+    "NYEH HEH HEH! THE GREAT PAPYRUS BELIEVES IN SECOND CHANCES!",
+    "CASE CLOSED. THE GREAT PAPYRUS'S JUSTICE IS ALSO VERY MERCIFUL.",
+    "GO ON, HUMAN. MAKE THE GREAT PAPYRUS PROUD THIS TIME.",
+    "FREEDOM! DO NOT MAKE HIM COME FIND YOU AGAIN.",
+    "THE HOLDING CELL IS TIDY AGAIN. THE GREAT PAPYRUS APPROVES.",
+    "A PUZZLE SOLVED IS A PUZZLE FORGIVEN. GO, BE BETTER.",
+]
+
+RELEASE_FLAVOR = [
+    "*the holding cell door swings open with a triumphant creak.*",
+    "*Papyrus gives a thumbs-up, gloves gleaming.*",
+    "*somewhere, a fresh plate of spaghetti is served in celebration.*",
+    "*a cheerful 'NYEH HEH HEH!' echoes as the case is closed.*",
+    "*the great papyrus files the paperwork. immaculately.*",
 ]
 
 def _string_parse_duration(raw: str) -> float:
@@ -1815,17 +1818,17 @@ async def notify_string_up(guild, member, reason, duration_secs, strung_by=None)
     jail = guild.get_channel(int(cfg["channel_id"])) if cfg else None
     ends_at = (time.time() + duration_secs) if duration_secs and duration_secs > 0 else 0.0
     dur = _format_duration_left(ends_at)
-    by = strung_by.mention if strung_by else "Hazel"
-    by_name = getattr(strung_by, "display_name", None) or (strung_by.name if strung_by else "Hazel")
+    by = strung_by.mention if strung_by else "The Great Papyrus"
+    by_name = getattr(strung_by, "display_name", None) or (strung_by.name if strung_by else "The Great Papyrus")
     reason_txt = (str(reason) or "No reason given").strip()[:300]
-    quote = random.choice(STRING_NOTIF_QUOTES) if STRING_NOTIF_QUOTES else "another one for the holding cell."
-    flavor = random.choice(ERROR_STRING_FLAVOR) if ERROR_STRING_FLAVOR else "*the cuffs click shut.*"
+    quote = random.choice(STRING_NOTIF_QUOTES) if STRING_NOTIF_QUOTES else "NYEH HEH HEH! CAPTURED!"
+    flavor = random.choice(ERROR_STRING_FLAVOR) if ERROR_STRING_FLAVOR else "*bones rattle triumphantly.*"
 
     # Public / channel announce embed
     embed = discord.Embed(
-        title="🚔 ARRESTED",
+        title="🦴 CAPTURED!",
         description=(
-            f"{member.mention} has been **Arrested** by Hazel.\n\n"
+            f"{member.mention} has been **Arrested** by The Great Papyrus.\n\n"
             f"**Reason**\n> {reason_txt}\n\n"
             f"**Duration** · `{dur}`\n"
             f"**By** · {by}\n\n"
@@ -1841,8 +1844,8 @@ async def notify_string_up(guild, member, reason, duration_secs, strung_by=None)
         embed.set_image(url=STRUNG_UP_ANNOUNCE_GIF)
     except Exception:
         pass
-    embed.set_footer(text=f"{guild.name} · protocol")
-    content = f"🚔 {member.mention}"
+    embed.set_footer(text=f"{guild.name} · The Great Papyrus's Justice Department")
+    content = f"🦴 {member.mention}"
     for ch in ([jail] if jail else []) + [guild.get_channel(cid) for cid in get_string_notif_channel_ids(guild.id)]:
         if not ch:
             continue
@@ -1854,7 +1857,7 @@ async def notify_string_up(guild, member, reason, duration_secs, strung_by=None)
     # Detailed DM to the player
     try:
         dm = discord.Embed(
-            title="🚔 YOU HAVE BEEN ARRESTED",
+            title="🦴 YOU HAVE BEEN CAPTURED BY THE GREAT PAPYRUS",
             description=(
                 f"**Server** · {guild.name}\n"
                 f"**Arrested by** · {by_name}\n\n"
@@ -1869,22 +1872,22 @@ async def notify_string_up(guild, member, reason, duration_secs, strung_by=None)
         if jail:
             dm.add_field(
                 name="🚪 Where you are",
-                value=f"Confined to {jail.mention} (Holding Cell / string jail).",
+                value=f"Confined to {jail.mention} (The Great Papyrus's Holding Cell).",
                 inline=False,
             )
         dm.add_field(
             name="📜 What this means",
             value=(
-                "• You are locked to the string / jail channel.\n"
+                "• You are locked to the holding cell channel.\n"
                 "• Most other channels are off-limits until release.\n"
-                "• Use **`/appeal`** in the jail channel if appeals are open.\n"
-                "• When the timer ends (or an admin unstrings you), the wires snap."
+                "• Use **`/appeal`** in the holding cell if appeals are open.\n"
+                "• When the timer ends (or an admin releases you), the case is closed."
             ),
             inline=False,
         )
         dm.add_field(
-            name="💬 Error says",
-            value="*don't struggle. the strings only tighten.*",
+            name="💬 Papyrus says",
+            value="*DO NOT WORRY. THE GREAT PAPYRUS'S HOLDING CELLS ARE VERY TIDY. NYEH HEH HEH.*",
             inline=False,
         )
         try:
@@ -1895,15 +1898,63 @@ async def notify_string_up(guild, member, reason, duration_secs, strung_by=None)
             dm.set_image(url=STRUNG_UP_ANNOUNCE_GIF)
         except Exception:
             pass
-        dm.set_footer(text="protocol · this is not a timeout")
+        dm.set_footer(text="The Great Papyrus's Justice Department · this is not a timeout")
         await member.send(
-            content=f"🧵 **STRUNG UP** in **{guild.name}** — `{dur}`",
+            content=f"🦴 **CAPTURED** in **{guild.name}** — `{dur}`",
             embed=dm,
         )
     except Exception:
         pass
     try:
         await ensure_jail_appeal_panel(guild, force=False)
+    except Exception:
+        pass
+
+
+async def notify_string_release(guild, member, *, released_by=None, reason=None):
+    """Papyrus-themed 'let go' notification, sent alongside unstring_member()."""
+    cfg = get_string_config(guild.id)
+    jail = guild.get_channel(int(cfg["channel_id"])) if cfg else None
+    by = released_by.mention if released_by else "The Great Papyrus"
+    quote = random.choice(RELEASE_NOTIF_QUOTES) if RELEASE_NOTIF_QUOTES else "NYEH HEH HEH! FREE TO GO!"
+    flavor = random.choice(RELEASE_FLAVOR) if RELEASE_FLAVOR else "*the holding cell door swings open.*"
+
+    embed = discord.Embed(
+        title="🦴 CASE CLOSED — RELEASED!",
+        description=(
+            f"{member.mention} has been **released** by The Great Papyrus.\n\n"
+            + (f"**Reason**\n> {str(reason).strip()[:300]}\n\n" if reason else "")
+            + f"**By** · {by}\n\n"
+            f"_{quote}_"
+        ),
+        color=theme_color_dark(),
+    )
+    try:
+        embed.set_thumbnail(url=member.display_avatar.url)
+    except Exception:
+        pass
+    embed.set_footer(text=f"{guild.name} · The Great Papyrus's Justice Department")
+    for ch in ([jail] if jail else []) + [guild.get_channel(cid) for cid in get_string_notif_channel_ids(guild.id)]:
+        if not ch:
+            continue
+        try:
+            await ch.send(content=f"🦴 {member.mention}", embed=embed)
+        except Exception:
+            pass
+
+    try:
+        dm = discord.Embed(
+            title="🦴 YOU HAVE BEEN RELEASED",
+            description=(
+                f"**Server** · {guild.name}\n"
+                f"**Released by** · {by}\n\n"
+                f"{flavor}\n\n"
+                f"_{quote}_"
+            ),
+            color=theme_color_dark(),
+        )
+        dm.set_footer(text="The Great Papyrus's Justice Department")
+        await member.send(content=f"🦴 **RELEASED** from **{guild.name}**", embed=dm)
     except Exception:
         pass
 
@@ -2468,21 +2519,9 @@ async def string_expiry_loop():
                         continue
                     member = guild.get_member(int(row["user_id"]))
                     if member:
-                        await unstring_member(guild, member, reason="String timer expired")
+                        await unstring_member(guild, member, reason="Holding cell timer expired")
                         try:
-                            cfg = get_string_config(guild.id)
-                            jail = guild.get_channel(int(cfg["channel_id"])) if cfg else None
-                            if jail:
-                                await jail.send(
-                                    f"🧵 The strings snap. {member.mention} is free. "
-                                    f"for now."
-                                )
-                        except Exception:
-                            pass
-                        try:
-                            await member.send(
-                                f"🧵 Your strings in **{guild.name}** expired. You're free."
-                            )
+                            await notify_string_release(guild, member, reason="Sentence served.")
                         except Exception:
                             pass
                     else:
@@ -3604,18 +3643,14 @@ async def unarrest_cmd(interaction: discord.Interaction, player: discord.Member)
         pass
     await unstring_member(interaction.guild, player, reason=f"Release by {interaction.user}")
     try:
-        await interaction.followup.send(f"🚔 Released {player.mention} from Arrested.", ephemeral=True)
+        await interaction.followup.send(f"🦴 Released {player.mention} from the holding cell.", ephemeral=True)
     except Exception:
         try:
-            await interaction.response.send_message(f"🚔 Released {player.mention} from Arrested.", ephemeral=True)
+            await interaction.response.send_message(f"🦴 Released {player.mention} from the holding cell.", ephemeral=True)
         except Exception:
             pass
     try:
-        cfg = get_string_config(interaction.guild.id)
-        if cfg and cfg["channel_id"]:
-            ch = interaction.guild.get_channel(int(cfg["channel_id"]))
-            if ch:
-                await ch.send(f"🚔 {player.mention} was released by {interaction.user.mention}.")
+        await notify_string_release(interaction.guild, player, released_by=interaction.user)
     except Exception:
         pass
 
@@ -3789,7 +3824,7 @@ async def grant_antivoid_visit(guild, member, *, source="command", duration_minu
     if not guild or not member:
         return False, "Invalid guild/member."
     if is_strung_up(guild.id, member.id):
-        return False, "🧵 You're already strung up — you live in the Holding Cell."
+        return False, "🦴 You're already captured — you live in the Holding Cell for now."
     cfg = get_string_config(guild.id)
     if not cfg or not cfg["visit_role_id"]:
         return False, "👀 Holding Cell visit is not set up. Admin: Character Tools → **Add Arrested** (visit role)."
@@ -3886,7 +3921,7 @@ async def handle_string_appeal(interaction: discord.Interaction):
     guild = interaction.guild
     user = interaction.user
     if not is_strung_up(guild.id, user.id):
-        msg = "🧵 You're not strung up — nothing to appeal."
+        msg = "🦴 You haven't been captured — nothing to appeal to The Great Papyrus."
         try:
             if not interaction.response.is_done():
                 await interaction.response.send_message(msg, ephemeral=True)
@@ -3945,12 +3980,12 @@ async def handle_string_appeal(interaction: discord.Interaction):
     try:
         if admin_ping:
             starter = await jail.send(
-                f"🧵 **Appeal opened** by {user.mention} — {admin_ping} check the thread below.",
+                f"🦴 **Appeal opened** by {user.mention} — {admin_ping} check the thread below.",
                 allowed_mentions=role_mentions,
             )
         else:
             starter = await jail.send(
-                f"🧵 **Appeal opened** by {user.mention} — use the thread below."
+                f"🦴 **Appeal opened** by {user.mention} — use the thread below."
             )
         channel = await starter.create_thread(
             name=name,
@@ -3983,12 +4018,12 @@ async def handle_string_appeal(interaction: discord.Interaction):
     left = _format_duration_left(float(row["ends_at"]) if row else 0)
     view = StringAppealTicketView()
     embed = discord.Embed(
-        title="🧵 String Appeal",
+        title="🦴 Appeal to The Great Papyrus",
         description=(
-            f"{user.mention} wants the strings off.\n\n"
-            f"**Reason they were strung:** {reason}\n"
+            f"{user.mention} wants out of the holding cell.\n\n"
+            f"**Reason they were captured:** {reason}\n"
             f"**Time left:** {left}\n\n"
-            f"Admins: **Accept** frees them. **Deny** closes this and keeps them strung."
+            f"Admins: **Accept** frees them. **Deny** closes this and keeps them held."
         ),
         color=discord.Color.dark_red(),
     )
@@ -4013,7 +4048,7 @@ async def handle_string_appeal(interaction: discord.Interaction):
             await channel.add_user(user)
     except Exception:
         pass
-    msg = f"🧵 Appeal thread created in {jail.mention}: {channel.mention}"
+    msg = f"🦴 Appeal thread created in {jail.mention}: {channel.mention}"
     try:
         if not interaction.response.is_done():
             await interaction.response.send_message(msg, ephemeral=True)
@@ -4065,18 +4100,18 @@ async def ensure_jail_appeal_panel(guild, force=False):
         except Exception:
             pass
     embed = discord.Embed(
-        title="🧵 String Appeal",
+        title="🦴 Appeal to The Great Papyrus",
         description=(
-            "You're **strung up**. The strings only listen here.\n\n"
+            "You've been **captured**. The Great Papyrus only hears appeals here.\n\n"
             "Press **Appeal** below to open a **private ticket** with admins.\n"
-            "They can **Accept** (cut the strings) or **Deny** (you stay strung).\n\n"
-            "_Only works while you are currently strung up._"
+            "They can **Accept** (case closed, you're free) or **Deny** (back to the holding cell).\n\n"
+            "_Only works while you are currently held._"
         ),
         color=discord.Color.dark_red(),
     )
     try:
         await ch.send(
-            content="🚔 **Arrested — Appeal panel**",
+            content="🦴 **Captured — Appeal Panel**",
             embed=embed,
             view=StringJailAppealPanelView(),
         )
@@ -6264,5 +6299,6 @@ class RedeemCodeModal(discord.ui.Modal, title="Enter Code"):
             f"🔑 Code **{name}** redeemed!\n" + "\n".join(lines),
             ephemeral=True
         )
+
 
 
