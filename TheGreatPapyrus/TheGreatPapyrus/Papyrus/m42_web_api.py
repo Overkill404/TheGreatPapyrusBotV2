@@ -40,7 +40,23 @@ _API_APP = web.Application(middlewares=[web.middleware(_cors_middleware)])
 
 # tables the website may read/write (whitelist — never trust the URL)
 _API_TABLES = {
-    "economy_shop", "jail_shop", "bosses", "boss_true_forms",
+    # combat / boss design
+    "bosses", "boss_abilities", "boss_loot", "boss_phases", "boss_true_forms",
+    "boss_role_drops", "boss_move_defs", "abilities",
+    # items / gear / economy design
+    "items", "item_catalog", "equipment", "materials", "weapon_upgrades",
+    "cosmetics", "economy_shop", "eco_shop", "shop", "shop_v2", "jail_shop",
+    "prestige_defs", "prestige_items", "jobs", "econ_crimes",
+    # world / progression design
+    "levels", "universes", "zones", "world_events", "weather_types",
+    "soul_defs", "skill_nodes", "skill_trees", "spirit_species",
+    "fish_species", "gather_nodes", "craft_recipes", "craft_ingredients",
+    "treasure_maps", "daily_quests", "gauntlets",
+    # immersion / fun design
+    "custom_npcs", "skits", "rumors", "echo_pool", "tunes", "furniture",
+    "room_config", "room_upgrades", "rental_units", "codes", "code_rewards",
+    "safety_banned_words", "bone_training_config", "special_attack_config",
+    # moderation / announcements (original set)
     "announcements", "warnings", "mod_notes", "player_logs",
 }
 _TABLE_COLS = {}  # table -> {col: type}, built at startup from PRAGMA
@@ -197,7 +213,7 @@ def _build_table_cols():
 
 def _clean_row(table, body, gid):
     cols = _TABLE_COLS.get(table, {})
-    out = {"guild_id": int(gid)}
+    out = {"guild_id": int(gid)} if "guild_id" in cols else {}
     for k, v in body.items():
         if k in cols and k != "id":
             if cols[k].upper().startswith(("INT", "REAL", "FLOA", "DOUB", "NUME")):
@@ -209,6 +225,13 @@ def _clean_row(table, body, gid):
     return out
 
 
+async def api_tables(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    return _api_json({"tables": {t: list(c.keys()) for t, c in _TABLE_COLS.items() if t in _API_TABLES}})
+
+
 async def api_table_get(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
@@ -218,7 +241,10 @@ async def api_table_get(request):
         return _api_json({"error": "unknown table"}, 404)
     gid = member.guild.id
     limit = min(int(request.query.get("limit", 200)), 500)
-    cur = execute(f"SELECT * FROM {table} WHERE guild_id=? ORDER BY id DESC LIMIT ?", (gid, limit), commit=False)
+    if "guild_id" in _TABLE_COLS.get(table, {}):
+        cur = execute(f"SELECT * FROM {table} WHERE guild_id=? ORDER BY id DESC LIMIT ?", (gid, limit), commit=False)
+    else:
+        cur = execute(f"SELECT * FROM {table} ORDER BY id DESC LIMIT ?", (limit,), commit=False)
     rows = [dict(r) for r in cur.fetchall()]
     return _api_json({"rows": rows})
 
@@ -396,6 +422,7 @@ def _register_routes():
     _API_APP.router.add_get("/api/my-guilds", api_my_guilds)
     _API_APP.router.add_get("/api/guild/{gid}/config", api_config_get)
     _API_APP.router.add_post("/api/guild/{gid}/config", api_config_set)
+    _API_APP.router.add_get("/api/guild/{gid}/tables", api_tables)
     _API_APP.router.add_get("/api/guild/{gid}/table/{table}", api_table_get)
     _API_APP.router.add_post("/api/guild/{gid}/table/{table}", api_table_post)
     _API_APP.router.add_post("/api/guild/{gid}/table/{table}/{row_id}", api_table_edit)
