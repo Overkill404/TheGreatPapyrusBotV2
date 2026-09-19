@@ -20,6 +20,8 @@ execute("""CREATE INDEX IF NOT EXISTS idx_plogs ON player_logs (guild_id, user_i
 execute("""CREATE TABLE IF NOT EXISTS mod_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, user_id INTEGER,
     author_id INTEGER, note TEXT, ts INTEGER)""")
+execute("""CREATE TABLE IF NOT EXISTS player_names (
+    guild_id INTEGER, user_id INTEGER, name TEXT, updated_ts INTEGER, PRIMARY KEY (guild_id, user_id))""")
 execute("""CREATE TABLE IF NOT EXISTS warnings (
     id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id INTEGER, user_id INTEGER,
     author_id INTEGER, reason TEXT, severity INTEGER DEFAULT 1, ts INTEGER, expires_ts INTEGER)""")
@@ -51,6 +53,15 @@ def log_player_action(gid, user_id, kind, detail, proof="", admin_id=None):
         emb.timestamp = discord.utils.utcnow()
         try:
             bot.loop.create_task(ch.send(embed=emb))
+        except Exception:
+            pass
+        try:  # keep a name cache so search works even after they leave
+            gm = bot.get_guild(gid)
+            m = gm.get_member(int(user_id)) if gm else None
+            if m:
+                execute("""INSERT INTO player_names (guild_id, user_id, name, updated_ts) VALUES (?,?,?,?)
+                    ON CONFLICT(guild_id, user_id) DO UPDATE SET name=excluded.name, updated_ts=excluded.updated_ts""",
+                    (gid, user_id, str(m.display_name)[:100], int(time.time())))
         except Exception:
             pass
     except Exception as e:
@@ -249,6 +260,91 @@ def _warn_modal(inter, gid, uid):
             await sinter.response.send_message("⚠️ Warning logged.", ephemeral=True)
     inter.response.send_modal(_M())
 
+# ---------------------------------------------------------------- search
+class _SearchModal(discord.ui.Modal, title="Search player logs"):
+    query = discord.ui.TextInput(label="Player name, partial name, or ID", max_length=60)
+    text = discord.ui.TextInput(label="Filter log text (optional)", required=False, max_length=60)
+
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
+    async def on_submit(self, sinter):
+        gid = self.guild_id
+        q = str(self.query.value).strip()
+        text_q = str(self.text.value).strip()
+        matches, seen = [], set()
+
+        def _add(uid, why):
+            if uid not in seen and len(matches) < 8:
+                seen.add(uid)
+                matches.append((uid, why))
+
+        if q.isdigit():  # exact / partial ID
+            uid = int(q)
+            n = db.execute("SELECT COUNT(*) c FROM player_logs WHERE guild_id=? AND user_id=?", (gid, uid)).fetchone()["c"]
+            _add(uid, f"{n} log entries" + (f" · name match too" if False else ""))
+            for r in db.execute("SELECT user_id FROM player_names WHERE guild_id=? AND CAST(user_id AS TEXT) LIKE ? LIMIT 7", (gid, f"%{q}%")).fetchall():
+                _add(int(r["user_id"]), "ID match")
+        else:
+            for r in db.execute("SELECT user_id FROM player_names WHERE guild_id=? AND name LIKE ? LIMIT 7", (gid, f"%{q}%")).fetchall():
+                _add(int(r["user_id"]), "name match")
+            guild = sinter.guild
+            if guild:
+                for m in guild.members:
+                    if q.lower() in m.display_name.lower() or q.lower() in (m.name or "").lower():
+                        _add(m.id, "server member")
+
+        # log-text filter narrows results and adds matching entries
+        emb = discord.Embed(title="🔍 Player Logger Search", color=style_color(gid))
+        if text_q:
+            rows = db.execute("SELECT * FROM player_logs WHERE guild_id=? AND detail LIKE ? ORDER BY id DESC LIMIT 15", (gid, f"%{text_q}%")).fetchall()
+            lines = [f"<t:{r['ts']}:R> {_KIND_ICONS.get(str(r['kind']), '📌')} **<@{r['user_id']}>** `{r['user_id']}` — {str(r['detail'])[:90]}" for r in rows]
+            emb.add_field(name=f"📜 Log entries containing '{text_q}'", value="\n".join(lines)[:1000] or "No entries match that text.", inline=False)
+
+        if matches:
+            counts = {int(r["user_id"]): int(r["c"]) for r in db.execute("SELECT user_id, COUNT(*) c FROM player_logs WHERE guild_id=? GROUP BY user_id", (gid,)).fetchall()}
+            lines = [f"• **<@{uid}>** `{uid}` — {why}" + (f" · {counts.get(uid, 0)} total entries" if counts.get(uid) else "") for uid, why in matches]
+            emb.add_field(name=f"👥 Matching players ({len(matches)})", value="\n".join(lines)[:1000], inline=False)
+            view = _SearchResults(gid, matches)
+        elif not text_q:
+            emb.description = f"No players matched '{q}'. Try a partial name, their ID, or a log-text filter."
+            view = _SearchResults(gid, [])
+        else:
+            view = _SearchResults(gid, [])
+        await _send_panel(sinter, emb, view)
+
+class _SearchResults(CooldownView):
+    def __init__(self, guild_id, matches):
+        super().__init__(timeout=300)
+        self.guild_id = guild_id
+        back = discord.ui.Button(label="◀ Logger", style=discord.ButtonStyle.secondary)
+        back.callback = self._back
+        self.add_item(back)
+        self.matches = matches
+        g_obj = bot.get_guild(guild_id)
+        for uid, why in matches[:4]:
+            m = g_obj.get_member(uid) if g_obj else None
+            nrow = db.execute("SELECT name FROM player_names WHERE guild_id=? AND user_id=?", (guild_id, uid)).fetchone()
+            label = m.display_name if m else (str(nrow["name"]) if nrow and nrow["name"] else f"ID {uid}")
+            btn = discord.ui.Button(label=f"🗂️ {label} ({why})"[:80], style=discord.ButtonStyle.primary)
+
+            async def _cb(inter, u=uid):
+                await open_user_log_admin(inter, guild_id, u)
+            btn.callback = _cb
+            self.add_item(btn)
+
+    async def _back(self, inter):
+        await open_playerlog_admin(inter, self.guild_id)
+
+def _mk_search_btn(guild_id):
+    btn = discord.ui.Button(label="🔍 Search Players", style=discord.ButtonStyle.success)
+
+    async def _cb(inter):
+        await inter.response.send_modal(_SearchModal(guild_id))
+    btn.callback = _cb
+    return btn
+
 # ---------------------------------------------------------------- open by ID
 class _OpenByIdModal(discord.ui.Modal, title="Open player file by ID"):
     uid_in = discord.ui.TextInput(label="Player ID (works across servers)", max_length=20)
@@ -303,6 +399,7 @@ class _LogTools(CooldownView):
         sel.callback = self._pick
         self.add_item(sel)
         self.add_item(_mk_openbyid_btn(self.guild_id))
+        self.add_item(_mk_search_btn(self.guild_id))
         settings = discord.ui.Button(label="⚙️ Settings", style=discord.ButtonStyle.secondary)
         settings.callback = self._settings
         self.add_item(settings)
@@ -322,6 +419,7 @@ class _LogSettingsTools(CooldownView):
         super().__init__(timeout=300)
         self.guild_id = guild_id
         self.add_item(_mk_openbyid_btn(guild_id))
+        self.add_item(_mk_search_btn(guild_id))
         back = discord.ui.Button(label="◀ Logger", style=discord.ButtonStyle.secondary)
         back.callback = self._back
         self.add_item(back)
