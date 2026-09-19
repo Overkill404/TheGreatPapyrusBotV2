@@ -214,14 +214,25 @@ async def _fish_cmd(interaction, action: str = "cast"):
             return
         execute("UPDATE fisher_state SET last_ts=? WHERE guild_id=? AND user_id=?", (now, gid, uid))
         rod = int(st["rod_level"] or 1)
+        # weather consequences: rain/storm supercharge fishing (legendary fish love bad weather)
+        storm = False
+        try:
+            _cw = current_weather(gid)
+            storm = _cw is not None and any(w in str(_cw["name"]).lower() for w in ("storm", "rain", "snow"))
+        except Exception:
+            storm = False
         weights = []
         for s in species:
             w = float(s["weight"] or 1)
             if s["rarity"] in ("epic", "legendary"):
                 w *= rod  # better rod, better luck
+                if storm:
+                    w *= max(1, figet(gid, "fish_storm_rarity_boost", 3))
             weights.append(max(w, 0.01))
         pick = random.choices(species, weights=weights, k=1)[0]
         value = int(float(pick["value"] or 0) * (1 + 0.1 * (rod - 1)))
+        if storm:
+            value = int(value * max(1, figet(gid, "fish_weather_boost", 200)) / 100)
         # fish live in their own bucket, not the materials table
         big = max(int(st["biggest_value"] or 0), value)
         execute("UPDATE fisher_state SET biggest_value=? WHERE guild_id=? AND user_id=?", (big, gid, uid))
