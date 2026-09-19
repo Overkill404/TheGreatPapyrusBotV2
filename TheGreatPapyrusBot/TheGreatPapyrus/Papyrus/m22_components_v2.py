@@ -19,9 +19,110 @@ from discord import ui
 CV2 = hasattr(ui, "LayoutView") and hasattr(ui, "Container")
 
 
-def hp_bar(cur, mx, width=14, full="█", empty="░"):
+def cv2_cv2_hp_bar(cur, mx, width=14, full="█", empty="░"):
     pct = max(0.0, min(1.0, (cur / mx) if mx else 0))
     return full * int(pct * width) + empty * (width - int(pct * width))
+
+
+# ============================================================
+# BRIDGE — render any classic embed+view as a V2 game panel.
+# Used by battle/portal/main-menu flows: content comes from the
+# embed, controls (buttons/selects) are re-parented from the
+# classic view into an ActionRow inside the container.
+# ============================================================
+
+def embed_panel(emb, classic_view=None):
+    """Returns a LayoutView bridging (embed, classic_view), or None if
+    CV2 is unavailable / bridging fails (callers fall back to embed)."""
+    if not CV2 or emb is None:
+        return None
+    classic_view = classic_view if isinstance(classic_view, ui.View) else None
+    try:
+        kids = list(classic_view.children) if classic_view is not None else []
+        if classic_view is not None:
+            classic_view.clear_items()  # unbind so they can join the bridge
+        timeout = getattr(classic_view, "timeout", None) if classic_view is not None else None
+
+        class BridgeView(ui.LayoutView):
+            def __init__(self):
+                super().__init__(timeout=timeout or 300)
+                accent = emb.color if emb.color else discord.Color.blurple()
+                c = ui.Container(accent_color=accent)
+                if emb.title:
+                    c.add_item(ui.TextDisplay(f"## {emb.title}"))
+                if emb.description:
+                    c.add_item(ui.TextDisplay(emb.description))
+                for f in emb.fields:
+                    if f.inline:
+                        c.add_item(ui.TextDisplay(f"**{f.name}** — {f.value}"))
+                    else:
+                        c.add_item(ui.TextDisplay(f"**{f.name}**\n{f.value}"))
+                # controls, chunked into rows of 5
+                for i in range(0, min(len(kids), 15), 5):
+                    row = ui.ActionRow()
+                    for k in kids[i:i + 5]:
+                        row.add_item(k)
+                    c.add_item(row)
+                if emb.footer and emb.footer.text:
+                    c.add_item(ui.TextDisplay(f"-# {emb.footer.text}"))
+                self.add_item(c)
+
+        bv = BridgeView()
+        if classic_view is not None:
+            original_check = classic_view.interaction_check
+
+            async def bridged_check(inter):
+                try:
+                    return await original_check(inter)
+                except Exception:
+                    return True
+
+            bv.interaction_check = bridged_check
+            bv._classic = classic_view
+        return bv
+    except Exception as e:
+        print("embed_panel bridge:", e)
+        return None
+
+
+async def battle_edit(inter, emb, classic_view=None):
+    """interaction.response.edit_message that renders as a V2 panel when possible."""
+    v = embed_panel(emb, classic_view)
+    if v is not None:
+        await inter.response.edit_message(view=v)
+    else:
+        await inter.response.edit_message(embed=emb, view=classic_view)
+
+
+async def battle_edit_original(inter, emb, classic_view=None):
+    v = embed_panel(emb, classic_view)
+    if v is not None:
+        await inter.edit_original_response(view=v)
+    else:
+        await inter.edit_original_response(embed=emb, view=classic_view)
+
+
+async def battle_msg_edit(message, emb, classic_view=None):
+    v = embed_panel(emb, classic_view)
+    if v is not None:
+        await message.edit(view=v)
+    else:
+        await message.edit(embed=emb, view=classic_view)
+
+
+async def battle_send(inter, emb, classic_view=None):
+    v = embed_panel(emb, classic_view)
+    if v is not None:
+        await inter.response.send_message(view=v)
+    else:
+        await inter.response.send_message(embed=emb, view=classic_view)
+
+
+async def battle_followup(inter, emb, classic_view=None):
+    v = embed_panel(emb, classic_view)
+    if v is not None:
+        return await inter.followup.send(view=v)
+    return await inter.followup.send(embed=emb, view=classic_view)
 
 
 def _accent(guild_id, base=discord.Color.orange()):
@@ -54,7 +155,7 @@ def build_profile_panel(interaction, target, p):
             c.add_item(ui.TextDisplay(f"## 👤 {target.display_name} — Level {lvl}"))
             c.add_item(ui.Section(
                 ui.TextDisplay(
-                    f"❤️ **HP** `{hp_bar(hp, max(1, mxhp))}` {hp}/{mxhp}\n"
+                    f"❤️ **HP** `{cv2_hp_bar(hp, max(1, mxhp))}` {hp}/{mxhp}\n"
                     f"🛡️ **DEF** {df}   ⭐ **{xp:,}** XP   💰 **{gold:,}** gold"
                 ),
                 accessory=ui.Thumbnail(media=target.display_avatar.url),
@@ -147,7 +248,7 @@ def build_worldboss_panel(guild_id, boss, channel=None):
             c.add_item(ui.TextDisplay(f"## {name}"))
             c.add_item(ui.Section(
                 ui.TextDisplay(
-                    f"`{hp_bar(hp, mx, 20, '▓', '░')}`\n"
+                    f"`{cv2_hp_bar(hp, mx, 20, '▓', '░')}`\n"
                     f"❤️ **{hp:,}** / {mx:,} HP\n"
                     f"⚔️ **{db.execute('SELECT COUNT(*) c FROM world_boss_damage WHERE guild_id = ? AND hits > 0', (guild_id,)).fetchone()['c']}** attackers so far"
                 ),

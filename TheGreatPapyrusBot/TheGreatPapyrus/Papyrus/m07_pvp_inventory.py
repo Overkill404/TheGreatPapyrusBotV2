@@ -234,16 +234,25 @@ async def start_pvp_match(interaction, lobby: PvPLobby):
         register_fighters(m.id, kind="a PvP match")
     embed = battle.make_embed()
     view = PvPBattleView(battle)
+    v = embed_panel(embed, view)
     try:
-        if interaction.response.is_done():
-            msg = await interaction.edit_original_response(content=None, embed=embed, view=view)
+        if v is not None:
+            if interaction.response.is_done():
+                msg = await interaction.edit_original_response(view=v)
+            else:
+                await interaction.response.edit_message(view=v)
+                msg = await interaction.original_response()
+            battle.message = msg
         else:
-            await interaction.response.edit_message(content=None, embed=embed, view=view)
-            msg = await interaction.original_response()
-        battle.message = msg
+            if interaction.response.is_done():
+                msg = await interaction.edit_original_response(content=None, embed=embed, view=view)
+            else:
+                await interaction.response.edit_message(content=None, embed=embed, view=view)
+                msg = await interaction.original_response()
+            battle.message = msg
     except Exception:
         try:
-            msg = await interaction.followup.send(embed=embed, view=view)
+            msg = await battle_followup(interaction, embed, view)
             battle.message = msg
         except Exception:
             pass
@@ -405,7 +414,7 @@ class PvPBattleView(CooldownView):
             await finish_pvp(interaction, battle, winner=winner)
             return
         battle.advance_turn()
-        await interaction.response.edit_message(embed=battle.make_embed(), view=PvPBattleView(battle))
+        await battle_edit(interaction, battle.make_embed(), PvPBattleView(battle))
 
 
 class PvPTargetSelect(discord.ui.Select):
@@ -619,25 +628,25 @@ async def finish_pvp(interaction, battle: PvPBattle, winner=None):
         msg = getattr(battle, "message", None)
         if msg is not None:
             try:
-                await msg.edit(embed=embed, view=None, content=None)
+                await battle_msg_edit(msg, embed, None)
                 return True
             except Exception:
                 pass
         if interaction is not None:
             try:
                 if not interaction.response.is_done():
-                    await interaction.response.edit_message(embed=embed, view=None, content=None)
+                    await battle_edit(interaction, embed, None)
                     return True
             except Exception:
                 pass
             try:
-                await interaction.edit_original_response(embed=embed, view=None, content=None)
+                await battle_edit_original(interaction, embed, None)
                 return True
             except Exception:
                 pass
             try:
                 if interaction.message is not None:
-                    await interaction.message.edit(embed=embed, view=None, content=None)
+                    await battle_msg_edit(interaction.message, embed, None)
                     return True
             except Exception:
                 pass
@@ -3087,7 +3096,7 @@ class AdminBossSetupModal(discord.ui.Modal, title="Admin Boss Fight Setup"):
             "image_url": avatar, "spawn_rate": 0, "enabled": 1, "is_event": 0, "is_final": 0, "ui_color": "#C0392B",
         }
         lobby = AdminBossLobbyView(self.admin, self.guild_id, boss_row, slots, gold_reward, xp_reward, loot)
-        await interaction.response.send_message(embed=lobby.make_embed(), view=lobby)
+        await battle_send(interaction, lobby.make_embed(), lobby)
         try:
             lobby.message = await interaction.original_response()
         except Exception:
@@ -3163,14 +3172,14 @@ class AdminBossLobbyView(discord.ui.View):
         if len(self.players) >= self.max_players:
             await interaction.response.send_message("❌ Full.", ephemeral=True); return
         self.players[interaction.user.id] = interaction.user
-        await interaction.response.edit_message(embed=self.make_embed(), view=self)
+        await battle_edit(interaction, self.make_embed(), self)
 
     @discord.ui.button(label="LEAVE", emoji="🚪", style=discord.ButtonStyle.secondary, row=0)
     async def leave_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id not in self.players:
             await interaction.response.send_message("Not in lobby.", ephemeral=True); return
         self.players.pop(interaction.user.id, None)
-        await interaction.response.edit_message(embed=self.make_embed(), view=self)
+        await battle_edit(interaction, self.make_embed(), self)
 
     @discord.ui.button(label="START FIGHT", emoji="▶️", style=discord.ButtonStyle.success, row=0)
     async def start_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3188,7 +3197,7 @@ class AdminBossLobbyView(discord.ui.View):
             register_fighters(self.admin.id, *[m.id for m in members], kind="admin_boss")
         except Exception:
             pass
-        await interaction.response.edit_message(embed=battle.make_embed(), view=AdminBossBattleView(battle))
+        await battle_edit(interaction, battle.make_embed(), AdminBossBattleView(battle))
         try:
             battle.message = await interaction.original_response()
         except Exception:
@@ -3374,7 +3383,7 @@ class AdminBossBattleView(discord.ui.View):
             battle.finished = True
             await admin_boss_defeat(interaction, battle)
             return
-        await interaction.response.edit_message(embed=battle.make_embed(), view=AdminBossBattleView(battle))
+        await battle_edit(interaction, battle.make_embed(), AdminBossBattleView(battle))
 
     @discord.ui.button(label="ACT", emoji="💬", style=discord.ButtonStyle.secondary, row=0)
     async def act_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3422,7 +3431,8 @@ class AdminBossBattleView(discord.ui.View):
             unregister_fighters(self.battle.admin.id, *list(self.battle.fighters.keys()))
         except Exception:
             pass
-        await interaction.response.edit_message(content="Fight ended by admin.", embed=self.battle.make_embed(), view=None)
+        self.battle.add_log("\U0001F6D1 Fight ended by admin.")
+        await battle_edit(interaction, self.battle.make_embed(), None)
 
 
 
@@ -3478,7 +3488,7 @@ class AdminBossRagebaitButton(discord.ui.Button):
         try:
             msg = getattr(battle, "message", None) or interaction.message
             if msg:
-                await msg.edit(embed=battle.make_embed(), view=AdminBossBattleView(battle))
+                await battle_msg_edit(msg, battle.make_embed(), AdminBossBattleView(battle))
         except Exception:
             pass
 
@@ -3537,7 +3547,7 @@ class AdminBossEnrageButton(discord.ui.Button):
         try:
             msg = getattr(battle, "message", None) or interaction.message
             if msg:
-                await msg.edit(embed=battle.make_embed(), view=AdminBossBattleView(battle))
+                await battle_msg_edit(msg, battle.make_embed(), AdminBossBattleView(battle))
         except Exception:
             pass
 

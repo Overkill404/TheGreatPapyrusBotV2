@@ -580,20 +580,20 @@ class TeamBossLobbyView(CooldownView):
         view = TeamBattleView(battle)
         if interaction is not None:
             try:
-                await interaction.edit_original_response(embed=battle.make_embed(), view=view)
+                await battle_edit_original(interaction, battle.make_embed(), view)
                 if self.message is None and interaction.message:
                     battle.message = interaction.message
                 return
             except Exception:
                 try:
                     if interaction.message is not None:
-                        await interaction.message.edit(embed=battle.make_embed(), view=view)
+                        await battle_msg_edit(interaction.message, battle.make_embed(), view)
                         return
                 except Exception:
                     pass
 
         if self.message:
-            await self.message.edit(embed=battle.make_embed(), view=view)
+            await battle_msg_edit(self.message, battle.make_embed(), view)
 
     @discord.ui.button(label="JOIN", emoji="✅", style=discord.ButtonStyle.success)
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -645,14 +645,14 @@ class TeamBossLobbyView(CooldownView):
                     try: await inter.response.send_message(f"✅ Joined as **{label}**", ephemeral=True)
                     except Exception: pass
                 try:
-                    if lobby.message: await lobby.message.edit(embed=lobby._make_embed())
+                    if lobby.message: await battle_msg_edit(lobby.message, lobby._make_embed())
                 except Exception: pass
             sel.callback=role_cb; view.add_item(sel)
             await interaction.response.send_message("👥 **Pick a role** to join:", view=view, ephemeral=True)
             return
 
         self.players[interaction.user.id] = interaction.user
-        await interaction.response.edit_message(embed=self._make_embed())
+        await battle_edit(interaction, self._make_embed(), None)
 
     @discord.ui.button(label="LEAVE", emoji="🚪", style=discord.ButtonStyle.secondary)
     async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -663,7 +663,7 @@ class TeamBossLobbyView(CooldownView):
             await interaction.response.send_message("❌ You're not in this lobby.", ephemeral=True)
             return
         del self.players[interaction.user.id]
-        await interaction.response.edit_message(embed=self._make_embed())
+        await battle_edit(interaction, self._make_embed(), None)
 
     @discord.ui.button(label="START NOW", emoji="⚔️", style=discord.ButtonStyle.danger)
     async def start_now(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -966,9 +966,7 @@ class TeamBattleView(CooldownView):
             pin_battle_message(battle, interaction.message)
         try:
             if not interaction.response.is_done():
-                await interaction.response.edit_message(
-                    embed=battle.make_embed(), view=TeamBattleView(battle)
-                )
+                await battle_edit(interaction, battle.make_embed(), TeamBattleView(battle))
                 pin_battle_message(battle, interaction.message)
             else:
                 await safe_refresh_team_battle(battle, interaction)
@@ -1051,7 +1049,7 @@ class TeamBattleView(CooldownView):
 
         if battle.message is None:
             battle.message = interaction.message
-        await interaction.response.edit_message(embed=battle.make_embed(), view=TeamBattleView(battle))
+        await battle_edit(interaction, battle.make_embed(), TeamBattleView(battle))
 
     @discord.ui.button(label="ITEM", emoji="🎒", style=discord.ButtonStyle.success, row=0)
     async def item_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1308,7 +1306,7 @@ class TeamItemSelect(discord.ui.Select):
         msg = getattr(battle, "message", None)
         if msg is not None:
             try:
-                await msg.edit(embed=battle.make_embed(), view=TeamBattleView(battle))
+                await battle_msg_edit(msg, battle.make_embed(), TeamBattleView(battle))
             except Exception:
                 try:
                     channel_id = getattr(battle, "channel_id", None) or getattr(getattr(msg, "channel", None), "id", None)
@@ -1316,7 +1314,7 @@ class TeamItemSelect(discord.ui.Select):
                     if channel_id and message_id:
                         ch = bot.get_channel(int(channel_id)) or await bot.fetch_channel(int(channel_id))
                         fetched = await ch.fetch_message(int(message_id))
-                        await fetched.edit(embed=battle.make_embed(), view=TeamBattleView(battle))
+                        await battle_msg_edit(fetched, battle.make_embed(), TeamBattleView(battle))
                         battle.message = fetched
                 except Exception:
                     pass
@@ -1385,7 +1383,7 @@ class TeamRagebaitButton(discord.ui.Button):
         await interaction.response.edit_message(content="😈 Ragebait used!", embed=None, view=None)
         if battle.message:
             try:
-                await battle.message.edit(embed=battle.make_embed(), view=TeamBattleView(battle))
+                await battle_msg_edit(battle.message, battle.make_embed(), TeamBattleView(battle))
             except Exception:
                 pass
 
@@ -1455,7 +1453,7 @@ class TeamEnrageButton(discord.ui.Button):
         try:
             msg = getattr(battle, "message", None)
             if msg is not None:
-                await msg.edit(embed=battle.make_embed(), view=TeamBattleView(battle))
+                await battle_msg_edit(msg, battle.make_embed(), TeamBattleView(battle))
         except Exception:
             pass
 
@@ -1525,7 +1523,7 @@ class TeamTauntButton(discord.ui.Button):
         try:
             msg = getattr(battle, "message", None)
             if msg is not None:
-                await msg.edit(embed=battle.make_embed(), view=TeamBattleView(battle))
+                await battle_msg_edit(msg, battle.make_embed(), TeamBattleView(battle))
         except Exception:
             pass
 
@@ -3214,7 +3212,7 @@ async def _open_summon_menu(interaction: discord.Interaction):
             return
     except Exception:
         pass
-    await interaction.response.send_message(embed=embed, view=view)
+    await battle_send(interaction, embed, view)
 
 
 @bot.tree.command(
@@ -3611,10 +3609,7 @@ class LevelHubView(CooldownView):
             ensure_void_level(self.guild_id)
             levels = get_levels(self.guild_id)
         embed = build_level_menu_embed(self.guild_id, interaction.user.id, levels, player_name=label_for_member(self.player if getattr(self, 'player', None) else interaction.user))
-        await interaction.response.edit_message(
-            embed=embed,
-            view=LevelSelectView(self.player, self.guild_id, levels)
-        )
+        await battle_edit(interaction, embed, LevelSelectView(self.player, self.guild_id, levels))
 
 
 class LevelSelectView(CooldownView):
@@ -3741,10 +3736,10 @@ async def _open_level_hub(interaction, player, guild_id, level_id):
     embed = build_level_hub_embed(guild_id, interaction.user.id, level, player_name=pname)
     view = LevelHubView(player, guild_id, level_id)
     try:
-        await interaction.edit_original_response(embed=embed, view=view, content=None)
+        await battle_edit_original(interaction, embed, view)
     except Exception:
         try:
-            await interaction.followup.send(embed=embed, view=view)
+            await battle_followup(interaction, embed, view)
         except Exception:
             pass
 
@@ -3905,16 +3900,14 @@ class PortalView(CooldownView):
         levels = get_levels(guild_id)
         embed = build_level_menu_embed(guild_id, interaction.user.id, levels, player_name=label_for_member(getattr(self, 'player_ref', None) or interaction.user))
         try:
-            await interaction.edit_original_response(
-                embed=embed,
-                view=LevelSelectView(self.player_ref, guild_id, levels)
-            )
+            await battle_edit_original(interaction, embed, LevelSelectView(self.player_ref, guild_id, levels))
         except Exception:
             try:
                 if interaction.message is not None:
-                    await interaction.message.edit(
-                        embed=embed,
-                        view=LevelSelectView(self.player_ref, guild_id, levels)
+                    await battle_msg_edit(
+                        interaction.message,
+                        embed,
+                        LevelSelectView(self.player_ref, guild_id, levels)
                     )
             except Exception:
                 pass
