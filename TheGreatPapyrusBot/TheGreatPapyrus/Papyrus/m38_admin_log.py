@@ -44,7 +44,7 @@ def log_player_action(gid, user_id, kind, detail, proof="", admin_id=None):
         if ch is None:
             return
         icon = _KIND_ICONS.get(kind, "📌")
-        emb = discord.Embed(description=f"{icon} **<@{user_id}>** — {kind.upper()}: {str(detail)[:400]}", color=discord.Color.from_rgb(230, 90, 60))
+        emb = discord.Embed(description=f"{icon} **<@{user_id}>** · ID `{user_id}` — {kind.upper()}: {str(detail)[:400]}", color=discord.Color.from_rgb(230, 90, 60))
         if proof:
             emb.add_field(name="📎 Proof", value=proof[:300], inline=False)
         emb.set_footer(text=f"Player log #{gid % 1000} · use the admin menu → Player Logger for the full file")
@@ -190,7 +190,7 @@ async def open_user_log_admin(interaction, guild_id, user_id):
     for l in logs:
         icon = _KIND_ICONS.get(str(l["kind"]), "📌")
         lines.append(f"<t:{l['ts']}:d> <t:{l['ts']}:t> {icon} **{l['kind']}** — {str(l['detail'])[:120]}" + (f" 📎[proof]({l['proof']})" if l['proof'] else ""))
-    emb = discord.Embed(title=f"🗂️ Player File — <@{user_id}>", color=style_color(guild_id))
+    emb = discord.Embed(title=f"🗂️ Player File — <@{user_id}> · ID `{user_id}`", color=style_color(guild_id))
     emb.add_field(name="Guard strikes", value=str(st), inline=True)
     emb.add_field(name="Active warnings", value=str(len([w for w in warns if not w['expires_ts'] or w['expires_ts'] > time.time()])), inline=True)
     emb.add_field(name="Total log entries", value=str(db.execute("SELECT COUNT(*) c FROM player_logs WHERE guild_id=? AND user_id=?", (guild_id, user_id)).fetchone()["c"]), inline=True)
@@ -199,6 +199,12 @@ async def open_user_log_admin(interaction, guild_id, user_id):
         emb.add_field(name="📝 Staff notes", value="\n".join(f"• {n['note'][:100]} — <@{n['author_id']}>" for n in notes)[:1000], inline=False)
     if warns:
         emb.add_field(name="⚠️ Warnings", value="\n".join(f"• [S{w['severity']}] {w['reason'][:100]} — <@{w['author_id']}>" for w in warns)[:1000], inline=False)
+    try:
+        others = db.execute("SELECT COUNT(DISTINCT guild_id) g, COUNT(*) c FROM player_logs WHERE user_id=? AND guild_id != ?", (user_id, guild_id)).fetchone()
+        if others and others["c"]:
+            emb.add_field(name="🌐 Cross-server record", value=f"{others['c']} more entries across {others['g']} other server(s) this bot is on. ID lookup works from any of them.", inline=False)
+    except Exception:
+        pass
     view = _UserLogTools(guild_id, user_id)
     await _send_panel(interaction, emb, view)
 
@@ -243,6 +249,29 @@ def _warn_modal(inter, gid, uid):
             await sinter.response.send_message("⚠️ Warning logged.", ephemeral=True)
     inter.response.send_modal(_M())
 
+# ---------------------------------------------------------------- open by ID
+class _OpenByIdModal(discord.ui.Modal, title="Open player file by ID"):
+    uid_in = discord.ui.TextInput(label="Player ID (works across servers)", max_length=20)
+
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
+    async def on_submit(self, sinter):
+        try:
+            uid = int(str(self.uid_in.value).strip())
+        except Exception:
+            await sinter.response.send_message("That's not a valid ID.", ephemeral=True); return
+        await open_user_log_admin(sinter, self.guild_id, uid)
+
+def _mk_openbyid_btn(guild_id):
+    btn = discord.ui.Button(label="🔢 Open by ID", style=discord.ButtonStyle.primary)
+
+    async def _cb(inter):
+        await inter.response.send_modal(_OpenByIdModal(guild_id))
+    btn.callback = _cb
+    return btn
+
 # ---------------------------------------------------------------- player logger hub
 class _LogMemberSelect(CooldownView):
     def __init__(self, guild_id):
@@ -258,8 +287,8 @@ class _LogMemberSelect(CooldownView):
 async def open_playerlog_admin(interaction, guild_id):
     total = db.execute("SELECT COUNT(*) c FROM player_logs WHERE guild_id=?", (guild_id,)).fetchone()["c"]
     recent = db.execute("SELECT * FROM player_logs WHERE guild_id=? ORDER BY id DESC LIMIT 10", (guild_id,)).fetchall()
-    lines = [f"<t:{l['ts']}:R> {_KIND_ICONS.get(str(l['kind']), '📌')} **<@{l['user_id']}>** — {str(l['kind'])}: {str(l['detail'])[:80]}" for l in recent]
-    emb = discord.Embed(title="🗂️ Player Logger", description="Every bad thing players do lands here: flags, strikes, timeouts, bans, kicks, integrity drops, warnings. Pick a member for their full file + add notes and proof.\n\n" + ("\n".join(lines) or "No entries yet."), color=style_color(guild_id))
+    lines = [f"<t:{l['ts']}:R> {_KIND_ICONS.get(str(l['kind']), '📌')} **<@{l['user_id']}>** `{l['user_id']}` — {str(l['kind'])}: {str(l['detail'])[:80]}" for l in recent]
+    emb = discord.Embed(title="🗂️ Player Logger", description="Every bad thing players do lands here: flags, strikes, timeouts, bans, kicks, integrity drops, warnings. Pick a member (or Open by ID — works for anyone on any server the bot shares) for their full file + add notes and proof.\n\n" + ("\n".join(lines) or "No entries yet."), color=style_color(guild_id))
     emb.add_field(name="Settings", value=(f"playerlog_enabled: **{figet(guild_id, 'playerlog_enabled', 1)}** • playerlog_channel_id: **{figet(guild_id, 'playerlog_channel_id', 0)}** (where proof posts go) • "
         f"playerlog_keep: **{figet(guild_id, 'playerlog_keep', 2000)}** entries\nPer-kind: flags **{figet(guild_id, 'playerlog_flag', 1)}** · strikes **{figet(guild_id, 'playerlog_strike', 1)}** · timeouts **{figet(guild_id, 'playerlog_timeout', 1)}** · bans **{figet(guild_id, 'playerlog_ban', 1)}** · kicks **{figet(guild_id, 'playerlog_kick', 1)}** · leaves **{figet(guild_id, 'playerlog_leave', 0)}** · integrity **{figet(guild_id, 'playerlog_integrity', 1)}**"))
     emb.set_footer(text=f"{total} entries on file")
@@ -273,6 +302,7 @@ class _LogTools(CooldownView):
         sel = discord.ui.UserSelect(placeholder="Open a player's file...")
         sel.callback = self._pick
         self.add_item(sel)
+        self.add_item(_mk_openbyid_btn(self.guild_id))
         settings = discord.ui.Button(label="⚙️ Settings", style=discord.ButtonStyle.secondary)
         settings.callback = self._settings
         self.add_item(settings)
@@ -291,6 +321,7 @@ class _LogSettingsTools(CooldownView):
     def __init__(self, guild_id):
         super().__init__(timeout=300)
         self.guild_id = guild_id
+        self.add_item(_mk_openbyid_btn(guild_id))
         back = discord.ui.Button(label="◀ Logger", style=discord.ButtonStyle.secondary)
         back.callback = self._back
         self.add_item(back)
