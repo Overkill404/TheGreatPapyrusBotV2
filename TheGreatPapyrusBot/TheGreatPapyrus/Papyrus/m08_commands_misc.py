@@ -5582,6 +5582,8 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Ragebait", value="ragebait", emoji="😈"),
                 discord.SelectOption(label="Enrage", value="enrage", emoji="💢"),
                 discord.SelectOption(label="Taunt", value="taunt", emoji="💬"),
+                discord.SelectOption(label="Skill Trees", value="skills_admin", emoji="🌳", description="Paths, trees, nodes, effects"),
+                discord.SelectOption(label="Spirit Species", value="spirits_admin", emoji="👻", description="Guardian spirit types"),
             ]
         if p == 4:  # World
             return [
@@ -5592,6 +5594,9 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Manage Codes", value="codes", emoji="🔑"),
                 discord.SelectOption(label="World Boss", value="worldboss", emoji="🐲", description="Spawn the weekly server boss"),
                 discord.SelectOption(label="Daily Quests", value="quests_admin", emoji="📋", description="Rewards, streak bonus, on/off"),
+                discord.SelectOption(label="Gathering", value="gather_admin", emoji="⛏️", description="Materials, nodes, cooldowns"),
+                discord.SelectOption(label="Weather", value="weather_admin", emoji="🌦️", description="Types, effects, announcements"),
+                discord.SelectOption(label="Secret Rooms", value="secret_admin", emoji="🚪", description="Portal surprise rooms + chance"),
             ]
         if p == 5:  # Seasons+ content pack
             return [
@@ -5622,6 +5627,7 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Casino / Blackjack", value="casino", emoji="🃏", description="Min bet, rake, on/off"),
                 discord.SelectOption(label="Stock Market", value="stockmkt", emoji="📈", description="Buy fee, on/off"),
                 discord.SelectOption(label="PvP Betting", value="pvpbets", emoji="🎲", description="Min bet, rake, on/off"),
+                discord.SelectOption(label="Clans", value="clans_admin", emoji="🏰", description="Shared banks, settings"),
             ]
         if p == 7:  # Papyrus+
             return [
@@ -5637,6 +5643,7 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Undernet", value="pap_undernet", emoji="📡", description="Social feed + Papyrus comments"),
                 discord.SelectOption(label="Pacifist / Genocide", value="pap_route", emoji="⚖️", description="Spare vs kill routes"),
                 discord.SelectOption(label="Backpack Upgrades", value="pap_backpack", emoji="🎒", description="Upgrade system with requirements & effects"),
+                discord.SelectOption(label="Soul Dex", value="dex_admin", emoji="📕", description="Collection album + set rewards"),
             ]
         if p == 8:  # Safety / server
             return [
@@ -5921,6 +5928,27 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
             return
         if value == "pvpbets":
             await open_betting_admin(interaction, self.guild_id)
+            return
+        if value == "gather_admin":
+            await open_gather_admin(interaction, self.guild_id)
+            return
+        if value == "weather_admin":
+            await open_weather_admin(interaction, self.guild_id)
+            return
+        if value == "secret_admin":
+            await open_secret_admin(interaction, self.guild_id)
+            return
+        if value == "skills_admin":
+            await open_skills_admin(interaction, self.guild_id)
+            return
+        if value == "spirits_admin":
+            await open_spirits_admin(interaction, self.guild_id)
+            return
+        if value == "clans_admin":
+            await open_clans_admin(interaction, self.guild_id)
+            return
+        if value == "dex_admin":
+            await open_dex_admin(interaction, self.guild_id)
             return
         if value == "guardstats":
             await open_guard_analytics(interaction, self.guild_id)
