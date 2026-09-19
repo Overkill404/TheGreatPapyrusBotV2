@@ -310,3 +310,82 @@ _g["open_immersion_admin"] = open_immersion_admin
 _g["open_server_status"] = open_server_status
 _g["immersion_tick"] = immersion_tick
 _g["open_weather_imm_admin"] = open_weather_imm_admin
+
+# ================================================================ player-facing: backpack hub
+async def open_immersion_player_panel(interaction, guild_id):
+    emb = discord.Embed(title="🎭 Immersion Hub",
+        description="Everything that makes the Underground feel alive.\nPick a feature — rumors, wanted posters, and echo flowers run themselves in the background.",
+        color=style_color(guild_id))
+    await _send_panel(interaction, emb, _ImmPlayerSelect(guild_id))
+
+class _ImmPlayerSelect(CooldownView):
+    def __init__(self, guild_id):
+        super().__init__(timeout=300)
+        self.guild_id = guild_id
+        sel = discord.ui.Select(placeholder="Pick a feature...", options=[
+            discord.SelectOption(label="Music Box", value="musicbox", emoji="🎵", description="Collect tunes, play in VC, trade"),
+            discord.SelectOption(label="Art Museum", value="museum", emoji="🖼️", description="Submit art, vote, win gold"),
+            discord.SelectOption(label="Shop Stalls", value="stall", emoji="🛒", description="Browse stalls, tip the crew"),
+            discord.SelectOption(label="Factions & Territory", value="faction", emoji="⚔️", description="Zones, income, weekend raids"),
+            discord.SelectOption(label="Careers", value="career", emoji="🎯", description="Bounty board, license, guard tryouts"),
+            discord.SelectOption(label="Custom NPCs", value="mynpc", emoji="🎭", description="Design an NPC that roams the server"),
+            discord.SelectOption(label="Newspaper", value="paper", emoji="📰", description="Subscribe to the Underground Daily"),
+        ])
+        sel.callback = self._pick
+        self.add_item(sel)
+
+    async def _pick(self, inter):
+        key = inter.data["values"][0]
+        gid = self.guild_id
+        if key == "mynpc":
+            emb = discord.Embed(title="🎭 Custom NPCs",
+                description=("Design your own NPC — it roams the server speaking your lines for a week!\n\n"
+                             "`/mynpc create name:Grillby line:...` — create one (" + eco_fmt(max(0, figet(gid, 'npc_cost', 2500))) + ")\n"
+                             "`/mynpc add line:...` — teach it a new line\n`/mynpc list` — see who's wandering around"),
+                color=style_color(gid))
+            await _send_panel(inter, emb, None)
+            return
+        if key == "paper":
+            emb = discord.Embed(title="📰 The Underground Daily",
+                description="The paper posts automatically every day — top killers, richest souls, most wanted, and a rumor of the day.\n\nHit the **📰 Subscribe** button on any posted paper to get pinged when it's out.",
+                color=style_color(gid))
+            await _send_panel(inter, emb, None)
+            return
+        cmd = bot.tree.get_command(key)
+        if cmd is None:
+            await inter.response.send_message("That feature isn't available right now.", ephemeral=True)
+            return
+        kwargs = {"action": {"musicbox": "list", "museum": "view", "stall": "list", "faction": "info", "career": "board"}[key]}
+        await cmd.callback(inter, **kwargs)
+
+def _wire_backpack_immersion():
+    inv = _g.get("InventoryView")
+    if inv is None:
+        print("m37: InventoryView not found, backpack immersion hub skipped")
+        return
+    _opts_base = inv._page_options
+
+    def _opts_wrap(self):
+        opts = _opts_base(self)
+        try:
+            if self.page == 0:
+                opts = [o for o in opts if o.value != "immersion_hub"]
+                opts.append(discord.SelectOption(label="Immersion Hub", value="immersion_hub", emoji="🎭",
+                                                 description="Music, museum, stalls, factions + 3 more"))
+        except Exception:
+            pass
+        return opts
+
+    _handle_base = inv._handle_action
+
+    async def _handle_wrap(self, interaction, value):
+        if value == "immersion_hub":
+            await open_immersion_player_panel(interaction, self.guild_id)
+            return
+        await _handle_base(self, interaction, value)
+
+    inv._page_options = _opts_wrap
+    inv._handle_action = _handle_wrap
+
+_wire_backpack_immersion()
+_g["open_immersion_player_panel"] = open_immersion_player_panel
