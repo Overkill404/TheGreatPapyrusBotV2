@@ -40,7 +40,23 @@ _API_APP = web.Application(middlewares=[web.middleware(_cors_middleware)])
 
 # tables the website may read/write (whitelist — never trust the URL)
 _API_TABLES = {
-    "economy_shop", "jail_shop", "bosses", "boss_true_forms",
+    # combat / boss design
+    "bosses", "boss_abilities", "boss_loot", "boss_phases", "boss_true_forms",
+    "boss_role_drops", "boss_move_defs", "abilities",
+    # items / gear / economy design
+    "items", "item_catalog", "equipment", "materials", "weapon_upgrades",
+    "cosmetics", "economy_shop", "eco_shop", "shop", "shop_v2", "jail_shop",
+    "prestige_defs", "prestige_items", "jobs", "econ_crimes",
+    # world / progression design
+    "levels", "universes", "zones", "world_events", "weather_types",
+    "soul_defs", "skill_nodes", "skill_trees", "spirit_species",
+    "fish_species", "gather_nodes", "craft_recipes", "craft_ingredients",
+    "treasure_maps", "daily_quests", "gauntlets",
+    # immersion / fun design
+    "custom_npcs", "skits", "rumors", "echo_pool", "tunes", "furniture",
+    "room_config", "room_upgrades", "rental_units", "codes", "code_rewards",
+    "safety_banned_words", "bone_training_config", "special_attack_config",
+    # moderation / announcements (original set)
     "announcements", "warnings", "mod_notes", "player_logs",
 }
 _TABLE_COLS = {}  # table -> {col: type}, built at startup from PRAGMA
@@ -81,13 +97,27 @@ def _is_admin_member(member):
         return False
 
 
+_LAST_WHY = {"why": "unknown"}
+
 async def _verify_admin(request, gid):
-    """Token -> discord user -> member of guild -> admin/ManageGuild, or None."""
-    user = await _discord_user(_bearer(request))
-    if not user:
+    """Token -> discord user -> member of guild -> admin/ManageGuild, or None.
+    Sets _LAST_WHY so 403 bodies + console actually say WHY."""
+    token = _bearer(request)
+    if not token:
+        _LAST_WHY["why"] = "no token on request"
         return None
-    guild = bot.get_guild(int(gid))
+    user = await _discord_user(token)
+    if not user:
+        _LAST_WHY["why"] = "token rejected by Discord (expired? re sign-in on the site)"
+        print("web_api verify FAIL:", _LAST_WHY["why"])
+        return None
+    try:
+        guild = bot.get_guild(int(gid))
+    except Exception:
+        guild = None
     if not guild:
+        _LAST_WHY["why"] = f"bot is not in guild {gid} (guilds: {[str(g.id) for g in bot.guilds]})"
+        print("web_api verify FAIL:", _LAST_WHY["why"])
         return None
     uid = int(user["id"])
     member = guild.get_member(uid)
@@ -95,8 +125,12 @@ async def _verify_admin(request, gid):
         try:
             member = await guild.fetch_member(uid)
         except Exception:
+            _LAST_WHY["why"] = f"user {uid} not a member of {guild.id}"
+            print("web_api verify FAIL:", _LAST_WHY["why"])
             return None
     if not _is_admin_member(member):
+        _LAST_WHY["why"] = f"member {uid} is not admin/manage_guild in {guild.id}"
+        print("web_api verify FAIL:", _LAST_WHY["why"])
         return None
     return member
 
@@ -128,7 +162,7 @@ async def api_my_guilds(request):
             except Exception:
                 continue
         if _is_admin_member(m):
-            out.append({"id": g.id, "name": g.name, "icon": g.icon.key if g.icon else None,
+            out.append({"id": str(g.id), "name": g.name, "icon": g.icon.key if g.icon else None,  # STRING: JS rounds 19-digit ids
                         "member_count": g.member_count})
     return _api_json({"guilds": out})
 
@@ -138,7 +172,7 @@ async def api_my_guilds(request):
 async def api_config_get(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     try:
         cur = execute("SELECT key, value FROM feature_settings WHERE guild_id=?", (gid,), commit=False)
@@ -151,7 +185,7 @@ async def api_config_get(request):
 async def api_config_set(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     changed = []
@@ -179,7 +213,7 @@ def _build_table_cols():
 
 def _clean_row(table, body, gid):
     cols = _TABLE_COLS.get(table, {})
-    out = {"guild_id": int(gid)}
+    out = {"guild_id": int(gid)} if "guild_id" in cols else {}
     for k, v in body.items():
         if k in cols and k != "id":
             if cols[k].upper().startswith(("INT", "REAL", "FLOA", "DOUB", "NUME")):
@@ -191,16 +225,26 @@ def _clean_row(table, body, gid):
     return out
 
 
+async def api_tables(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    return _api_json({"tables": {t: list(c.keys()) for t, c in _TABLE_COLS.items() if t in _API_TABLES}})
+
+
 async def api_table_get(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
     gid = member.guild.id
     limit = min(int(request.query.get("limit", 200)), 500)
-    cur = execute(f"SELECT * FROM {table} WHERE guild_id=? ORDER BY id DESC LIMIT ?", (gid, limit), commit=False)
+    if "guild_id" in _TABLE_COLS.get(table, {}):
+        cur = execute(f"SELECT * FROM {table} WHERE guild_id=? ORDER BY id DESC LIMIT ?", (gid, limit), commit=False)
+    else:
+        cur = execute(f"SELECT * FROM {table} ORDER BY id DESC LIMIT ?", (limit,), commit=False)
     rows = [dict(r) for r in cur.fetchall()]
     return _api_json({"rows": rows})
 
@@ -208,7 +252,7 @@ async def api_table_get(request):
 async def api_table_post(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -231,7 +275,7 @@ async def api_table_post(request):
 async def api_table_edit(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -253,7 +297,7 @@ async def api_table_edit(request):
 async def api_table_delete(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -269,7 +313,7 @@ async def api_table_delete(request):
 async def api_grant(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     uid = int(body.get("user_id", 0))
@@ -285,7 +329,7 @@ async def api_grant(request):
 async def api_warn(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     uid = int(body.get("user_id", 0))
@@ -298,35 +342,83 @@ async def api_warn(request):
             (gid, uid, member.id, reason, sev, int(time.time()), exp))
     try:
         add_strike(gid, uid)
-    except Exception:
-        pass
+    except Exception as e:
+        print("web_api warn add_strike:", repr(e))
     log_player_action(gid, uid, "warning", f"[S{sev}] {reason} (via website)", admin_id=member.id)
+    target = member.guild.get_member(uid)
+    if target:
+        try:
+            await target.send(f"\u26a0\ufe0f You have been **warned** in **{member.guild.name}** (severity {sev}).\nReason: {reason}\n*Issued from the staff website.*")
+        except Exception as e:
+            print("web_api warn dm:", repr(e))
     try:
         _warn_escalate(gid, uid)
-    except Exception:
-        pass
-    return _api_json({"ok": True})
+    except Exception as e:
+        print("web_api warn escalate:", repr(e))
+    active = execute("SELECT COUNT(*) c FROM warnings WHERE guild_id=? AND user_id=? AND (expires_ts=0 OR expires_ts > ?)",
+                     (gid, uid, int(time.time())), commit=False).fetchone()["c"]
+    need = max(2, figet(0, "warn_escalate_at", 3))
+    return _api_json({"ok": True, "active_warnings": active, "escalates_at": need,
+                      "escalated": bool(active >= need)})
 
 
 async def api_timeout(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     uid = int(body.get("user_id", 0))
     minutes = min(max(int(body.get("minutes", 10)), 1), 40320)
+    reason = str(body.get("reason", "timed out via website"))[:200]
     if not uid:
         return _api_json({"error": "need user_id"}, 400)
     target = member.guild.get_member(uid)
     if target is None:
         return _api_json({"error": "member not in server"}, 404)
-    await target.timeout(datetime.timedelta(minutes=minutes))
+    until = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
+    try:
+        await target.timeout(until, reason=reason)
+    except Exception as e:
+        return _api_json({"error": f"Discord refused the timeout: {e}"}, 400)
+    try:
+        await target.send(f"\u23f8\ufe0f You have been **timed out for {minutes} minutes** in **{member.guild.name}**.\nReason: {reason}\n*Issued from the staff website.*")
+    except Exception as e:
+        print("web_api timeout dm:", repr(e))
     try:
         note_timeout_served(gid, uid)
-    except Exception:
-        pass
-    _audit(gid, uid, f"web timeout {minutes}m", member.id)
+    except Exception as e:
+        print("web_api timeout note:", repr(e))
+    _audit(gid, uid, f"web timeout {minutes}m ({reason})", member.id)
+    return _api_json({"ok": True, "until": int(until.timestamp()), "minutes": minutes})
+
+
+async def api_ban(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    gid = member.guild.id
+    body = await request.json()
+    uid = int(body.get("user_id", 0))
+    reason = str(body.get("reason", "banned via website"))[:200]
+    deldays = min(max(int(body.get("delete_days", 1)), 0), 7)
+    if not uid:
+        return _api_json({"error": "need user_id"}, 400)
+    if uid == member.id:
+        return _api_json({"error": "you cannot ban yourself"}, 400)
+    target = member.guild.get_member(uid)
+    if target:
+        try:
+            await target.send(f"\ud83d\udd4a\ufe0f You have been **banned** from **{member.guild.name}**.\nReason: {reason}\n*Issued from the staff website.*")
+        except Exception as e:
+            print("web_api ban dm:", repr(e))
+    import discord as _discord
+    try:
+        await member.guild.ban(_discord.Object(uid), reason=f"{reason} (web, by {member})", delete_message_days=deldays)
+    except Exception as e:
+        return _api_json({"error": f"Discord refused the ban: {e}"}, 400)
+    log_player_action(gid, uid, "ban", f"Banned via website. Reason: {reason}", admin_id=member.id)
+    _audit(gid, uid, f"web ban ({reason})", member.id)
     return _api_json({"ok": True})
 
 
@@ -335,7 +427,7 @@ async def api_timeout(request):
 async def api_battle_preview(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     boss_id = int(body.get("boss_id", 0))
@@ -378,6 +470,7 @@ def _register_routes():
     _API_APP.router.add_get("/api/my-guilds", api_my_guilds)
     _API_APP.router.add_get("/api/guild/{gid}/config", api_config_get)
     _API_APP.router.add_post("/api/guild/{gid}/config", api_config_set)
+    _API_APP.router.add_get("/api/guild/{gid}/tables", api_tables)
     _API_APP.router.add_get("/api/guild/{gid}/table/{table}", api_table_get)
     _API_APP.router.add_post("/api/guild/{gid}/table/{table}", api_table_post)
     _API_APP.router.add_post("/api/guild/{gid}/table/{table}/{row_id}", api_table_edit)
@@ -385,6 +478,7 @@ def _register_routes():
     _API_APP.router.add_post("/api/guild/{gid}/economy/grant", api_grant)
     _API_APP.router.add_post("/api/guild/{gid}/mod/warn", api_warn)
     _API_APP.router.add_post("/api/guild/{gid}/mod/timeout", api_timeout)
+    _API_APP.router.add_post("/api/guild/{gid}/mod/ban", api_ban)
     _API_APP.router.add_post("/api/guild/{gid}/battle/preview", api_battle_preview)
 
 
@@ -393,7 +487,7 @@ async def _run_api_server():
     if figet(0, "webapi_enabled", 1) != 1:
         print("web_api: disabled (webapi_enabled=0)")
         return
-    port = int(os.environ.get("WEB_API_PORT") or figet(0, "webapi_port", 8080) or 8080)
+    port = int(os.environ.get("WEB_API_PORT") or figet(0, "webapi_port", 15657) or 15657)  # WispByte panel Address port (8080 is taken by their own panel API!)
     try:
         _register_routes()
         _build_table_cols()
