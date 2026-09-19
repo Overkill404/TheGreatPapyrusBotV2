@@ -244,6 +244,42 @@ async def guard_cmd(interaction: discord.Interaction):
             color=theme_color()
         )
         emb.set_footer(text="The Great Papyrus · NYEH HEH HEH!")
+        if hasattr(discord.ui, "LayoutView"):
+            from discord import ui as _ui
+            try:
+                fr = get_papyrus_friend(gid, uid)
+            except Exception:
+                fr = None
+            friend_line = ""
+            if fr:
+                friend_line = f"\n💜 **Papyrus:** {fr['rank_name']} (`{int(fr['points'] or 0):,}`)"
+
+            class GuardPanel(_ui.LayoutView):
+                def __init__(self):
+                    super().__init__(timeout=600)
+                    c = _ui.Container(accent_color=theme_color())
+                    c.add_item(_ui.TextDisplay("## 🦴 ROYAL GUARD"))
+                    prog = 0
+                    if next_pts and next_pts > 0:
+                        prog = max(0.0, min(1.0, points / next_pts))
+                    bar = "█" * int(prog * 16) + "░" * (16 - int(prog * 16))
+                    c.add_item(_ui.Section(
+                        _ui.TextDisplay(
+                            f"🎖️ **Rank:** {current}\n"
+                            f"⭐ **Points:** `{points:,}`\n"
+                            + (f"**Next:** {next_rank} `{bar}` ({next_pts:,} pts)"
+                               if next_rank else "**Next:** 👑 MAX RANK")
+                        ),
+                        accessory=_ui.Thumbnail(media=interaction.user.display_avatar.url),
+                    ))
+                    c.add_item(_ui.Separator())
+                    c.add_item(_ui.TextDisplay(
+                        f"✨ **Bonuses:** +{xp_b*100:.0f}% XP · +{gold_b*100:.0f}% Gold" + friend_line
+                    ))
+                    c.add_item(_ui.TextDisplay("-# The Great Papyrus · NYEH HEH HEH!"))
+                    self.add_item(c)
+            await interaction.response.send_message(view=GuardPanel())
+            return
         await interaction.response.send_message(embed=emb)
     except Exception as e:
         await interaction.response.send_message(f"❌ {e}", ephemeral=True)
@@ -5465,8 +5501,10 @@ def _safe_select_option(label, value, emoji=None, description=None):
     return discord.SelectOption(**kwargs)
 
 
-class AdminPanelView(CooldownView):
-    """Paged admin hub - each page is a tool group."""
+class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") else CooldownView):
+    """Paged admin hub - each page is a tool group. V2 panel when available."""
+
+    _CV2 = hasattr(discord.ui, "LayoutView")
 
     PAGE_NAMES = [
         "Home",
@@ -5618,19 +5656,17 @@ class AdminPanelView(CooldownView):
             ]
         return [discord.SelectOption(label="Catalog", value="catalog", emoji="📖")]
 
-    def _build_page(self):
-        self.clear_items()
+    def _tool_options(self):
+        """Sanitized tool options for the current page (shared by both renderers)."""
         raw_opts = self._page_options() or []
         opts = []
         for o in raw_opts[:25]:
             try:
                 em = getattr(o, "emoji", None)
-                # PartialEmoji or str
                 em_s = None
                 if em is not None:
                     em_s = getattr(em, "name", None) or str(em)
                     if hasattr(em, "id") and em.id:
-                        # custom emoji - keep original
                         opts.append(o)
                         continue
                 opts.append(
@@ -5655,6 +5691,14 @@ class AdminPanelView(CooldownView):
                     pass
         if not opts:
             opts = [_safe_select_option("Catalog", "catalog", emoji="📖")]
+        return opts
+
+    def _build_page(self):
+        self.clear_items()
+        if self._CV2:
+            self._build_page_v2()
+            return
+        opts = self._tool_options()
         sel = discord.ui.Select(
             placeholder=f"Admin · {self.PAGE_NAMES[self.page]}...",
             options=opts[:25],
@@ -5735,6 +5779,93 @@ class AdminPanelView(CooldownView):
         self.add_item(prev_b)
         self.add_item(page_b)
         self.add_item(next_b)
+
+    def _build_page_v2(self):
+        """CV2 game-panel rendering of the same page: reuses the page embed's
+        content (title/blurb/snapshot/footer) inside a styled container."""
+        try:
+            emb = build_admin_panel_embed(self.guild_id, self.page)
+        except Exception:
+            emb = None
+        bname = error_display_name(self.guild_id)
+        try:
+            accent = style_color(self.guild_id)
+        except Exception:
+            accent = discord.Color.blurple()
+        c = discord.ui.Container(accent_color=accent)
+        title = emb.title if emb and emb.title else f"{bname} Admin · {self.PAGE_NAMES[self.page]}"
+        c.add_item(discord.ui.TextDisplay(f"## {title}"))
+        if emb is not None and emb.description:
+            c.add_item(discord.ui.TextDisplay(emb.description))
+        # server snapshot line
+        try:
+            n_boss = len(db.execute("SELECT id FROM bosses WHERE guild_id = ?", (self.guild_id,)).fetchall())
+            n_lv = len(db.execute("SELECT id FROM levels WHERE guild_id = ?", (self.guild_id,)).fetchall())
+            n_pl = len(db.execute("SELECT user_id FROM players WHERE guild_id = ?", (self.guild_id,)).fetchall())
+            c.add_item(discord.ui.Separator())
+            c.add_item(discord.ui.TextDisplay(f"📊 **Snapshot** — Bosses **{n_boss}** · Levels **{n_lv}** · Players **{n_pl}**"))
+        except Exception:
+            pass
+        c.add_item(discord.ui.Separator())
+        # tool select inside the panel
+        opts = self._tool_options()
+        sel = discord.ui.Select(
+            placeholder=f"Admin · {self.PAGE_NAMES[self.page]}...",
+            options=opts[:25],
+            min_values=1,
+            max_values=1,
+        )
+
+        async def on_sel(inter):
+            if inter.user.id != self.owner.id:
+                await inter.response.send_message("❌ Not your panel.", ephemeral=True)
+                return
+            await self._handle(inter, sel.values[0])
+
+        sel.callback = on_sel
+        c.add_item(discord.ui.ActionRow(sel))
+        # page nav row
+        prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary,
+                           disabled=(self.page <= 0))
+        next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary,
+                           disabled=(self.page >= len(self.PAGE_NAMES) - 1))
+        page_b = discord.ui.Button(
+            label=f"Page {self.page + 1}/{len(self.PAGE_NAMES)} · {self.PAGE_NAMES[self.page]}",
+            style=discord.ButtonStyle.primary, disabled=True,
+        )
+
+        async def prev_cb(inter):
+            if inter.user.id != self.owner.id:
+                await inter.response.send_message("❌ Not your panel.", ephemeral=True)
+                return
+            new_page = max(0, self.page - 1)
+            try:
+                new_view = AdminPanelView(self.owner, self.guild_id, page=new_page)
+                await inter.response.edit_message(view=new_view)
+            except Exception as e:
+                print("admin prev_cb:", e)
+
+        async def next_cb(inter):
+            if inter.user.id != self.owner.id:
+                await inter.response.send_message("❌ Not your panel.", ephemeral=True)
+                return
+            new_page = min(len(self.PAGE_NAMES) - 1, self.page + 1)
+            try:
+                new_view = AdminPanelView(self.owner, self.guild_id, page=new_page)
+                await inter.response.edit_message(view=new_view)
+            except Exception as e:
+                print("admin next_cb:", e)
+
+        prev_b.callback = prev_cb
+        next_b.callback = next_cb
+        nav = discord.ui.ActionRow()
+        nav.add_item(prev_b)
+        nav.add_item(page_b)
+        nav.add_item(next_b)
+        c.add_item(nav)
+        if emb is not None and emb.footer and emb.footer.text:
+            c.add_item(discord.ui.TextDisplay(f"-# {emb.footer.text}"))
+        self.add_item(c)
 
 
     async def _handle(self, interaction, value):
