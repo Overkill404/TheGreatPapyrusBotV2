@@ -51,6 +51,7 @@ _PARTS = [
     "m39_admin_tools.py",
     "m40_admin_troll.py",
     "m41_admin_hub.py",
+    "m42_web_api.py",
     "m11_economy_run.py",
 ]
 
