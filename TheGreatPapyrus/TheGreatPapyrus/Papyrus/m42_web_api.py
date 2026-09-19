@@ -146,7 +146,7 @@ async def api_my_guilds(request):
             except Exception:
                 continue
         if _is_admin_member(m):
-            out.append({"id": g.id, "name": g.name, "icon": g.icon.key if g.icon else None,
+            out.append({"id": str(g.id), "name": g.name, "icon": g.icon.key if g.icon else None,  # STRING: JS rounds 19-digit ids
                         "member_count": g.member_count})
     return _api_json({"guilds": out})
 
