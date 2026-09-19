@@ -5664,6 +5664,8 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Goodbye", value="safe_goodbye", emoji="🚪", description="Leave channel + message"),
                 discord.SelectOption(label="Safety Hub", value="safe_hub", emoji="📋", description="View current settings"),
                 discord.SelectOption(label="Safety II Hub", value="safety2_hub", emoji="🛡️", description="Verify gate, anti-nuke, integrity + 17 more"),
+                discord.SelectOption(label="Admin Tools Hub", value="admin_tools_hub", emoji="🧰", description="25 tools: roles, cleanup, backups, trolling"),
+                discord.SelectOption(label="Player Logger", value="player_logger", emoji="🗂️", description="Proof files of every bad thing players do"),
             ]
         return [discord.SelectOption(label="Catalog", value="catalog", emoji="📖")]
 
@@ -5938,6 +5940,12 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
             return
         if value == "safety2_hub":
             await open_safety2_admin(interaction, self.guild_id)
+            return
+        if value == "admin_tools_hub":
+            await open_admin_tools_hub(interaction, self.guild_id)
+            return
+        if value == "player_logger":
+            await open_playerlog_admin(interaction, self.guild_id)
             return
         if value == "immersion_hub":
             await open_immersion_admin(interaction, self.guild_id)

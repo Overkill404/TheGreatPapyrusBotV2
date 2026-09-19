@@ -47,6 +47,10 @@ _PARTS = [
     "m35_immersion_b.py",
     "m36_immersion_c.py",
     "m37_immersion_admin.py",
+    "m38_admin_log.py",
+    "m39_admin_tools.py",
+    "m40_admin_troll.py",
+    "m41_admin_hub.py",
     "m11_economy_run.py",
 ]
 
