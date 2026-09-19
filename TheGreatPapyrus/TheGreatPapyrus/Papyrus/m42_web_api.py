@@ -81,13 +81,27 @@ def _is_admin_member(member):
         return False
 
 
+_LAST_WHY = {"why": "unknown"}
+
 async def _verify_admin(request, gid):
-    """Token -> discord user -> member of guild -> admin/ManageGuild, or None."""
-    user = await _discord_user(_bearer(request))
-    if not user:
+    """Token -> discord user -> member of guild -> admin/ManageGuild, or None.
+    Sets _LAST_WHY so 403 bodies + console actually say WHY."""
+    token = _bearer(request)
+    if not token:
+        _LAST_WHY["why"] = "no token on request"
         return None
-    guild = bot.get_guild(int(gid))
+    user = await _discord_user(token)
+    if not user:
+        _LAST_WHY["why"] = "token rejected by Discord (expired? re sign-in on the site)"
+        print("web_api verify FAIL:", _LAST_WHY["why"])
+        return None
+    try:
+        guild = bot.get_guild(int(gid))
+    except Exception:
+        guild = None
     if not guild:
+        _LAST_WHY["why"] = f"bot is not in guild {gid} (guilds: {[str(g.id) for g in bot.guilds]})"
+        print("web_api verify FAIL:", _LAST_WHY["why"])
         return None
     uid = int(user["id"])
     member = guild.get_member(uid)
@@ -95,8 +109,12 @@ async def _verify_admin(request, gid):
         try:
             member = await guild.fetch_member(uid)
         except Exception:
+            _LAST_WHY["why"] = f"user {uid} not a member of {guild.id}"
+            print("web_api verify FAIL:", _LAST_WHY["why"])
             return None
     if not _is_admin_member(member):
+        _LAST_WHY["why"] = f"member {uid} is not admin/manage_guild in {guild.id}"
+        print("web_api verify FAIL:", _LAST_WHY["why"])
         return None
     return member
 
@@ -138,7 +156,7 @@ async def api_my_guilds(request):
 async def api_config_get(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     try:
         cur = execute("SELECT key, value FROM feature_settings WHERE guild_id=?", (gid,), commit=False)
@@ -151,7 +169,7 @@ async def api_config_get(request):
 async def api_config_set(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     changed = []
@@ -194,7 +212,7 @@ def _clean_row(table, body, gid):
 async def api_table_get(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -208,7 +226,7 @@ async def api_table_get(request):
 async def api_table_post(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -231,7 +249,7 @@ async def api_table_post(request):
 async def api_table_edit(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -253,7 +271,7 @@ async def api_table_edit(request):
 async def api_table_delete(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     table = request.match_info["table"]
     if table not in _API_TABLES or table not in _TABLE_COLS:
         return _api_json({"error": "unknown table"}, 404)
@@ -269,7 +287,7 @@ async def api_table_delete(request):
 async def api_grant(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     uid = int(body.get("user_id", 0))
@@ -285,7 +303,7 @@ async def api_grant(request):
 async def api_warn(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     uid = int(body.get("user_id", 0))
@@ -311,7 +329,7 @@ async def api_warn(request):
 async def api_timeout(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     uid = int(body.get("user_id", 0))
@@ -335,7 +353,7 @@ async def api_timeout(request):
 async def api_battle_preview(request):
     member = await _verify_admin(request, request.match_info["gid"])
     if not member:
-        return _api_json({"error": "forbidden"}, 403)
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
     gid = member.guild.id
     body = await request.json()
     boss_id = int(body.get("boss_id", 0))
