@@ -5645,6 +5645,8 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Pacifist / Genocide", value="pap_route", emoji="⚖️", description="Spare vs kill routes"),
                 discord.SelectOption(label="Backpack Upgrades", value="pap_backpack", emoji="🎒", description="Upgrade system with requirements & effects"),
                 discord.SelectOption(label="Soul Dex", value="dex_admin", emoji="📕", description="Collection album + set rewards"),
+                discord.SelectOption(label="Immersion Hub", value="immersion_hub", emoji="🎭", description="Rumors, newspaper, skits, wars + 11 more"),
+                discord.SelectOption(label="Server Status", value="server_status", emoji="📋", description="Everything set up: features, commands, channels"),
             ]
         if p == 8:  # Safety / server
             return [
@@ -5936,6 +5938,12 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
             return
         if value == "safety2_hub":
             await open_safety2_admin(interaction, self.guild_id)
+            return
+        if value == "immersion_hub":
+            await open_immersion_admin(interaction, self.guild_id)
+            return
+        if value == "server_status":
+            await open_server_status(interaction, self.guild_id)
             return
         if value == "gather_admin":
             await open_gather_admin(interaction, self.guild_id)

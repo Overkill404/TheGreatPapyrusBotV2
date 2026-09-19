@@ -43,6 +43,10 @@ _PARTS = [
     "m31_safety_a.py",
     "m32_safety_b.py",
     "m33_safety_admin.py",
+    "m34_immersion_a.py",
+    "m35_immersion_b.py",
+    "m36_immersion_c.py",
+    "m37_immersion_admin.py",
     "m11_economy_run.py",
 ]
 
