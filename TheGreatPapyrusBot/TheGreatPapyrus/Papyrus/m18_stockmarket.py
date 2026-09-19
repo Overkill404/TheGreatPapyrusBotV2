@@ -103,7 +103,7 @@ async def _market_loop():
                 _market_tick(int(r["guild_id"]))
         except Exception:
             pass
-        await discord.utils.sleep(600)  # every 10 minutes
+        await asyncio.sleep(600)  # every 10 minutes
 
 
 async def stocks_cmd(interaction: discord.Interaction, action: str = "view", symbol: str = "", shares: int = 1):
