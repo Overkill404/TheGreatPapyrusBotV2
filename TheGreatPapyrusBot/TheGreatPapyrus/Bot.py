@@ -39,6 +39,7 @@ _PARTS = [
     "m27_economy_b.py",
     "m28_economy_c.py",
     "m29_econ2_admin.py",
+    "m30_backpack_econ.py",
     "m11_economy_run.py",
 ]
 
