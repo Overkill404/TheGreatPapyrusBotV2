@@ -342,14 +342,24 @@ async def api_warn(request):
             (gid, uid, member.id, reason, sev, int(time.time()), exp))
     try:
         add_strike(gid, uid)
-    except Exception:
-        pass
+    except Exception as e:
+        print("web_api warn add_strike:", repr(e))
     log_player_action(gid, uid, "warning", f"[S{sev}] {reason} (via website)", admin_id=member.id)
+    target = member.guild.get_member(uid)
+    if target:
+        try:
+            await target.send(f"\u26a0\ufe0f You have been **warned** in **{member.guild.name}** (severity {sev}).\nReason: {reason}\n*Issued from the staff website.*")
+        except Exception as e:
+            print("web_api warn dm:", repr(e))
     try:
         _warn_escalate(gid, uid)
-    except Exception:
-        pass
-    return _api_json({"ok": True})
+    except Exception as e:
+        print("web_api warn escalate:", repr(e))
+    active = execute("SELECT COUNT(*) c FROM warnings WHERE guild_id=? AND user_id=? AND (expires_ts=0 OR expires_ts > ?)",
+                     (gid, uid, int(time.time())), commit=False).fetchone()["c"]
+    need = max(2, figet(0, "warn_escalate_at", 3))
+    return _api_json({"ok": True, "active_warnings": active, "escalates_at": need,
+                      "escalated": bool(active >= need)})
 
 
 async def api_timeout(request):
