@@ -889,6 +889,11 @@ class KitchenCookView(CooldownView):
         except Exception:
             pass
         add_papyrus_friend(gid, uid, int(cfg.get("friend_pts") or 2), reason="kitchen")
+        try:
+            cooking_record(gid, uid)
+            quest_progress(gid, uid, "cook", 1)
+        except Exception:
+            pass
         hint = ""
         if match < 3:
             hint = "\n*(Papyrus refuses to reveal the recipe. Try different ingredients tomorrow.)*"

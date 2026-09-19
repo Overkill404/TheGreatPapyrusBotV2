@@ -24,6 +24,13 @@ _PARTS = [
     "m12_papyrus_features.py",
     "m13_papyrus_more.py",
     "m14_new_features.py",
+    "m15_daily_quests.py",
+    "m16_world_boss.py",
+    "m17_casino.py",
+    "m18_stockmarket.py",
+    "m19_fun_drops.py",
+    "m20_admin_qol.py",
+    "m21_hooks.py",
     "m11_economy_run.py",
 ]
 

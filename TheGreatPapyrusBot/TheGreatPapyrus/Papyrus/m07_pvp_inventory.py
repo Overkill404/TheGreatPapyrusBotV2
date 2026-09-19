@@ -785,10 +785,16 @@ async def buy_player_listing(interaction, guild_id, listing_id, buyer_id):
             "UPDATE players SET gold = gold - ? WHERE guild_id = ? AND user_id = ?",
             (price, guild_id, buyer_id),
         )
+        tax = max(0, int(price * 0.05))
         execute(
             "UPDATE players SET gold = gold + ? WHERE guild_id = ? AND user_id = ?",
-            (price, guild_id, row["seller_id"]),
+            (price - tax, guild_id, row["seller_id"]),
         )
+        if tax:
+            try:
+                treasury_add(guild_id, tax)
+            except Exception:
+                pass
 
     item_type = row["item_type"]
     item_id = row["item_id"]
@@ -3580,6 +3586,10 @@ async def admin_boss_victory(interaction, battle):
             loot_m = 1.0
         g_gain = max(0, int(battle.gold_reward * loot_m))
         x_gain = max(0, int(battle.xp_reward * loot_m))
+        try:
+            quest_progress(guild_id, uid, "kill", 1)
+        except Exception:
+            pass
         try:
             execute("UPDATE players SET gold = gold + ?, hp = ? WHERE guild_id = ? AND user_id = ?", (g_gain, max(1, f["hp"]), guild_id, uid))
             add_xp(guild_id, uid, x_gain)
