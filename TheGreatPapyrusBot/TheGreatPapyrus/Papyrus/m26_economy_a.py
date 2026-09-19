@@ -290,7 +290,11 @@ async def _contracts_cmd(interaction, action: str = "list"):
             await interaction.response.send_message("Give a contract ID: `/contracts claim id:3`.", ephemeral=True)
             return
         execute("UPDATE econ_contracts SET claimed_by=? WHERE id=?", (uid, c["id"]))
-        await interaction.response.send_message(f"📜 Claimed `#{c['id']}`: {c['description']} — pay {c['kind'] == 'boss' and f'**{c['target']}** x{c['count']}' or f'drop **{c['count']}** materials'}.", ephemeral=True)
+        if c["kind"] == "boss":
+            pay = f"**{c['target']}** x{c['count']}"
+        else:
+            pay = f"drop **{c['count']}** materials"
+        await interaction.response.send_message(f"📜 Claimed `#{c['id']}`: {c['description']} — pay {pay}.", ephemeral=True)
         return
 
 _contracts_cmd = bot.tree.command(name="contracts", description="Contract board: claim tasks for cash rewards.")(_contracts_cmd)
