@@ -1,0 +1,730 @@
+# m25_clans_dex.py — Clans (shared bank) + Soul Dex collection album (in backpack)
+# Loads after m24. Uses record_boss_kill (m03) data for the dex. All admin-editable.
+
+import discord
+
+_g = globals()
+
+# ---------------------------------------------------------------- tables
+def _setup_tables():
+    execute("""CREATE TABLE IF NOT EXISTS clans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        tag TEXT DEFAULT '',
+        owner_id INTEGER NOT NULL,
+        bank INTEGER DEFAULT 0,
+        created_ts INTEGER DEFAULT 0
+    )""")
+    execute("""CREATE TABLE IF NOT EXISTS clan_members (
+        guild_id INTEGER NOT NULL,
+        clan_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        officer INTEGER DEFAULT 0,
+        joined_ts INTEGER DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id)
+    )""")
+    execute("""CREATE TABLE IF NOT EXISTS clan_bank_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id INTEGER NOT NULL,
+        clan_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        amount INTEGER NOT NULL,
+        ts INTEGER DEFAULT 0
+    )""")
+    execute("""CREATE TABLE IF NOT EXISTS dex_rewards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id INTEGER NOT NULL,
+        universe_id INTEGER DEFAULT 0,
+        gold INTEGER DEFAULT 1000,
+        xp INTEGER DEFAULT 500,
+        enabled INTEGER DEFAULT 1
+    )""")
+    execute("""CREATE TABLE IF NOT EXISTS dex_claims (
+        guild_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        universe_id INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, user_id, universe_id)
+    )""")
+_setup_tables()
+
+CLAN_CREATE_COST = 5000
+
+# ---------------------------------------------------------------- helpers
+def get_clan_of(gid, uid):
+    return db.execute("""SELECT c.*, cm.officer FROM clans c
+        JOIN clan_members cm ON cm.clan_id = c.id AND cm.guild_id = c.guild_id
+        WHERE c.guild_id=? AND cm.user_id=?""", (gid, uid)).fetchone()
+
+def clan_level(clan):
+    """Clan level grows with the shared bank: 5k per level."""
+    return 1 + int(clan["bank"] or 0) // 5000
+
+def clan_xp_bonus(gid, uid):
+    """1% bonus XP per clan level, stacked into the global mult chain."""
+    try:
+        c = get_clan_of(gid, uid)
+        if not c or not figet(gid, "clans_enabled", 1):
+            return 1.0
+        return 1.0 + 0.01 * (clan_level(c) - 1)
+    except Exception:
+        return 1.0
+
+# chain onto the m24 (and m23) mult so every xp flow benefits
+_rpg_bonus_prev = _g.get("rpg_bonus_mult")
+
+def rpg_bonus_mult(gid, uid, kind):
+    base = _rpg_bonus_prev(gid, uid, kind) if _rpg_bonus_prev else 1.0
+    try:
+        if kind == "xp":
+            base = base * clan_xp_bonus(gid, uid)
+    except Exception:
+        pass
+    return base
+
+# ---------------------------------------------------------------- /clan
+async def _clan_cmd(interaction, action: str, name: str = "", amount: int = 0, user: discord.User = None):
+    gid = interaction.guild_id
+    uid = interaction.user.id
+    if not figet(gid, "clans_enabled", 1):
+        await interaction.response.send_message("Clans are disabled here.", ephemeral=True)
+        return
+    player = get_player(gid, uid)
+    if not player and action != "list":
+        await interaction.response.send_message("Use `/start` first.", ephemeral=True)
+        return
+
+    if action == "create":
+        if get_clan_of(gid, uid):
+            await interaction.response.send_message("You're already in a clan. `/clan leave` first.", ephemeral=True)
+            return
+        if not name or len(name.strip()) < 3:
+            await interaction.response.send_message("Give your clan a name (3+ chars): `/clan create name:My Clan`.", ephemeral=True)
+            return
+        try:
+            bal = get_eco_balance(gid, uid)["cash"]
+            if bal < CLAN_CREATE_COST:
+                await interaction.response.send_message(f"Creating a clan costs **{eco_fmt(CLAN_CREATE_COST)}**. You have {eco_fmt(bal)}.", ephemeral=True)
+                return
+            eco_add_cash(gid, uid, -CLAN_CREATE_COST, earned=False)
+        except Exception:
+            await interaction.response.send_message("Economy not available.", ephemeral=True)
+            return
+        cur = db.execute("INSERT INTO clans (guild_id, name, tag, owner_id, created_ts) VALUES (?,?,?,?,?)",
+                         (gid, name.strip()[:40], name.strip()[:4].upper(), uid, int(__import__('time').time())))
+        clan_id = cur.lastrowid
+        execute("INSERT INTO clan_members (guild_id, clan_id, user_id, officer, joined_ts) VALUES (?,?,?,1,?)",
+                (gid, clan_id, uid, int(__import__('time').time())))
+        audit_log(gid, uid, "clan_create", name)
+        await interaction.response.send_message(f"🏰 Clan **{name.strip()}** founded! You're the leader. `/clan deposit` to fill the shared bank.", ephemeral=True)
+        return
+
+    if action == "list":
+        rows = db.execute("""SELECT c.*, COUNT(cm.user_id) members FROM clans c
+            LEFT JOIN clan_members cm ON cm.clan_id=c.id AND cm.guild_id=c.guild_id
+            WHERE c.guild_id=? GROUP BY c.id ORDER BY c.bank DESC LIMIT 15""", (gid,)).fetchall()
+        lines = [f"**{r['name']}** [{r['tag']}] — Lv {clan_level(r)} — bank {eco_fmt(r['bank'])} — {r['members']} members" for r in rows]
+        await interaction.response.send_message(embed=discord.Embed(title="🏰 Clans", description="\n".join(lines) or "No clans yet — `/clan create`!", color=style_color(gid)), ephemeral=True)
+        return
+
+    if action == "join":
+        if get_clan_of(gid, uid):
+            await interaction.response.send_message("You're already in a clan — `/clan leave` first.", ephemeral=True)
+            return
+        if not name:
+            await interaction.response.send_message("Which clan? `/clan join name:Clan Name` (see `/clan list`).", ephemeral=True)
+            return
+        target = db.execute("SELECT * FROM clans WHERE guild_id=? AND name LIKE ? LIMIT 1", (gid, f"%{name}%")).fetchone()
+        if not target:
+            await interaction.response.send_message("No clan by that name.", ephemeral=True)
+            return
+        execute("INSERT OR IGNORE INTO clan_members (guild_id, clan_id, user_id, officer, joined_ts) VALUES (?,?,?,0,?)",
+                (gid, target["id"], uid, int(__import__('time').time())))
+        await interaction.response.send_message(f"🏰 Welcome to **{target['name']}**! `/clan deposit` to contribute to the shared bank.", ephemeral=True)
+        return
+
+    clan = get_clan_of(gid, uid)
+    if not clan:
+        await interaction.response.send_message("You're not in a clan. `/clan create` or `/clan join name:...`.", ephemeral=True)
+        return
+
+    if action == "info":
+        members = db.execute("""SELECT cm.user_id, cm.officer FROM clan_members cm WHERE cm.clan_id=? ORDER BY cm.officer DESC, cm.joined_ts""", (clan["id"],)).fetchall()
+        mlines = []
+        for m in members[:20]:
+            try:
+                mem = interaction.guild.get_member(m["user_id"])
+                nm = mem.display_name if mem else f"<@{m['user_id']}>"
+            except Exception:
+                nm = str(m["user_id"])
+            mlines.append(f"{'👑' if m['user_id'] == clan['owner_id'] else ('🛡️' if m['officer'] else '•')} {nm}")
+        emb = discord.Embed(title=f"🏰 {clan['name']} [{clan['tag']}]", color=style_color(gid))
+        emb.add_field(name="Shared Bank", value=f"{eco_fmt(clan['bank'])} — clan level **{clan_level(clan)}** (+{(clan_level(clan)-1)}% XP for members)")
+        emb.add_field(name="Members", value="\n".join(mlines)[:1024] or "—")
+        emb.set_footer(text="/clan deposit amount: • /clan withdraw (leaders) • /clan leave")
+        await interaction.response.send_message(embed=emb, ephemeral=True)
+        return
+
+    if action == "deposit":
+        amt = int(amount or 0)
+        if amt <= 0:
+            await interaction.response.send_message("Amount must be positive.", ephemeral=True)
+            return
+        try:
+            bal = get_eco_balance(gid, uid)["cash"]
+            if bal < amt:
+                await interaction.response.send_message(f"You only have {eco_fmt(bal)}.", ephemeral=True)
+                return
+            eco_add_cash(gid, uid, -amt, earned=False)
+        except Exception:
+            await interaction.response.send_message("Economy not available.", ephemeral=True)
+            return
+        execute("UPDATE clans SET bank = bank + ? WHERE id=?", (amt, clan["id"]))
+        execute("INSERT INTO clan_bank_log (guild_id, clan_id, user_id, amount, ts) VALUES (?,?,?,?,?)",
+                (gid, clan["id"], uid, amt, int(__import__('time').time())))
+        lvl_before = clan_level(clan)
+        lvl_after = clan_level(dict(clan, bank=clan["bank"] + amt))
+        extra = "\n🎉 **The clan leveled up!**" if lvl_after > lvl_before else ""
+        await interaction.response.send_message(f"💼 Deposited **{eco_fmt(amt)}** into the {clan['name']} bank.{extra}", ephemeral=True)
+        return
+
+    if action == "withdraw":
+        if uid != clan["owner_id"] and not clan["officer"]:
+            await interaction.response.send_message("Only the clan leader/officers can withdraw.", ephemeral=True)
+            return
+        amt = int(amount or 0)
+        if amt <= 0 or amt > int(clan["bank"] or 0):
+            await interaction.response.send_message(f"Bank holds {eco_fmt(clan['bank'])}.", ephemeral=True)
+            return
+        execute("UPDATE clans SET bank = bank - ? WHERE id=?", (amt, clan["id"]))
+        try:
+            eco_add_cash(gid, uid, amt, earned=False)
+        except Exception:
+            execute("UPDATE players SET gold = gold + ? WHERE guild_id=? AND user_id=?", (amt, gid, uid))
+        execute("INSERT INTO clan_bank_log (guild_id, clan_id, user_id, amount, ts) VALUES (?,?,?,?,?)",
+                (gid, clan["id"], uid, -amt, int(__import__('time').time())))
+        audit_log(gid, uid, "clan_withdraw", f"{amt} from {clan['name']}")
+        await interaction.response.send_message(f"Withdrew **{eco_fmt(amt)}** from the clan bank.", ephemeral=True)
+        return
+
+    if action == "leave":
+        if clan["owner_id"] == uid:
+            cnt = db.execute("SELECT COUNT(*) c FROM clan_members WHERE clan_id=?", (clan["id"],)).fetchone()["c"]
+            if cnt > 1:
+                await interaction.response.send_message("Promote or remove others first — you're the leader.", ephemeral=True)
+                return
+            execute("DELETE FROM clans WHERE id=?", (clan["id"],))
+            execute("DELETE FROM clan_members WHERE clan_id=?", (clan["id"],))
+            await interaction.response.send_message("Clan disbanded.", ephemeral=True)
+            return
+        execute("DELETE FROM clan_members WHERE guild_id=? AND user_id=?", (gid, uid))
+        await interaction.response.send_message("You left the clan.", ephemeral=True)
+        return
+
+    if action == "kick":
+        if uid != clan["owner_id"]:
+            await interaction.response.send_message("Only the leader can kick.", ephemeral=True)
+            return
+        if not user:
+            await interaction.response.send_message("Pick a user: `/clan kick user:@them`.", ephemeral=True)
+            return
+        if user.id == uid:
+            await interaction.response.send_message("You can't kick yourself — leave instead.", ephemeral=True)
+            return
+        execute("DELETE FROM clan_members WHERE guild_id=? AND user_id=? AND clan_id=?", (gid, user.id, clan["id"]))
+        await interaction.response.send_message(f"Kicked <@{user.id}> from the clan.", ephemeral=True)
+        return
+
+_clan_cmd = bot.tree.command(name="clan", description="Clans: shared bank, levels, roster.")(_clan_cmd)
+
+# ---------------------------------------------------------------- soul dex panel
+def _dex_universes(gid):
+    try:
+        return list_universes(gid, enabled_only=True)
+    except Exception:
+        return []
+
+def _uget(u, key, default=None):
+    try:
+        return u[key] if (u is not None and key in u.keys()) else default
+    except Exception:
+        return default
+
+def build_dex_embed(gid, member):
+    rows = db.execute("""SELECT pk.boss_id, pk.kills FROM player_boss_kills pk WHERE pk.guild_id=? AND pk.user_id=?""",
+                      (gid, member.id)).fetchall()
+    kills = {r["boss_id"]: r["kills"] for r in rows}
+    bosses = []
+    try:
+        bosses = get_spawnable_bosses(gid) or []
+    except Exception:
+        bosses = []
+    collectible = [b for b in bosses if figet(gid, "dex_boss_" + str(b["id"]), 1)]
+
+    levels = {}
+    try:
+        levels = {lv["id"]: lv for lv in (get_levels(gid, enabled_only=True) or [])}
+    except Exception:
+        levels = {}
+    universes = {0: {"id": 0, "name": "Default Areas", "emoji": "🌀"}}
+    try:
+        for u in (list_universes(gid, enabled_only=True) or []):
+            universes[int(u["id"] or 0)] = u
+    except Exception:
+        pass
+
+    # bosses -> level -> universe
+    by_level = {}
+    for b in collectible:
+        by_level.setdefault(int(b["level_id"] or 0), []).append(b)
+
+    by_universe = {}
+    for lid, lbosses in by_level.items():
+        lv = levels.get(lid)
+        uid_ = int(lv["universe_id"] or 0) if lv is not None and "universe_id" in lv.keys() else 0
+        by_universe.setdefault(uid_, []).append((lv, lid, lbosses))
+
+    have = sum(1 for b in collectible if b["id"] in kills)
+    total = len(collectible)
+    emb = discord.Embed(title="📕 Soul Dex",
+                        description=f"Collected **{have}/{total}** boss souls, organized by area.",
+                        color=style_color(gid))
+
+    # claimed sets for ✅ markers
+    claimed = {int(r["universe_id"] or 0) for r in db.execute(
+        "SELECT universe_id FROM dex_claims WHERE guild_id=? AND user_id=?", (gid, member.id)).fetchall()}
+
+    ordered = sorted(by_universe.keys(), key=lambda u: (u == 0, str(_uget(universes.get(u), "name", ""))))
+    fields_used = 0
+    for uid_ in ordered:
+        if fields_used >= 24:
+            emb.add_field(name="…", value="More areas — claim rewards with the button below.", inline=False)
+            break
+        u = universes.get(uid_)
+        ucollect = [b for _, _, lbs in by_universe[uid_] for b in lbs]
+        uhave = sum(1 for b in ucollect if b["id"] in kills)
+        head = f"{_uget(u, 'emoji') or '🌌'} **{_uget(u, 'name', 'Unknown Universe')}** — {uhave}/{len(ucollect)}" + (" 🏆" if uid_ in claimed else "")
+        lines = []
+        for lv, lid, lbosses in sorted(by_universe[uid_], key=lambda x: (_uget(x[0], "name", "~unassigned"))):
+            if lv is not None:
+                lname = lv["name"] + (f" ({lv['emoji']})" if _uget(lv, "emoji") else "")
+            else:
+                lname = "⚙️ Unassigned bosses"
+            boss_txt = " ".join(
+                ("✅" if b["id"] in kills else "⬜") + f" {b['name']}" + (f" x{kills[b['id']]}" if b["id"] in kills else "")
+                for b in lbosses[:8])
+            lines.append(f"**{lname}**: {boss_txt}")
+        emb.add_field(name=head, value="\n".join(lines)[:1024] or "No bosses", inline=False)
+        fields_used += 1
+    if not collectible:
+        emb.description = "No collectible bosses yet — admins enable them in Papyrus+ → Soul Dex."
+    emb.set_footer(text="Defeat bosses to register their souls. Complete a universe's set for the 🏆 reward!")
+    return emb
+
+def _level_universe(gid, level_id):
+    try:
+        lv = get_level(gid, level_id)
+        return int(lv["universe_id"] or 0) if lv else 0
+    except Exception:
+        return 0
+
+async def open_dex_panel(interaction, member, gid):
+    emb = build_dex_embed(interaction.guild or member.guild, member)
+    view = DexClaimView(gid, member)
+    try:
+        v = embed_panel(emb, view)
+    except Exception:
+        v = None
+    if v is not None:
+        await interaction.response.send_message(view=v, ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=emb, view=view, ephemeral=True)
+
+class DexClaimView(CooldownView):
+    def __init__(self, gid, member):
+        super().__init__(timeout=120)
+        self.gid = gid
+        self.member = member
+        btn = discord.ui.Button(label="Claim complete sets", emoji="🏆", style=discord.ButtonStyle.success)
+        btn.callback = self._claim
+        try:
+            self.add_item(btn)
+        except Exception:
+            pass
+
+    async def interaction_check(self, inter):
+        return inter.user.id == self.member.id
+
+    async def _claim(self, inter):
+        gid = self.gid
+        bosses = []
+        try:
+            bosses = get_spawnable_bosses(gid) or []
+        except Exception:
+            pass
+        kills = {r["boss_id"] for r in db.execute("SELECT boss_id FROM player_boss_kills WHERE guild_id=? AND user_id=?", (gid, self.member.id)).fetchall()}
+        claimed = {r["universe_id"] for r in db.execute("SELECT universe_id FROM dex_claims WHERE guild_id=? AND user_id=?", (gid, self.member.id)).fetchall()}
+        rewards = db.execute("SELECT * FROM dex_rewards WHERE guild_id=? AND enabled=1", (gid,)).fetchall()
+        got = []
+        for rw in rewards:
+            uid_ = int(rw["universe_id"] or 0)
+            if uid_ in claimed:
+                continue
+            ulevel_bosses = [b for b in bosses if (b["level_id"] and _level_universe(gid, b["level_id"]) == uid_)]
+            collectible = [b for b in ulevel_bosses if figet(gid, f"dex_boss_{b['id']}", 1)]
+            if not collectible or not all(b["id"] in kills for b in collectible):
+                continue
+            claimed.add(uid_)
+            execute("INSERT OR IGNORE INTO dex_claims (guild_id, user_id, universe_id) VALUES (?,?,?)", (gid, self.member.id, uid_))
+            try:
+                eco_add_cash(gid, self.member.id, int(rw["gold"] or 0), earned=True)
+            except Exception:
+                execute("UPDATE players SET gold = gold + ? WHERE guild_id=? AND user_id=?", (int(rw["gold"] or 0), gid, self.member.id))
+            add_xp(gid, self.member.id, int(rw["xp"] or 0))
+            got.append(f"🏆 Set complete: +{eco_fmt(rw['gold'])}, +{rw['xp']} XP")
+        if got:
+            await inter.response.send_message("\n".join(got), ephemeral=True)
+        else:
+            await inter.response.send_message("No complete sets to claim yet. Keep hunting!", ephemeral=True)
+
+# ---------------------------------------------------------------- clan hub panel (backpack)
+async def open_clans_panel(interaction, member, gid):
+    """Player-facing clan panel (backpack)."""
+    uid = member.id
+    if not figet(gid, "clans_enabled", 1):
+        await interaction.response.send_message("Clans are disabled here.", ephemeral=True)
+        return
+    player = get_player(gid, uid)
+    if not player:
+        await interaction.response.send_message("Use `/start` first.", ephemeral=True)
+        return
+    clan = get_clan_of(gid, uid)
+    view = ClanPanelView(gid, uid, clan, bool(clan and (uid == clan["owner_id"] or clan["officer"])))
+    emb = discord.Embed(color=style_color(gid))
+    if clan:
+        members = db.execute("SELECT user_id, officer FROM clan_members WHERE clan_id=? ORDER BY officer DESC, joined_ts", (clan["id"],)).fetchall()
+        mlines = []
+        for m in members[:20]:
+            try:
+                mem = member.guild.get_member(m["user_id"]) if member.guild else None
+                nm = mem.display_name if mem else f"<@{m['user_id']}>"
+            except Exception:
+                nm = str(m["user_id"])
+            mlines.append(f"{'👑' if m['user_id'] == clan['owner_id'] else ('🛡️' if m['officer'] else '•')} {nm}")
+        emb.title = f"🏰 {clan['name']} [{clan['tag']}]"
+        emb.add_field(name="Shared Bank", value=f"{eco_fmt(clan['bank'])} — clan level **{clan_level(clan)}** (+{clan_level(clan)-1}% XP for members)")
+        emb.add_field(name="Members", value="\n".join(mlines)[:1024] or "—")
+        emb.set_footer(text="Use the dropdown below to manage.")
+    else:
+        emb.title = "🏰 Clans"
+        rows = db.execute("""SELECT c.*, COUNT(cm.user_id) members FROM clans c
+            LEFT JOIN clan_members cm ON cm.clan_id=c.id AND cm.guild_id=c.guild_id
+            WHERE c.guild_id=? GROUP BY c.id ORDER BY c.bank DESC LIMIT 15""", (gid,)).fetchall()
+        emb.description = "\n".join(f"**{r['name']}** [{r['tag']}] — Lv {clan_level(r)} — bank {eco_fmt(r['bank'])} — {r['members']} members" for r in rows) or "No clans yet."
+        emb.set_footer(text=f"Create one with /clan create (costs {eco_fmt(CLAN_CREATE_COST)}) or join one below.")
+    await _send_panel(interaction, emb, view)
+
+class ClanPanelView(CooldownView):
+    def __init__(self, gid, uid, clan, can_withdraw):
+        super().__init__(timeout=180)
+        self.gid, self.uid, self.clan = gid, uid, clan
+        if clan:
+            sel = discord.ui.Select(placeholder="Clan actions...", options=[
+                discord.SelectOption(label="Deposit to bank", value="deposit", emoji="💼"),
+                discord.SelectOption(label="Withdraw (leaders)", value="withdraw", emoji="💸"),
+                discord.SelectOption(label="Leave clan", value="leave", emoji="🚪"),
+            ])
+            sel.callback = self._action
+            try:
+                self.add_item(sel)
+            except Exception:
+                pass
+        else:
+            rows = db.execute("SELECT * FROM clans WHERE guild_id=? ORDER BY bank DESC LIMIT 25", (gid,)).fetchall()
+            if rows:
+                opts = [discord.SelectOption(label=r["name"][:100], value=str(r["id"]),
+                        description=f"Lv {clan_level(r)} • bank {r['bank']}") for r in rows]
+                sel = discord.ui.Select(placeholder="Join a clan...", options=opts)
+                sel.callback = self._join
+                try:
+                    self.add_item(sel)
+                except Exception:
+                    pass
+
+    async def interaction_check(self, inter):
+        return inter.user.id == self.uid
+
+    async def _join(self, inter):
+        if get_clan_of(self.gid, self.uid):
+            await inter.response.send_message("You're already in a clan.", ephemeral=True)
+            return
+        c = db.execute("SELECT * FROM clans WHERE id=? AND guild_id=?", (int(inter.data["values"][0]), self.gid)).fetchone()
+        if not c:
+            await inter.response.send_message("Clan gone.", ephemeral=True)
+            return
+        execute("INSERT OR IGNORE INTO clan_members (guild_id, clan_id, user_id, officer, joined_ts) VALUES (?,?,?,0,?)",
+                (self.gid, c["id"], self.uid, int(__import__('time').time())))
+        await inter.response.send_message(f"🏰 Welcome to **{c['name']}**!", ephemeral=True)
+
+    async def _action(self, inter):
+        val = inter.data["values"][0]
+        if val == "deposit":
+            await inter.response.send_modal(_clan_deposit_modal(self.gid, self.uid, self.clan))
+        elif val == "withdraw":
+            await inter.response.send_modal(_clan_withdraw_modal(self.gid, self.uid, self.clan))
+        elif val == "leave":
+            c = get_clan_of(self.gid, self.uid)
+            if not c:
+                await inter.response.send_message("Not in a clan.", ephemeral=True)
+                return
+            if c["owner_id"] == self.uid:
+                cnt = db.execute("SELECT COUNT(*) c FROM clan_members WHERE clan_id=?", (c["id"],)).fetchone()["c"]
+                if cnt > 1:
+                    await inter.response.send_message("You're the leader — handle members first (use /clan kick).", ephemeral=True)
+                    return
+                execute("DELETE FROM clans WHERE id=?", (c["id"],))
+                execute("DELETE FROM clan_members WHERE clan_id=?", (c["id"],))
+                await inter.response.send_message("Clan disbanded.", ephemeral=True)
+                return
+            execute("DELETE FROM clan_members WHERE guild_id=? AND user_id=?", (self.gid, self.uid))
+            await inter.response.send_message("You left the clan.", ephemeral=True)
+
+def _clan_deposit_modal(gid, uid, clan):
+    class _M(discord.ui.Modal, title=f"Deposit to {clan['name'][:20]}"):
+        amount = discord.ui.TextInput(label="Amount", max_length=10)
+        async def on_submit(self, inter):
+            try:
+                amt = int(str(self.amount.value).strip().replace(",", ""))
+            except Exception:
+                await inter.response.send_message("That's not a number.", ephemeral=True)
+                return
+            if amt <= 0:
+                await inter.response.send_message("Amount must be positive.", ephemeral=True)
+                return
+            try:
+                bal = get_eco_balance(gid, uid)["cash"]
+                if bal < amt:
+                    await inter.response.send_message(f"You only have {eco_fmt(bal)}.", ephemeral=True)
+                    return
+                eco_add_cash(gid, uid, -amt, earned=False)
+            except Exception:
+                await inter.response.send_message("Economy not available.", ephemeral=True)
+                return
+            before = clan_level(clan)
+            execute("UPDATE clans SET bank = bank + ? WHERE id=?", (amt, clan["id"]))
+            execute("INSERT INTO clan_bank_log (guild_id, clan_id, user_id, amount, ts) VALUES (?,?,?,?,?)",
+                    (gid, clan["id"], uid, amt, int(__import__('time').time())))
+            after = clan_level(dict(clan, bank=clan["bank"] + amt))
+            extra = "\n🎉 **The clan leveled up!**" if after > before else ""
+            await inter.response.send_message(f"💼 Deposited **{eco_fmt(amt)}**.{extra}", ephemeral=True)
+    return _M
+
+def _clan_withdraw_modal(gid, uid, clan):
+    class _M(discord.ui.Modal, title=f"Withdraw from {clan['name'][:20]}"):
+        amount = discord.ui.TextInput(label="Amount", max_length=10)
+        async def on_submit(self, inter):
+            c = get_clan_of(gid, uid)
+            if not c or not (uid == c["owner_id"] or c["officer"]):
+                await inter.response.send_message("Only the leader/officers can withdraw.", ephemeral=True)
+                return
+            try:
+                amt = int(str(self.amount.value).strip().replace(",", ""))
+            except Exception:
+                await inter.response.send_message("That's not a number.", ephemeral=True)
+                return
+            if amt <= 0 or amt > int(c["bank"] or 0):
+                await inter.response.send_message(f"Bank holds {eco_fmt(c['bank'])}.", ephemeral=True)
+                return
+            execute("UPDATE clans SET bank = bank - ? WHERE id=?", (amt, c["id"]))
+            try:
+                eco_add_cash(gid, uid, amt, earned=False)
+            except Exception:
+                execute("UPDATE players SET gold = gold + ? WHERE guild_id=? AND user_id=?", (amt, gid, uid))
+            execute("INSERT INTO clan_bank_log (guild_id, clan_id, user_id, amount, ts) VALUES (?,?,?,?,?)",
+                    (gid, c["id"], uid, -amt, int(__import__('time').time())))
+            audit_log(gid, uid, "clan_withdraw", f"{amt} from {c['name']}")
+            await inter.response.send_message(f"💸 Withdrew **{eco_fmt(amt)}**.", ephemeral=True)
+    return _M
+
+# ---------------------------------------------------------------- backpack integration (feature hub)
+def _wire_backpack():
+    inv = _g.get("InventoryView")
+    if inv is None:
+        return
+    _opts_base = inv._page_options
+
+    def _opts_wrap(self):
+        opts = _opts_base(self)
+        try:
+            if self.page == 0:
+                for val, label, emoji, desc in [
+                    ("spirit_hub", "Guardian Spirits", "👻", "Adopt, activate, release"),
+                    ("skills_hub", "Skill Trees", "🌳", "Spend skill points"),
+                    ("gather_hub", "Gathering", "⛏️", "Collect and sell materials"),
+                    ("clan_hub", "Clans", "🏰", "Shared bank and roster"),
+                    ("soul_dex", "Soul Dex", "📕", "Your boss soul collection"),
+                ]:
+                    opts.append(discord.SelectOption(label=label, value=val, emoji=emoji, description=desc))
+        except Exception:
+            pass
+        return opts
+
+    _handle_base = inv._handle_action
+
+    async def _handle_wrap(self, interaction, value):
+        if value == "spirit_hub":
+            await open_spirits_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "skills_hub":
+            await open_skills_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "gather_hub":
+            await open_gather_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "clan_hub":
+            await open_clans_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "soul_dex":
+            await open_dex_panel(interaction, self.owner, self.guild_id)
+            return
+        await _handle_base(self, interaction, value)
+
+    try:
+        inv._page_options = _opts_wrap
+        inv._handle_action = _handle_wrap
+    except Exception as e:
+        print("backpack feature hub wire:", e)
+
+try:
+    _wire_backpack()
+except Exception as e:
+    print("dex backpack wire:", e)
+
+# ---------------------------------------------------------------- admin tools
+async def open_clans_admin(interaction, guild_id):
+    clans = db.execute("SELECT * FROM clans WHERE guild_id=? ORDER BY bank DESC LIMIT 15", (guild_id,)).fetchall()
+    lines = [f"**{c['name']}** [{c['tag']}] — bank {eco_fmt(c['bank'])} (Lv {clan_level(c)})" for c in clans]
+    emb = discord.Embed(title="🏰 Clans Admin",
+        description="\n".join(lines) or "No clans yet.",
+        color=style_color(guild_id))
+    emb.add_field(name="Setting", value=f"clans_enabled: **{figet(guild_id, 'clans_enabled', 1)}**")
+    view = _AdminPickViewM25(guild_id, [("Toggle Setting", _clan_setting_modal), ("Give Bank Gold", _clan_bank_modal)])
+    await _send_panel(interaction, emb, view)
+
+def _clan_setting_modal():
+    class _M(discord.ui.Modal, title="Clan settings"):
+        settings = discord.ui.TextInput(label="key=value, ...", max_length=100, default="clans_enabled=1")
+        async def on_submit(self, inter):
+            for part in str(self.settings.value).split(","):
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    if k.strip() == "clans_enabled":
+                        try:
+                            fset(inter.guild_id, "clans_enabled", int(v.strip()))
+                        except Exception:
+                            pass
+            audit_log(inter.guild_id, inter.user.id, "clan_settings", str(self.settings.value))
+            await inter.response.send_message("Saved.", ephemeral=True)
+    return _M
+
+def _clan_bank_modal():
+    class _M(discord.ui.Modal, title="Adjust clan bank"):
+        clan_name = discord.ui.TextInput(label="Clan name", max_length=40)
+        amount = discord.ui.TextInput(label="Amount (can be negative)", max_length=10)
+        async def on_submit(self, inter):
+            c = db.execute("SELECT id FROM clans WHERE guild_id=? AND name LIKE ? LIMIT 1", (inter.guild_id, f"%{self.clan_name.value}%")).fetchone()
+            if not c:
+                await inter.response.send_message("No clan by that name.", ephemeral=True)
+                return
+            try:
+                amt = int(str(self.amount.value).strip())
+            except Exception:
+                amt = 0
+            execute("UPDATE clans SET bank = MAX(0, bank + ?) WHERE id=?", (amt, c["id"]))
+            audit_log(inter.guild_id, inter.user.id, "clan_bank_adjust", f"{self.clan_name.value}: {amt}")
+            await inter.response.send_message("Clan bank adjusted.", ephemeral=True)
+    return _M
+
+async def open_dex_admin(interaction, guild_id):
+    bosses = []
+    try:
+        bosses = get_spawnable_bosses(guild_id) or []
+    except Exception:
+        pass
+    lines = []
+    for b in bosses[:20]:
+        in_dex = figet(guild_id, "dex_boss_" + str(b["id"]), 1)
+        lines.append(f"`#{b['id']}` {b['emoji']} **{b['name']}** — {'in dex' if in_dex else 'excluded'}")
+    rewards = db.execute("SELECT * FROM dex_rewards WHERE guild_id=?", (guild_id,)).fetchall()
+    rlines = [f"`#{r['id']}` universe {r['universe_id']}: +{eco_fmt(r['gold'])}, +{r['xp']} XP" for r in rewards]
+    emb = discord.Embed(title="📕 Soul Dex Admin",
+        description="\n".join(lines) or "No bosses yet.",
+        color=style_color(guild_id))
+    emb.add_field(name="Completion rewards", value="\n".join(rlines) or "None set — all completions give nothing. Add one!", inline=False)
+    emb.add_field(name="Setting", value=f"dex_enabled: **{figet(guild_id, 'dex_enabled', 1)}**")
+    view = _AdminPickViewM25(guild_id, [("Toggle Boss In Dex", _dex_boss_modal), ("Add Set Reward", _dex_reward_modal), ("Toggle Setting", _dex_setting_modal)])
+    await _send_panel(interaction, emb, view)
+
+def _dex_boss_modal():
+    class _M(discord.ui.Modal, title="Toggle boss in dex"):
+        boss_id = discord.ui.TextInput(label="Boss ID", max_length=8)
+        state = discord.ui.TextInput(label="1 (in) or 0 (out)", max_length=2, default="1")
+        async def on_submit(self, inter):
+            try:
+                fset(inter.guild_id, f"dex_boss_{int(str(self.boss_id.value).strip())}", int(str(self.state.value).strip()))
+            except Exception:
+                await inter.response.send_message("Bad input.", ephemeral=True)
+                return
+            await inter.response.send_message("Dex updated.", ephemeral=True)
+    return _M
+
+def _dex_reward_modal():
+    class _M(discord.ui.Modal, title="Add universe completion reward"):
+        universe_id = discord.ui.TextInput(label="Universe ID (0 = default)", max_length=8, default="0")
+        rewards = discord.ui.TextInput(label="gold,xp", max_length=30, default="1000,500")
+        async def on_submit(self, inter):
+            try:
+                g, x = [int(v.strip()) for v in str(self.rewards.value).split(",")[:2]]
+            except Exception:
+                g, x = 1000, 500
+            execute("INSERT INTO dex_rewards (guild_id, universe_id, gold, xp) VALUES (?,?,?,?)",
+                    (inter.guild_id, int(str(self.universe_id.value).strip() or 0), g, x))
+            audit_log(inter.guild_id, inter.user.id, "dex_reward_add", f"uni {self.universe_id.value}")
+            await inter.response.send_message("Reward added.", ephemeral=True)
+    return _M
+
+def _dex_setting_modal():
+    class _M(discord.ui.Modal, title="Dex settings"):
+        settings = discord.ui.TextInput(label="key=value, ...", max_length=100, default="dex_enabled=1")
+        async def on_submit(self, inter):
+            for part in str(self.settings.value).split(","):
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    if k.strip() == "dex_enabled":
+                        try:
+                            fset(inter.guild_id, "dex_enabled", int(v.strip()))
+                        except Exception:
+                            pass
+            await inter.response.send_message("Saved.", ephemeral=True)
+    return _M
+
+class _AdminPickViewM25(CooldownView):
+    def __init__(self, guild_id, buttons):
+        super().__init__(timeout=300)
+        self.guild_id = guild_id
+        for label, maker in buttons[:5]:
+            btn = discord.ui.Button(label=label, style=discord.ButtonStyle.primary)
+            async def cb(inter, _maker=maker):
+                await inter.response.send_modal(_maker())
+            btn.callback = cb
+            try:
+                self.add_item(btn)
+            except Exception:
+                pass
+
+_g["open_clans_admin"] = open_clans_admin
+_g["open_dex_admin"] = open_dex_admin
+_g["open_clans_panel"] = open_clans_panel
+_g["get_clan_of"] = get_clan_of
+_g["clan_level"] = clan_level
+_g["open_dex_panel"] = open_dex_panel

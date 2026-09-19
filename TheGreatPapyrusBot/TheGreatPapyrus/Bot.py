@@ -32,6 +32,9 @@ _PARTS = [
     "m19_fun_drops.py",
     "m20_admin_qol.py",
     "m21_hooks.py",
+    "m23_pets_skills.py",
+    "m24_gathering_weather.py",
+    "m25_clans_dex.py",
     "m11_economy_run.py",
 ]
 

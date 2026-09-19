@@ -74,6 +74,11 @@ def _player_attack_power(guild_id, user_id):
         return random.randint(50, 150)
     lvl = int(p["level"] or 1) if "level" in p.keys() else 1
     atk = int(p["atk"] or 10) if "atk" in p.keys() else 10
+    try:
+        base = atk + spirit_atk_bonus(guild_id, user_id) + skill_bonus(guild_id, user_id, "atk_flat")
+        atk = max(1, int(base * (1 + skill_bonus(guild_id, user_id, "atk_pct") / 100.0)))
+    except Exception:
+        pass
     return random.randint(atk * 8, atk * 15 + lvl * 25)
 
 
