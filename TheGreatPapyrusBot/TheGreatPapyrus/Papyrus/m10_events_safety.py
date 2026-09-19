@@ -5156,6 +5156,9 @@ def setup_safety_tables():
         "ALTER TABLE safety_config ADD COLUMN wordfilter_punishment TEXT NOT NULL DEFAULT 'delete'",
         "ALTER TABLE safety_config ADD COLUMN wordfilter_botban INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE safety_config ADD COLUMN wordfilter_timeout_minutes INTEGER NOT NULL DEFAULT 10",
+        "ALTER TABLE safety_config ADD COLUMN wordfilter_ladder INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE safety_config ADD COLUMN lockdown_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE safety_config ADD COLUMN lockdown_min_account_age_days INTEGER NOT NULL DEFAULT 7",
     ):
         try:
             execute(_stmt)
@@ -5213,7 +5216,8 @@ def set_safety_field(guild_id, field, value):
         "welcome_message", "goodbye_message", "log_channel_id",
         "guard_log_enabled", "guard_log_channel_id",
         "wordfilter_enabled", "wordfilter_punishment", "wordfilter_botban",
-        "wordfilter_timeout_minutes",
+        "wordfilter_timeout_minutes", "wordfilter_ladder",
+        "lockdown_enabled", "lockdown_min_account_age_days",
     }
     if field not in allowed:
         return False
@@ -5468,6 +5472,10 @@ async def punish_guard_word(message, words):
             ban_from_bot(gid, user.id, reason=f"Papyrus Guard: {detail}")
         except Exception as e:
             print("guard botban:", e)
+    try:
+        flag_log(gid, user.id, "banned_word")
+    except Exception:
+        pass
     await send_guard_flag_report(message, "Banned Word", detail)
 
 
@@ -5483,12 +5491,46 @@ async def safety_check_message(message) -> bool:
     cfg = get_safety_config(message.guild.id)
     if not cfg:
         return False
+    # Raid lockdown: while ON, members with fresh accounts or no roles are blocked
+    try:
+        if int(cfg["lockdown_enabled"] or 0):
+            author = message.author
+            is_admin = False
+            try:
+                is_admin = is_member_bot_admin(author)
+            except Exception:
+                pass
+            if not is_admin:
+                min_age_days = max(0, int(cfg["lockdown_min_account_age_days"] or 7))
+                too_new = False
+                try:
+                    created = getattr(author, "created_at", None)
+                    if created:
+                        age_days = (discord.utils.utcnow() - created).days
+                        too_new = age_days < min_age_days
+                except Exception:
+                    pass
+                no_roles = hasattr(author, "roles") and len(getattr(author, "roles", [])) <= 1
+                if too_new or no_roles:
+                    try:
+                        await message.delete()
+                    except Exception:
+                        pass
+                    return True
+    except Exception as e:
+        print("lockdown:", e)
     # Papyrus Guard: banned words (checked first — highest priority)
     try:
         if int(cfg["wordfilter_enabled"] or 0):
             hits = message_hits_banned_words(message)
             if hits:
-                await punish_guard_word(message, hits)
+                try:
+                    if int(cfg["wordfilter_ladder"] or 0):
+                        await guard_punish_escalating(message, hits)
+                    else:
+                        await punish_guard_word(message, hits)
+                except Exception as e:
+                    print("guard punish:", e)
                 return True
     except Exception as e:
         print("guard wordfilter:", e)
@@ -5508,6 +5550,26 @@ async def safety_check_message(message) -> bool:
             except Exception:
                 pass
             await send_guard_flag_report(message, "Phishing Link", "Message looked like a phishing/scam link.")
+            # Scam sweep: delete any recent copies of this phish by the same user
+            try:
+                swept = 0
+                for ch in list(message.guild.text_channels)[:20]:
+                    try:
+                        async for old in ch.history(limit=25):
+                            if old.author.id == message.author.id and old.id != message.id:
+                                if _looks_like_phish(old.content or ""):
+                                    await old.delete()
+                                    swept += 1
+                    except Exception:
+                        continue
+                if swept:
+                    await send_guard_flag_report(message, "Scam Sweep", f"Auto-deleted {swept} more phish message(s) from the same user.")
+            except Exception as e:
+                print("scam sweep:", e)
+            try:
+                flag_log(message.guild.id, message.author.id, "phishing")
+            except Exception:
+                pass
             return True
     # anti-spam
     if int(cfg["antispam_enabled"] or 1):
@@ -5540,6 +5602,10 @@ async def safety_check_message(message) -> bool:
                 pass
             try:
                 await send_guard_flag_report(message, "Spam", f"Hit the {max_n} messages / {window}s limit.")
+            except Exception:
+                pass
+            try:
+                flag_log(message.guild.id, message.author.id, "spam")
             except Exception:
                 pass
             _SPAM_TRACK[key] = []
@@ -6492,6 +6558,19 @@ async def on_message(message: discord.Message):
         if message.guild and not message.author.bot:
             if await safety_check_message(message):
                 return
+    except Exception:
+        pass
+
+    # Fun drops (encounters / mystery boxes), market activity, daily quest progress
+    try:
+        if message.guild and not message.author.bot:
+            await fun_on_message(message)
+    except Exception:
+        pass
+    try:
+        if message.guild and not message.author.bot:
+            market_activity(message.guild.id, 1)
+            quest_progress(message.guild.id, message.author.id, "messages", 1)
     except Exception:
         pass
 

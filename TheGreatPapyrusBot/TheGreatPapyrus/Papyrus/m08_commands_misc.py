@@ -5519,6 +5519,8 @@ class AdminPanelView(CooldownView):
                     emoji="🔔",
                     description="Role players self-assign via /update",
                 ),
+                discord.SelectOption(label="Scheduled Announcements", value="scheduler", emoji="📣", description="Post a message at a future time"),
+                discord.SelectOption(label="Bot Dashboard", value="dashboard", emoji="📈", description="Uptime, usage stats, top commands"),
             ]
         if p == 1:  # Tools / Kills
             return [
@@ -5550,6 +5552,7 @@ class AdminPanelView(CooldownView):
                 discord.SelectOption(label="Level XP", value="level_xp", emoji="⭐"),
                 discord.SelectOption(label="Shop", value="shop", emoji="🛒"),
                 discord.SelectOption(label="Manage Codes", value="codes", emoji="🔑"),
+                discord.SelectOption(label="World Boss", value="worldboss", emoji="🐲", description="Spawn the weekly server boss"),
             ]
         if p == 5:  # Seasons+ content pack
             return [
@@ -5576,6 +5579,7 @@ class AdminPanelView(CooldownView):
                 discord.SelectOption(label="Give / Take", value="econ_give", emoji="💸"),
                 discord.SelectOption(label="Toggle On/Off", value="econ_toggle", emoji="🔁"),
                 discord.SelectOption(label="Hazel Persona", value="econ_persona", emoji="🎭", description="Name, gender, talk style, pfp"),
+                discord.SelectOption(label="Server Treasury", value="econ_treasury", emoji="🏦", description="Raked cash — spend on events"),
             ]
         if p == 7:  # Papyrus+
             return [
@@ -5599,6 +5603,10 @@ class AdminPanelView(CooldownView):
                 discord.SelectOption(label="Anti-Phish", value="safe_antiphish", emoji="🎣", description="Block scam/phishing links"),
                 discord.SelectOption(label="Guard Reports", value="safe_guardlog", emoji="🚨", description="Where flagged messages get reported"),
                 discord.SelectOption(label="Guard Banned Words", value="safe_guardwords", emoji="🚫", description="Word list + punishment + bot-ban"),
+                discord.SelectOption(label="Guard Analytics", value="guardstats", emoji="📊", description="Flag stats & top offenders"),
+                discord.SelectOption(label="Guard Settings", value="guardsettings", emoji="🎛️", description="Escalation ladder + audit log"),
+                discord.SelectOption(label="Raid Lockdown", value="lockdown", emoji="🚨", description="Panic mode during raids"),
+                discord.SelectOption(label="Random Drops", value="fundrops", emoji="🎁", description="Encounters & mystery boxes"),
                 discord.SelectOption(label="Auto Roles", value="safe_autorole", emoji="🎭", description="Roles given on join"),
                 discord.SelectOption(label="Welcome", value="safe_welcome", emoji="👋", description="Welcome channel + message"),
                 discord.SelectOption(label="Goodbye", value="safe_goodbye", emoji="🚪", description="Leave channel + message"),
@@ -5763,6 +5771,30 @@ class AdminPanelView(CooldownView):
             return
         if value.startswith("safe_"):
             await open_safety_admin(interaction, self.guild_id, value.replace("safe_", "") or "hub")
+            return
+        if value == "worldboss":
+            await open_worldboss_admin(interaction, self.guild_id)
+            return
+        if value == "guardstats":
+            await open_guard_analytics(interaction, self.guild_id)
+            return
+        if value == "guardsettings":
+            await open_guard_settings(interaction, self.guild_id)
+            return
+        if value == "lockdown":
+            await open_lockdown_admin(interaction, self.guild_id)
+            return
+        if value == "fundrops":
+            await open_fun_drops_admin(interaction, self.guild_id)
+            return
+        if value == "scheduler":
+            await open_scheduler_admin(interaction, self.guild_id)
+            return
+        if value == "dashboard":
+            await open_dashboard_admin(interaction, self.guild_id)
+            return
+        if value == "econ_treasury":
+            await open_treasury_admin(interaction, self.guild_id)
             return
         if value == "style_pack":
             pack = get_style_pack(self.guild_id)
