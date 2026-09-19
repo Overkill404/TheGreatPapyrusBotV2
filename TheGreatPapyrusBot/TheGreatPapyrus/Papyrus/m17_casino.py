@@ -137,7 +137,7 @@ class BlackjackView(CooldownView):
         self.stop()
         rake = 0
         if self.bet > payout:
-            rake = int((self.bet - payout) * TREASURY_RAKE)
+            rake = int((self.bet - payout) * figet(self.guild_id, "bj_rake_pct", 5) / 100.0)
             treasury_add(self.guild_id, rake)
         try:
             await inter.response.edit_message(embed=self._board_embed(hide_hole=False, result=result), view=None)
@@ -193,12 +193,15 @@ async def blackjack_cmd(interaction: discord.Interaction, bet: int):
         await interaction.response.send_message("Server only.", ephemeral=True)
         return
     gid, uid = interaction.guild.id, interaction.user.id
+    if not figet(gid, "casino_enabled", 1):
+        await interaction.response.send_message("The casino is turned off here.", ephemeral=True)
+        return
     if uid in _active_blackjack:
         await interaction.response.send_message("Finish your current hand first!", ephemeral=True)
         return
     bet = int(bet)
-    if bet < 10:
-        await interaction.response.send_message("Minimum bet is **10**.", ephemeral=True)
+    if bet < figet(gid, "bj_min_bet", 10):
+        await interaction.response.send_message(f"Minimum bet is **{figet(gid, 'bj_min_bet', 10)}**.", ephemeral=True)
         return
     cash = int(get_eco_balance(gid, uid)["cash"] or 0)
     if cash < bet:
@@ -283,6 +286,7 @@ async def open_treasury_admin(interaction, guild_id):
     v.add_item(b_spend)
     await interaction.followup.send(
         f"**🏦 Server Treasury** — balance: {cur} **{bal:,}**\n"
-        f"Fed by a {int(TREASURY_RAKE*100)}% rake on blackjack losses and player-shop sales.",
+        f"Fed by the configured rake on blackjack losses, PvP bets and player-shop sales. "
+        f"Casino & betting rakes are set in their own tools on the Economy page.",
         view=v, ephemeral=True,
     )

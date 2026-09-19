@@ -112,6 +112,9 @@ async def stocks_cmd(interaction: discord.Interaction, action: str = "view", sym
         await interaction.response.send_message("Server only.", ephemeral=True)
         return
     gid, uid = interaction.guild.id, interaction.user.id
+    if not figet(gid, "stocks_enabled", 1):
+        await interaction.response.send_message("The stock market is turned off here.", ephemeral=True)
+        return
     _ensure_stocks(gid)
     action = action.lower()
     symbol = symbol.strip().upper()
@@ -154,7 +157,8 @@ async def stocks_cmd(interaction: discord.Interaction, action: str = "view", sym
                  cost_basis = cost_basis + excluded.cost_basis""",
             (gid, uid, symbol, shares, float(cost)),
         )
-        treasury_add(gid, int(cost * 0.01))
+        fee_pct = figet(gid, "stocks_fee_pct", 1)
+        treasury_add(gid, int(cost * fee_pct / 100.0))
         await interaction.response.send_message(
             f"📈 Bought **{shares}** share(s) of `{symbol}` at {price:,.2f} — total {eco_fmt(gid, cost)}.",
             ephemeral=True,

@@ -5553,6 +5553,7 @@ class AdminPanelView(CooldownView):
                 discord.SelectOption(label="Shop", value="shop", emoji="🛒"),
                 discord.SelectOption(label="Manage Codes", value="codes", emoji="🔑"),
                 discord.SelectOption(label="World Boss", value="worldboss", emoji="🐲", description="Spawn the weekly server boss"),
+                discord.SelectOption(label="Daily Quests", value="quests_admin", emoji="📋", description="Rewards, streak bonus, on/off"),
             ]
         if p == 5:  # Seasons+ content pack
             return [
@@ -5580,6 +5581,9 @@ class AdminPanelView(CooldownView):
                 discord.SelectOption(label="Toggle On/Off", value="econ_toggle", emoji="🔁"),
                 discord.SelectOption(label="Hazel Persona", value="econ_persona", emoji="🎭", description="Name, gender, talk style, pfp"),
                 discord.SelectOption(label="Server Treasury", value="econ_treasury", emoji="🏦", description="Raked cash — spend on events"),
+                discord.SelectOption(label="Casino / Blackjack", value="casino", emoji="🃏", description="Min bet, rake, on/off"),
+                discord.SelectOption(label="Stock Market", value="stockmkt", emoji="📈", description="Buy fee, on/off"),
+                discord.SelectOption(label="PvP Betting", value="pvpbets", emoji="🎲", description="Min bet, rake, on/off"),
             ]
         if p == 7:  # Papyrus+
             return [
@@ -5774,6 +5778,18 @@ class AdminPanelView(CooldownView):
             return
         if value == "worldboss":
             await open_worldboss_admin(interaction, self.guild_id)
+            return
+        if value == "quests_admin":
+            await open_quests_admin(interaction, self.guild_id)
+            return
+        if value == "casino":
+            await open_casino_admin(interaction, self.guild_id)
+            return
+        if value == "stockmkt":
+            await open_stocks_admin(interaction, self.guild_id)
+            return
+        if value == "pvpbets":
+            await open_betting_admin(interaction, self.guild_id)
             return
         if value == "guardstats":
             await open_guard_analytics(interaction, self.guild_id)

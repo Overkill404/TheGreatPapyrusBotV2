@@ -502,6 +502,255 @@ bot.tree.command(name="cookinglb", description="Seasonal spaghetti cooking leade
 
 
 # ============================================================
+# FEATURE SETTINGS STORE — lets admins tune every new feature
+# ============================================================
+
+def _setup_feature_settings():
+    try:
+        execute("""
+            CREATE TABLE IF NOT EXISTS feature_settings (
+                guild_id INTEGER NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (guild_id, key)
+            )
+        """)
+    except Exception as e:
+        print("feature_settings:", e)
+
+try:
+    _setup_feature_settings()
+except Exception as _e:
+    print("m20 feature settings:", _e)
+
+
+def fget(guild_id, key, default=""):
+    """Read a per-guild feature setting (string or default)."""
+    try:
+        row = db.execute(
+            "SELECT value FROM feature_settings WHERE guild_id = ? AND key = ?",
+            (int(guild_id), str(key)),
+        ).fetchone()
+        return row["value"] if row and row["value"] != "" else default
+    except Exception:
+        return default
+
+
+def figet(guild_id, key, default=0):
+    """Read a feature setting as an int."""
+    try:
+        return int(float(fget(guild_id, key, default)))
+    except Exception:
+        return int(default)
+
+
+def fset(guild_id, key, value):
+    _setup_feature_settings()
+    execute(
+        """INSERT INTO feature_settings (guild_id, key, value) VALUES (?, ?, ?)
+           ON CONFLICT(guild_id, key) DO UPDATE SET value = excluded.value""",
+        (int(guild_id), str(key), str(value)),
+    )
+
+
+def _make_num_modal(title, label, current, on_submit):
+    """Build a one-number modal with a callback receiving (inter, value:int)."""
+    class _NumModal(discord.ui.Modal, title=title[:45]):
+        val = discord.ui.TextInput(label=label[:45], default=str(current), max_length=12)
+
+        async def on_submit(self, inter):
+            try:
+                n = int(float(str(self.val.value).strip().replace(",", "")))
+            except Exception:
+                await inter.response.send_message("That's not a number.", ephemeral=True)
+                return
+            await on_submit(inter, n)
+
+    return _NumModal
+
+
+# ============================================================
+# ADMIN TOOLS — per-feature settings
+# ============================================================
+
+async def open_quests_admin(interaction, guild_id):
+    """Daily quests: toggle + reward tuning."""
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+    except Exception:
+        pass
+    on = figet(guild_id, "quests_enabled", 1) == 1
+    gold = figet(guild_id, "quest_gold", 150)
+    xp = figet(guild_id, "quest_xp", 60)
+    streak = figet(guild_id, "quest_streak_bonus", 1000)
+    v = CooldownView(timeout=120)
+
+    b_on = discord.ui.Button(label=f"Daily Quests: {'ON' if on else 'OFF'}",
+                             style=discord.ButtonStyle.success if on else discord.ButtonStyle.danger, emoji="📋")
+
+    async def on_cb(inter):
+        new = 0 if figet(guild_id, "quests_enabled", 1) else 1
+        fset(guild_id, "quests_enabled", new)
+        await inter.response.send_message(f"📋 Daily quests **{'ON' if new else 'OFF'}**.", ephemeral=True)
+
+    b_on.callback = on_cb
+    v.add_item(b_on)
+
+    for label, key, cur in [("Quest Gold Reward", "quest_gold", gold),
+                            ("Quest XP Reward", "quest_xp", xp),
+                            ("7-Day Streak Bonus Gold", "quest_streak_bonus", streak)]:
+        b = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, emoji="🔧")
+
+        def mkcb2(k, c):
+            async def cb(inter):
+                async def apply(i, n):
+                    fset(guild_id, k, n)
+                    audit_log(guild_id, i.user.id, "quests_setting", f"{k} = {n}")
+                    await i.response.send_message(f"✅ `{k}` set to **{n}**", ephemeral=True)
+                await inter.response.send_modal(_make_num_modal("Set reward", f"New value for {k}", c, apply))
+            return cb
+
+        b.callback = mkcb2(key, cur)
+        v.add_item(b)
+
+    await interaction.followup.send(
+        f"**📋 Daily Quests** — **{'ON' if on else 'OFF'}**\n"
+        f"Reward per quest: **{gold:,}** gold · **{xp}** XP · 7-day streak bonus: **{streak:,}** gold",
+        view=v, ephemeral=True,
+    )
+
+
+async def open_casino_admin(interaction, guild_id):
+    """Blackjack & casino settings."""
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+    except Exception:
+        pass
+    on = figet(guild_id, "casino_enabled", 1) == 1
+    min_bet = figet(guild_id, "bj_min_bet", 10)
+    rake = figet(guild_id, "bj_rake_pct", 5)
+    v = CooldownView(timeout=120)
+
+    b_on = discord.ui.Button(label=f"Blackjack: {'ON' if on else 'OFF'}",
+                             style=discord.ButtonStyle.success if on else discord.ButtonStyle.danger, emoji="🃏")
+
+    async def on_cb(inter):
+        new = 0 if figet(guild_id, "casino_enabled", 1) else 1
+        fset(guild_id, "casino_enabled", new)
+        await inter.response.send_message(f"🃏 Blackjack **{'ON' if new else 'OFF'}**.", ephemeral=True)
+
+    b_on.callback = on_cb
+    v.add_item(b_on)
+
+    for label, key, cur in [("Minimum Bet", "bj_min_bet", min_bet), ("Rake % (to treasury)", "bj_rake_pct", rake)]:
+        b = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, emoji="🔧")
+
+        def mkcb2(k, c):
+            async def cb(inter):
+                async def apply(i, n):
+                    fset(guild_id, k, n)
+                    audit_log(guild_id, i.user.id, "casino_setting", f"{k} = {n}")
+                    await i.response.send_message(f"✅ `{k}` set to **{n}**", ephemeral=True)
+                await inter.response.send_modal(_make_num_modal("Casino setting", f"New value for {k}", c, apply))
+            return cb
+
+        b.callback = mkcb2(key, cur)
+        v.add_item(b)
+
+    await interaction.followup.send(
+        f"**🃏 Casino** — **{'ON' if on else 'OFF'}** · min bet **{min_bet:,}** · rake **{rake}%** of losses → treasury",
+        view=v, ephemeral=True,
+    )
+
+
+async def open_stocks_admin(interaction, guild_id):
+    """Stock market settings."""
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+    except Exception:
+        pass
+    on = figet(guild_id, "stocks_enabled", 1) == 1
+    fee = figet(guild_id, "stocks_fee_pct", 1)
+    v = CooldownView(timeout=120)
+
+    b_on = discord.ui.Button(label=f"Stock Market: {'ON' if on else 'OFF'}",
+                             style=discord.ButtonStyle.success if on else discord.ButtonStyle.danger, emoji="📈")
+
+    async def on_cb(inter):
+        new = 0 if figet(guild_id, "stocks_enabled", 1) else 1
+        fset(guild_id, "stocks_enabled", new)
+        await inter.response.send_message(f"📈 Stock market **{'ON' if new else 'OFF'}**.", ephemeral=True)
+
+    b_on.callback = on_cb
+    v.add_item(b_on)
+
+    b_fee = discord.ui.Button(label="Buy Fee % (to treasury)", style=discord.ButtonStyle.secondary, emoji="🔧")
+
+    async def fee_cb(inter):
+        async def apply(i, n):
+            fset(guild_id, "stocks_fee_pct", n)
+            audit_log(guild_id, i.user.id, "stocks_setting", f"fee = {n}%")
+            await i.response.send_message(f"✅ Buy fee set to **{n}%**", ephemeral=True)
+        await inter.response.send_modal(_make_num_modal("Stock buy fee", "Percent (0-25)", fee, apply))
+
+    b_fee.callback = fee_cb
+    v.add_item(b_fee)
+    await interaction.followup.send(
+        f"**📈 Underground Stock Exchange** — **{'ON' if on else 'OFF'}** · buy fee **{fee}%** → treasury\n"
+        "Prices drift with chat activity (+ every 10 minutes automatically).",
+        view=v, ephemeral=True,
+    )
+
+
+async def open_betting_admin(interaction, guild_id):
+    """PvP spectator betting settings."""
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+    except Exception:
+        pass
+    on = figet(guild_id, "pvp_betting_enabled", 1) == 1
+    min_bet = figet(guild_id, "bet_min", 10)
+    rake = figet(guild_id, "bet_rake_pct", 5)
+    v = CooldownView(timeout=120)
+
+    b_on = discord.ui.Button(label=f"PvP Betting: {'ON' if on else 'OFF'}",
+                             style=discord.ButtonStyle.success if on else discord.ButtonStyle.danger, emoji="🎲")
+
+    async def on_cb(inter):
+        new = 0 if figet(guild_id, "pvp_betting_enabled", 1) else 1
+        fset(guild_id, "pvp_betting_enabled", new)
+        await inter.response.send_message(f"🎲 PvP betting **{'ON' if new else 'OFF'}**.", ephemeral=True)
+
+    b_on.callback = on_cb
+    v.add_item(b_on)
+
+    for label, key, cur in [("Minimum Bet", "bet_min", min_bet), ("Rake % (to treasury)", "bet_rake_pct", rake)]:
+        b = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, emoji="🔧")
+
+        def mkcb2(k, c):
+            async def cb(inter):
+                async def apply(i, n):
+                    fset(guild_id, k, n)
+                    audit_log(guild_id, i.user.id, "betting_setting", f"{k} = {n}")
+                    await i.response.send_message(f"✅ `{k}` set to **{n}**", ephemeral=True)
+                await inter.response.send_modal(_make_num_modal("Betting setting", f"New value for {k}", c, apply))
+            return cb
+
+        b.callback = mkcb2(key, cur)
+        v.add_item(b)
+
+    await interaction.followup.send(
+        f"**🎲 PvP Betting** — **{'ON' if on else 'OFF'}** · min bet **{min_bet:,}** · rake **{rake}%** → treasury\n"
+        "Spectators bet with `/betpvp` while a match runs.",
+        view=v, ephemeral=True,
+    )
+
+
+# ============================================================
 # BOT-BAN APPEALS
 # ============================================================
 

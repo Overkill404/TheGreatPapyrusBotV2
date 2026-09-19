@@ -164,8 +164,10 @@ class _BetSideSelect(discord.ui.Select):
                 except Exception:
                     await inter.response.send_message("Not a number.", ephemeral=True)
                     return
-                if amt < 10:
-                    await inter.response.send_message("Minimum bet is **10**.", ephemeral=True)
+                if amt < figet(inter.guild_id, "bet_min", 10):
+                    await inter.response.send_message(
+                        f"Minimum bet is **{figet(inter.guild_id, 'bet_min', 10)}**.", ephemeral=True
+                    )
                     return
                 cash = int(get_eco_balance(inter.guild_id, inter.user.id)["cash"] or 0)
                 if cash < amt:
@@ -217,7 +219,8 @@ async def finish_pvp(interaction, battle, winner=None):
                     losers.append(r)
                     pot_lose += int(r["amount"])
             if winners:
-                rake = int(pot_lose * 0.05)
+                rake_pct = figet(battle.guild_id, "bet_rake_pct", 5)
+                rake = int(pot_lose * rake_pct / 100.0)
                 treasury_add(battle.guild_id, rake)
                 payout_pool = pot_lose - rake
                 for r in winners:
@@ -259,6 +262,9 @@ async def finish_pvp(interaction, battle, winner=None):
 async def betpvp_cmd(interaction: discord.Interaction):
     if not interaction.guild:
         await interaction.response.send_message("Server only.", ephemeral=True)
+        return
+    if not figet(interaction.guild.id, "pvp_betting_enabled", 1):
+        await interaction.response.send_message("PvP betting is turned off here.", ephemeral=True)
         return
     live = [b for b in _LIVE_BATTLES if b.guild_id == interaction.guild.id and not b.finished]
     if not live:

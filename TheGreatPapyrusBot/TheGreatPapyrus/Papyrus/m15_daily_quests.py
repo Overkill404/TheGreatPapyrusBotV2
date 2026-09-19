@@ -121,6 +121,9 @@ async def quest_cmd(interaction: discord.Interaction):
         await interaction.response.send_message("Server only.", ephemeral=True)
         return
     gid, uid = interaction.guild.id, interaction.user.id
+    if not figet(gid, "quests_enabled", 1):
+        await interaction.response.send_message("Daily quests are turned off here.", ephemeral=True)
+        return
     if not get_player(gid, uid):
         await interaction.response.send_message("Create your character with `/start` first.", ephemeral=True)
         return
@@ -149,7 +152,7 @@ async def quest_cmd(interaction: discord.Interaction):
     emb.add_field(name="🔥 Streak", value=f"**{streak}** days (best: {best})", inline=True)
     emb.add_field(
         name="🎁 Reward per quest",
-        value=f"{QUEST_REWARD_GOLD:,} gold · {QUEST_REWARD_XP} XP",
+        value=f"{figet(gid, 'quest_gold', 150):,} gold · {figet(gid, 'quest_xp', 60)} XP",
         inline=True,
     )
     if all_done:
@@ -183,21 +186,24 @@ async def quest_cmd(interaction: discord.Interaction):
             if prev["last_claim_date"] == yesterday:
                 n_streak = int(prev["streak"] or 0) + 1
         best_n = max(n_streak, int(prev["best_streak"] or 0)) if prev else n_streak
+        bonus_gold = figet(gid, "quest_streak_bonus", 1000)
         bonus = ""
-        if n_streak % STREAK_BONUS_AT == 0:
+        if n_streak % STREAK_BONUS_AT == 0 and bonus_gold > 0:
             execute("UPDATE players SET gold = gold + ? WHERE guild_id = ? AND user_id = ?",
-                    (STREAK_BONUS_GOLD, gid, uid))
-            bonus = f"\n🎉 **{n_streak}-day streak bonus: +{STREAK_BONUS_GOLD:,} gold!**"
+                    (bonus_gold, gid, uid))
+            bonus = f"\n🎉 **{n_streak}-day streak bonus: +{bonus_gold:,} gold!**"
         execute(
             """UPDATE daily_quests SET quests = ?, streak = ?, best_streak = ?, last_claim_date = ?
                WHERE guild_id = ? AND user_id = ?""",
             (json.dumps(quests_now), n_streak, best_n, _today(), gid, uid),
         )
+        claim_gold = figet(gid, "quest_gold", 150) * 3
+        claim_xp = figet(gid, "quest_xp", 60) * 3
         execute("UPDATE players SET gold = gold + ? WHERE guild_id = ? AND user_id = ?",
-                (QUEST_REWARD_GOLD * 3, gid, uid))
-        add_xp(gid, uid, QUEST_REWARD_XP * 3)
+                (claim_gold, gid, uid))
+        add_xp(gid, uid, claim_xp)
         await inter.response.send_message(
-            f"🎁 Claimed all 3 quests: **+{QUEST_REWARD_GOLD * 3:,} gold**, **+{QUEST_REWARD_XP * 3} XP**. "
+            f"🎁 Claimed all 3 quests: **+{claim_gold:,} gold**, **+{claim_xp} XP**. "
             f"Streak: **{n_streak}** days!{bonus}",
             ephemeral=True,
         )

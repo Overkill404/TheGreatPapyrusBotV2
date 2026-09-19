@@ -81,7 +81,7 @@ def spawn_world_boss(guild_id, name=None, emoji=None, hp=None, spawned_by=0, aut
     _setup_tables()
     if not name:
         name, emoji = random.choice(WORLD_BOSS_NAMES)
-    hp = int(hp or BOSS_BASE_HP)
+    hp = int(hp or figet(guild_id, "worldboss_base_hp", BOSS_BASE_HP))
     execute(
         """INSERT INTO world_boss (guild_id, name, max_hp, current_hp, spawned_at, spawned_by, auto_weekly)
            VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -149,6 +149,9 @@ async def worldboss_cmd(interaction: discord.Interaction):
         await interaction.response.send_message("Server only.", ephemeral=True)
         return
     gid, uid = interaction.guild.id, interaction.user.id
+    if not figet(gid, "worldboss_enabled", 1):
+        await interaction.response.send_message("The world boss is turned off here.", ephemeral=True)
+        return
     boss = get_world_boss(gid)
     if not boss:
         await interaction.response.send_message(
@@ -162,12 +165,13 @@ async def worldboss_cmd(interaction: discord.Interaction):
         return
 
     # cooldown check
+    attack_cd = max(5, figet(gid, "worldboss_attack_cd", ATTACK_COOLDOWN))
     last = db.execute(
         "SELECT last_hit FROM world_boss_damage WHERE guild_id = ? AND user_id = ?",
         (gid, uid),
     ).fetchone()
-    if last and time.time() - (last["last_hit"] or 0) < ATTACK_COOLDOWN:
-        remain = int(ATTACK_COOLDOWN - (time.time() - last["last_hit"]))
+    if last and time.time() - (last["last_hit"] or 0) < attack_cd:
+        remain = int(attack_cd - (time.time() - last["last_hit"]))
         await interaction.response.send_message(f"⏳ Your hands are tired — attack again in **{remain}s**.", ephemeral=True)
         return
 
@@ -217,7 +221,7 @@ async def worldboss_cmd(interaction: discord.Interaction):
         "SELECT damage, hits FROM world_boss_damage WHERE guild_id = ? AND user_id = ?", (gid, uid)
     ).fetchone()
     if my:
-        emb.set_footer(text=f"Your total: {int(my['damage']):,} damage in {int(my['hits'])} hits · next attack in {ATTACK_COOLDOWN}s")
+        emb.set_footer(text=f"Your total: {int(my['damage']):,} damage in {int(my['hits'])} hits · next attack in {attack_cd}s")
     await interaction.response.send_message(embed=emb)
 
 
@@ -272,11 +276,27 @@ async def open_worldboss_admin(interaction, guild_id):
     b_auto.callback = auto_cb
     v.add_item(b_auto)
 
+    for label, key, cur in [("Boss Base HP", "worldboss_base_hp", figet(guild_id, "worldboss_base_hp", BOSS_BASE_HP)),
+                            ("Attack Cooldown (s)", "worldboss_attack_cd", figet(guild_id, "worldboss_attack_cd", ATTACK_COOLDOWN))]:
+        b = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, emoji="🔧")
+
+        def mkcb2(k, c):
+            async def cb(inter):
+                async def apply(i, n):
+                    fset(guild_id, k, n)
+                    audit_log(guild_id, i.user.id, "worldboss_setting", f"{k} = {n}")
+                    await i.response.send_message(f"✅ `{k}` set to **{n}** (applies to the next boss)", ephemeral=True)
+                await inter.response.send_modal(_make_num_modal("World boss setting", f"New value for {k}", c, apply))
+            return cb
+
+        b.callback = mkcb2(key, cur)
+        v.add_item(b)
+
     status = "none active" if not boss or int(boss["current_hp"] or 0) <= 0 else (
         f"**{boss['name']}** at {int(boss['current_hp']):,}/{int(boss['max_hp']):,} HP"
     )
     await interaction.followup.send(
         f"**🐲 World Boss**\nCurrent: {status}\n"
-        "Players attack with `/worldboss` (60s cooldown). Top damagers get the biggest loot.",
+        f"Players attack with `/worldboss`. Top damagers get the biggest loot.",
         view=v, ephemeral=True,
     )

@@ -234,9 +234,30 @@ async def open_fun_drops_admin(interaction, guild_id):
 
     b_en.callback = en_cb
     v.add_item(b_en)
+
+    for label, key, cur in [("Encounter Chance %", "encounter_pct", int(cfg["encounter_pct"] or 1)),
+                            ("Mystery Box Chance %", "box_pct", int(cfg["box_pct"] or 1))]:
+        b = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, emoji="🔧")
+
+        def mkcb2(k, c):
+            async def cb(inter):
+                async def apply(i, n):
+                    if 0 <= n <= 50:
+                        set_fun_field(guild_id, k, n)
+                        audit_log(guild_id, i.user.id, "fundrops_setting", f"{k} = {n}")
+                        await i.response.send_message(f"✅ `{k}` set to **{n}%**", ephemeral=True)
+                    else:
+                        await i.response.send_message("Keep it between 0 and 50%.", ephemeral=True)
+                await inter.response.send_modal(_make_num_modal("Drop chance", f"New value for {k}", c, apply))
+            return cb
+
+        b.callback = mkcb2(key, cur)
+        v.add_item(b)
+
     await interaction.followup.send(
         f"**🎁 Random Drops** — {'ON' if en else 'OFF'} · channel: "
         f"{('<#' + str(cfg['channel_id']) + '>') if int(cfg['channel_id'] or 0) else '*not set*'}\n"
-        "Encounter chance: 1% per message · Mystery box: 1% (max one drop per channel per 5 min).",
+        f"Encounter chance: **{int(cfg['encounter_pct'] or 1)}%** per message · Mystery box: **{int(cfg['box_pct'] or 1)}%** "
+        "(max one drop per channel per 5 min).",
         view=v, ephemeral=True,
     )
