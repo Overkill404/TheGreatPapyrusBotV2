@@ -3979,7 +3979,7 @@ class BotBanUserSelect(discord.ui.UserSelect):
                 await interaction.response.send_message(CREATOR_PROTECTED_MSG, ephemeral=True)
                 return
             await interaction.response.send_message(
-                f"🚫 **{user.mention}** is banned from this bot.\\n"
+                f"🚫 **{user.mention}** is banned from this bot.\n"
                 f"They cannot use commands and the bot will not respond to them.",
                 ephemeral=True,
             )
@@ -5333,45 +5333,77 @@ def build_admin_panel_embed(guild_id, page: int = 0):
     blurbs = {
         0: (
             "**Welcome, Admin.**\n"
-            "Use **◀ ▶** to flip pages (**9** total).\n\n"
-            "📖 Catalog · 🔄 Refresh · 📢 Channel · Character Tools · 🎭 Style · 📊 Poll · 🔔 Update Role"
+            "Use **◀ ▶** to flip pages (**9** total), or the dropdown to open a tool.\n\n"
+            "📖 **Catalog** — browse every item, boss, and gear in this server\n"
+            "🔄 **Refresh** — rebuild this panel with fresh data\n"
+            "📢 **Announcement Channels** — pick where bot announcements post\n"
+            "🎮 **RPG Channel** — set the main RPG play channel\n"
+            "🍗 **Character Tools** — edit Error Sans / Hazel persona\n"
+            "🎭 **Style** — Hazel (nugget) or Error Sans skin\n"
+            "📊 **Poll** — create a poll · 🔔 **Update Role** — self-assign role"
         ),
         1: (
-            "**Tools** — kills & roles\n"
-            "☠️ Kill LB · ✏️ Edit Kills · 🏅 Kill Roles · ⚔️ Boss Role Buffs"
+            "**Tools** — kill tracking & role rewards\n\n"
+            "☠️ **Kill Leaderboard** — view/edit the boss-kill leaderboard\n"
+            "✏️ **Edit Kills** — manually adjust a player's kill count\n"
+            "🏅 **Kill Roles** — roles granted at kill milestones\n"
+            "⚔️ **Boss Role Buffs** — stat bonuses tied to boss roles"
         ),
         2: (
-            "**Players & progression**\n"
-            "👤 Players · 🔨 Ban · ✨ Rebirth · 🌟 Ascend"
+            "**Players** — people & progression\n\n"
+            "👤 **Players** — search and inspect any player\n"
+            "🔨 **Ban** — ban/unban someone from using the bot\n"
+            "✨ **Rebirth** — grant or reset prestige\n"
+            "🌟 **Ascend** — manage ascension & universes"
         ),
         3: (
-            "**Content** — gear, bosses, fight mults\n"
-            "🎒 Equipment · 🎁 Loot · 👑 Bosses · 😈 Ragebait · 💢 Enrage · 🗣️ Taunt"
+            "**Content** — the gear and fight tuning\n\n"
+            "🎒 **Equipment** — create/edit gear pieces\n"
+            "🎁 **Loot** — drop tables and rewards\n"
+            "👑 **Bosses** — boss stats, HP, rewards\n"
+            "😈 **Ragebait** · 💢 **Enrage** · 💬 **Taunt** — boss behavior multipliers"
         ),
         4: (
-            "**World** — maps & shops\n"
-            "🗺️ Levels · 🌌 Universe · ⭐ Level XP · 🛒 Shop · 🔑 Codes"
+            "**World** — maps, shops and unlocks\n\n"
+            "🗺️ **Levels** — area/level layout\n"
+            "🌌 **Universe** — universe switching\n"
+            "⭐ **Level XP** — XP curve per level\n"
+            "🛒 **Shop** — server shop items · 🔑 **Codes** — redeem codes"
         ),
         5: (
-            "**Seasons+**\n"
-            "🗓️ Seasons · 👥 Party Roles · ⚖️ Court · 📖 Codex · 👻 Souls\n"
-            "🎯 Bounties · 🏢 Apartments · 💜 Hazel Relationship · 🏁 Gauntlets"
+            "**Seasons+** — seasonal content pack\n\n"
+            "🗓️ **Seasons** · 👥 **Party Roles** · ⚖️ **Court** · 📖 **Memory Codex**\n"
+            "👻 **Soul Paths** · 🎯 **Bounties/Events** · 🏢 **Apartments**\n"
+            "💜 **Hazel Relationship** · 🏁 **Gauntlets**\n"
+            "Each one opens its own editor in the dropdown."
         ),
         6: (
-            "**Economy+** (separate from RPG gold)\n"
-            "💰 Hub · 📢 Channel · 🪙 Currency · ⚙️ Rates · 🛒 Shop · 🗓️ Season\n"
-            "🎟️ Lottery · 💸 Give/Take · ⏻ Toggle · 🎭 Hazel Persona"
+            "**Economy+** — the cash economy (separate from RPG gold)\n\n"
+            "💰 **Hub** — overview · 📢 **Channel** — where economy posts go\n"
+            "🪙 **Currency** — name/symbol · ⚙️ **Rates** — earn rates\n"
+            "🛒 **Shop Add / List** — items for sale · 🗓️ **Season**\n"
+            "🎟️ **Lottery** · 💸 **Give/Take** · ⏻ **Toggle** · 🎭 **Hazel Persona**"
         ),
         7: (
-            "**Papyrus+** — Papyrus feature controls\n"
-            "🦴 Guard · 💜 Friendship · 🧩 Puzzle · 🍝 Kitchen · 🏁 Gauntlet\n"
-            "🧵 Jail · 🦴 Train · 💥 Special · 📡 Undernet · ⚖️ Route\n"
-            "🎒 Backpack · Use dropdown to edit each system."
+            "**Papyrus+** — feature controls for the Papyrus systems\n\n"
+            "🦴 **Royal Guard** — ranks, points, channel, bonuses\n"
+            "💜 **Friendship** — relationship ranks\n"
+            "🧩 **Puzzle** · 🍝 **Kitchen** · 🏁 **Gauntlet** — minigames\n"
+            "🧵 **Jail** · 🦴 **Training** · 💥 **Special Attack**\n"
+            "📡 **Undernet** · ⚖️ **Pacifist/Genocide** · 🎒 **Backpack**\n"
+            "Use the dropdown to edit each system."
         ),
         8: (
-            "**Safety**\n"
-            "🔇 Anti-Spam · 🛡️ Anti-Raid · 🎣 Anti-Phish · 🎭 Auto Roles\n"
-            "👋 Welcome · 🚪 Goodbye · 📋 Safety Hub"
+            "**Safety** — moderation & server protection\n\n"
+            "🚨 **Guard Reports** — pick the channel that gets a report every time "
+            "the Guard flags a message: shows the flagged text/image/GIF, the user's "
+            "**username + ID**, and the **server + ID** — everything you need to ban them\n"
+            "🚫 **Guard Banned Words** — build your banned word list, choose the "
+            "punishment (delete / timeout / kick / ban), and optionally auto-**bot-ban** "
+            "offenders so they can never use the bot again\n"
+            "🔇 **Anti-Spam** — rate-limit rapid messages\n"
+            "🛡️ **Anti-Raid** — block join floods · 🎣 **Anti-Phish** — block scam links\n"
+            "🎭 **Auto Roles** · 👋 **Welcome** · 🚪 **Goodbye** · 📋 **Safety Hub** — full status"
         ),
     }
     embed = discord.Embed(
@@ -5565,6 +5597,8 @@ class AdminPanelView(CooldownView):
                 discord.SelectOption(label="Anti-Spam", value="safe_antispam", emoji="🔇", description="Rate-limit rapid messages"),
                 discord.SelectOption(label="Anti-Raid", value="safe_antiraid", emoji="🛡️", description="Join-rate protection"),
                 discord.SelectOption(label="Anti-Phish", value="safe_antiphish", emoji="🎣", description="Block scam/phishing links"),
+                discord.SelectOption(label="Guard Reports", value="safe_guardlog", emoji="🚨", description="Where flagged messages get reported"),
+                discord.SelectOption(label="Guard Banned Words", value="safe_guardwords", emoji="🚫", description="Word list + punishment + bot-ban"),
                 discord.SelectOption(label="Auto Roles", value="safe_autorole", emoji="🎭", description="Roles given on join"),
                 discord.SelectOption(label="Welcome", value="safe_welcome", emoji="👋", description="Welcome channel + message"),
                 discord.SelectOption(label="Goodbye", value="safe_goodbye", emoji="🚪", description="Leave channel + message"),

@@ -5148,6 +5148,32 @@ def setup_safety_tables():
         """)
     except Exception as e:
         print("safety_config:", e)
+    # --- Papyrus Guard (moderation) columns — added via ALTER so existing DBs upgrade safely ---
+    for _stmt in (
+        "ALTER TABLE safety_config ADD COLUMN guard_log_enabled INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE safety_config ADD COLUMN guard_log_channel_id INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE safety_config ADD COLUMN wordfilter_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE safety_config ADD COLUMN wordfilter_punishment TEXT NOT NULL DEFAULT 'delete'",
+        "ALTER TABLE safety_config ADD COLUMN wordfilter_botban INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE safety_config ADD COLUMN wordfilter_timeout_minutes INTEGER NOT NULL DEFAULT 10",
+    ):
+        try:
+            execute(_stmt)
+        except Exception:
+            pass  # column already exists
+    try:
+        execute("""
+            CREATE TABLE IF NOT EXISTS safety_banned_words (
+                guild_id INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                punishment TEXT,
+                added_by INTEGER,
+                added_at REAL,
+                PRIMARY KEY (guild_id, word)
+            )
+        """)
+    except Exception as e:
+        print("safety_banned_words:", e)
     try:
         execute("""
             CREATE TABLE IF NOT EXISTS safety_autoroles (
@@ -5185,6 +5211,9 @@ def set_safety_field(guild_id, field, value):
         "antiraid_enabled", "antiraid_joins", "antiraid_window", "antiraid_action",
         "antiphish_enabled", "welcome_channel_id", "goodbye_channel_id",
         "welcome_message", "goodbye_message", "log_channel_id",
+        "guard_log_enabled", "guard_log_channel_id",
+        "wordfilter_enabled", "wordfilter_punishment", "wordfilter_botban",
+        "wordfilter_timeout_minutes",
     }
     if field not in allowed:
         return False
@@ -5235,6 +5264,213 @@ def _looks_like_phish(text: str) -> bool:
     return False
 
 
+# ============================================================
+# PAPYRUS GUARD — banned words + flag reporting
+# ============================================================
+
+def get_banned_words(guild_id):
+    setup_safety_tables()
+    try:
+        rows = db.execute(
+            "SELECT word FROM safety_banned_words WHERE guild_id = ? ORDER BY word",
+            (int(guild_id),),
+        ).fetchall()
+        return [str(r["word"]).lower() for r in rows]
+    except Exception as e:
+        print("get_banned_words:", e)
+        return []
+
+
+def add_banned_words(guild_id, words, punishment=None, added_by=None):
+    setup_safety_tables()
+    import time as _t
+    n = 0
+    for w in words:
+        w = str(w).strip().lower()
+        if not w:
+            continue
+        try:
+            execute(
+                """INSERT INTO safety_banned_words (guild_id, word, punishment, added_by, added_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(guild_id, word) DO UPDATE SET punishment = excluded.punishment""",
+                (int(guild_id), w, punishment, added_by, _t.time()),
+            )
+            n += 1
+        except Exception as e:
+            print("add_banned_words:", e)
+    return n
+
+
+def remove_banned_word(guild_id, word):
+    setup_safety_tables()
+    execute(
+        "DELETE FROM safety_banned_words WHERE guild_id = ? AND word = ?",
+        (int(guild_id), str(word).strip().lower()),
+    )
+
+
+def message_hits_banned_words(message):
+    """Return list of banned words found in the message (empty = clean)."""
+    content = (message.content or "").lower()
+    if not content:
+        return []
+    import re as _re
+    hits = []
+    for w in get_banned_words(message.guild.id):
+        if not w:
+            continue
+        # word-boundary match so "class" doesn't trip on "ass"
+        try:
+            if _re.search(r"(?<![a-z0-9])" + _re.escape(w) + r"(?![a-z0-9])", content):
+                hits.append(w)
+        except Exception:
+            if w in content:
+                hits.append(w)
+    return hits
+
+
+def _guard_collect_media(message):
+    """Collect image/gif URLs from attachments, embeds and raw content."""
+    urls = []
+    try:
+        for a in getattr(message, "attachments", []) or []:
+            ct = getattr(a, "content_type", "") or ""
+            url = getattr(a, "url", "") or ""
+            if url and (ct.startswith("image/") or url.lower().split("?")[0].endswith((".png", ".jpg", ".jpeg", ".gif", ".webp"))):
+                urls.append(url)
+    except Exception:
+        pass
+    try:
+        for e in getattr(message, "embeds", []) or []:
+            img = (getattr(e, "image", None) and getattr(e.image, "url", None)) or ""
+            thumb = (getattr(e, "thumbnail", None) and getattr(e.thumbnail, "url", None)) or ""
+            for u2 in (img, thumb):
+                if u2 and str(u2).split("?")[0].lower().endswith((".gif", ".png", ".jpg", ".jpeg", ".webp")):
+                    urls.append(str(u2))
+    except Exception:
+        pass
+    # raw content URLs (image/GIF links pasted as text)
+    try:
+        import re as _re
+        for u2 in _re.findall(r"https?://\S+", message.content or ""):
+            if u2.split("?")[0].lower().endswith((".gif", ".png", ".jpg", ".jpeg", ".webp")):
+                urls.append(u2)
+    except Exception:
+        pass
+    seen, out = set(), []
+    for u in urls:
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out[:5]
+
+
+async def send_guard_flag_report(message, kind, detail=""):
+    """Report a flagged message to the configured guard log channel."""
+    try:
+        cfg = get_safety_config(message.guild.id)
+    except Exception:
+        return
+    try:
+        if not int(cfg["guard_log_enabled"] or 0):
+            return
+        cid = int(cfg["guard_log_channel_id"] or 0)
+    except Exception:
+        return
+    if not cid:
+        return
+    ch = message.guild.get_channel(cid)
+    if ch is None:
+        try:
+            ch = await bot.fetch_channel(cid)
+        except Exception:
+            return
+    user = message.author
+    media = _guard_collect_media(message)
+    content = (message.content or "*no text*")
+    if len(content) > 900:
+        content = content[:900] + "…"
+    emb = discord.Embed(
+        title=f"🚨 Papyrus Guard — {kind}",
+        description=f"**Flagged content:**\n{content}",
+        color=discord.Color.red(),
+        timestamp=discord.utils.utcnow(),
+    )
+    emb.add_field(name="👤 User", value=f"**{user.name}** (`{user.id}`)", inline=True)
+    try:
+        emb.add_field(name="👤 Display name", value=str(user.display_name)[:100], inline=True)
+    except Exception:
+        pass
+    emb.add_field(name="📺 Channel", value=f"<#{message.channel.id}> (`{message.channel.id}`)", inline=True)
+    emb.add_field(
+        name="🏰 Server / Guild",
+        value=f"**{message.guild.name}** (`{message.guild.id}`)",
+        inline=False,
+    )
+    if detail:
+        emb.add_field(name="🔎 Reason", value=str(detail)[:1000], inline=False)
+    if media:
+        emb.add_field(
+            name="🖼️ Media attached / linked",
+            value="\n".join(f"<{u}>" for u in media),
+            inline=False,
+        )
+        try:
+            emb.set_image(url=media[0])
+        except Exception:
+            pass
+    emb.set_footer(text=f"Message ID: {message.id}")
+    try:
+        await ch.send(embed=emb)
+    except Exception as e:
+        print("send_guard_flag_report:", e)
+
+
+async def punish_guard_word(message, words):
+    """Punish a user for saying a banned word, per the guild's config."""
+    gid = message.guild.id
+    cfg = get_safety_config(gid)
+    action = str(cfg["wordfilter_punishment"] or "delete").lower()
+    detail = f"Banned word(s): {', '.join(words)}"
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    try:
+        await message.channel.send(
+            f"🚫 {message.author.mention}, that word is not allowed here.",
+            delete_after=8,
+        )
+    except Exception:
+        pass
+    user = message.author
+    if action == "timeout":
+        try:
+            mins = max(1, int(cfg["wordfilter_timeout_minutes"] or 10))
+            until = discord.utils.utcnow() + __import__("datetime").timedelta(minutes=mins)
+            await user.timeout(until, reason=f"Papyrus Guard: {detail}")
+        except Exception as e:
+            print("guard timeout:", e)
+    elif action == "kick":
+        try:
+            await user.kick(reason=f"Papyrus Guard: {detail}")
+        except Exception as e:
+            print("guard kick:", e)
+    elif action == "ban":
+        try:
+            await user.ban(reason=f"Papyrus Guard: {detail}")
+        except Exception as e:
+            print("guard ban:", e)
+    # Optional: also ban them from using the bot
+    if int(cfg["wordfilter_botban"] or 0):
+        try:
+            ban_from_bot(gid, user.id, reason=f"Papyrus Guard: {detail}")
+        except Exception as e:
+            print("guard botban:", e)
+    await send_guard_flag_report(message, "Banned Word", detail)
+
+
 async def safety_check_message(message) -> bool:
     """Return True if message should be blocked (deleted)."""
     if not message.guild or message.author.bot:
@@ -5247,6 +5483,15 @@ async def safety_check_message(message) -> bool:
     cfg = get_safety_config(message.guild.id)
     if not cfg:
         return False
+    # Papyrus Guard: banned words (checked first — highest priority)
+    try:
+        if int(cfg["wordfilter_enabled"] or 0):
+            hits = message_hits_banned_words(message)
+            if hits:
+                await punish_guard_word(message, hits)
+                return True
+    except Exception as e:
+        print("guard wordfilter:", e)
     # anti-phish
     if int(cfg["antiphish_enabled"] or 1):
         content = message.content or ""
@@ -5262,6 +5507,7 @@ async def safety_check_message(message) -> bool:
                 )
             except Exception:
                 pass
+            await send_guard_flag_report(message, "Phishing Link", "Message looked like a phishing/scam link.")
             return True
     # anti-spam
     if int(cfg["antispam_enabled"] or 1):
@@ -5290,6 +5536,10 @@ async def safety_check_message(message) -> bool:
                     f"🔇 Slow down {message.author.mention}.",
                     delete_after=6,
                 )
+            except Exception:
+                pass
+            try:
+                await send_guard_flag_report(message, "Spam", f"Hit the {max_n} messages / {window}s limit.")
             except Exception:
                 pass
             _SPAM_TRACK[key] = []
@@ -5550,6 +5800,177 @@ async def open_safety_admin(interaction, guild_id, tool: str = "hub"):
         await interaction.followup.send("Goodbye messages:", view=v, ephemeral=True)
         return
 
+    if tool == "guardlog":
+        # Papyrus Guard: where flagged messages get reported
+        on = int(cfg["guard_log_enabled"] or 0) == 1
+        v = CooldownView(timeout=120)
+
+        class GuardLogChannel(discord.ui.ChannelSelect):
+            def __init__(self):
+                super().__init__(placeholder="Pick the channel for flag reports…", min_values=1, max_values=1)
+
+            async def callback(self, inter: discord.Interaction):
+                cid = self.values[0].id
+                set_safety_field(guild_id, "guard_log_channel_id", int(cid))
+                set_safety_field(guild_id, "guard_log_enabled", 1)
+                await inter.response.send_message(
+                    f"🚨 Guard reports will go to <#{cid}> — every flagged message "
+                    "(banned word, phishing link, spam) lands there with the user's "
+                    "name + ID, the server name + ID, and the flagged content.",
+                    ephemeral=True,
+                )
+
+        v.add_item(GuardLogChannel())
+
+        b_toggle = discord.ui.Button(
+            label="Disable Reports" if on else "Enable Reports",
+            style=discord.ButtonStyle.danger if on else discord.ButtonStyle.success,
+        )
+
+        async def b_toggle_cb(inter):
+            new = 0 if int(get_safety_config(guild_id)["guard_log_enabled"] or 0) else 1
+            set_safety_field(guild_id, "guard_log_enabled", new)
+            await inter.response.send_message(
+                f"Guard reports **{'ENABLED' if new else 'DISABLED'}**.",
+                ephemeral=True,
+            )
+
+        b_toggle.callback = b_toggle_cb
+        v.add_item(b_toggle)
+
+        cur = int(cfg["guard_log_channel_id"] or 0)
+        await interaction.followup.send(
+            "**🚨 Guard Reports**\n"
+            f"Status: **{'ON' if on else 'OFF'}** · Log channel: "
+            f"{('<#' + str(cur) + '>') if cur else '*not set*'}\n\n"
+            "When the Guard flags something (banned word, phishing link, spam), "
+            "it posts an embed here showing the flagged text or image/GIF, the "
+            "user's **username + ID**, and the **server + ID** — so you can ban them.",
+            view=v, ephemeral=True,
+        )
+        return
+
+    if tool == "guardwords":
+        # Papyrus Guard: banned word list + punishment
+        words = get_banned_words(guild_id)
+        v = CooldownView(timeout=180)
+
+        class PunishSelect(discord.ui.Select):
+            def __init__(self):
+                cur = str(cfg["wordfilter_punishment"] or "delete").lower()
+                super().__init__(
+                    placeholder="Punishment when someone uses a banned word…",
+                    options=[
+                        discord.SelectOption(label="Delete message only", value="delete", emoji="🗑️", default=cur == "delete"),
+                        discord.SelectOption(label="Timeout", value="timeout", emoji="⏳", description="Timed mute, default 10 min", default=cur == "timeout"),
+                        discord.SelectOption(label="Kick from server", value="kick", emoji="👢", default=cur == "kick"),
+                        discord.SelectOption(label="Ban from server", value="ban", emoji="🔨", default=cur == "ban"),
+                    ],
+                    min_values=1, max_values=1,
+                )
+
+            async def callback(self, inter: discord.Interaction):
+                set_safety_field(guild_id, "wordfilter_punishment", self.values[0])
+                await inter.response.send_message(
+                    f"Punishment for banned words set to **{self.values[0]}**.",
+                    ephemeral=True,
+                )
+
+        v.add_item(PunishSelect())
+
+        b_add = discord.ui.Button(label="Add Words", style=discord.ButtonStyle.success, emoji="➕")
+
+        async def b_add_cb(inter):
+            class AddModal(discord.ui.Modal, title="Add banned words"):
+                ws = discord.ui.TextInput(
+                    label="Words (comma separated)",
+                    style=discord.TextStyle.paragraph,
+                    placeholder="badword, anotherbadword, …",
+                    max_length=1000,
+                )
+                mins = discord.ui.TextInput(
+                    label="Timeout minutes (only for Timeout)",
+                    required=False,
+                    default=str(int(cfg["wordfilter_timeout_minutes"] or 10)),
+                    max_length=4,
+                )
+
+                async def on_submit(self, inter):
+                    new_words = [w for w in str(self.ws.value).replace("\n", ",").split(",")]
+                    add_banned_words(guild_id, new_words, added_by=inter.user.id)
+                    try:
+                        set_safety_field(guild_id, "wordfilter_timeout_minutes", max(1, int(str(self.mins.value).strip() or 10)))
+                    except Exception:
+                        pass
+                    set_safety_field(guild_id, "wordfilter_enabled", 1)
+                    await inter.response.send_message(
+                        f"➕ Saved. Word filter is **ON** with **{len([w for w in new_words if w.strip()])}** word(s) on the list.",
+                        ephemeral=True,
+                    )
+
+            await inter.response.send_modal(AddModal())
+
+        b_add.callback = b_add_cb
+        v.add_item(b_add)
+
+        b_rm = discord.ui.Button(label="Remove Word", style=discord.ButtonStyle.secondary, emoji="➖")
+
+        async def b_rm_cb(inter):
+            class RmModal(discord.ui.Modal, title="Remove a banned word"):
+                w = discord.ui.TextInput(label="Word to remove", max_length=100)
+
+                async def on_submit(self, inter):
+                    remove_banned_word(guild_id, str(self.w.value))
+                    await inter.response.send_message("➖ Removed (if it was on the list).", ephemeral=True)
+
+            await inter.response.send_modal(RmModal())
+
+        b_rm.callback = b_rm_cb
+        v.add_item(b_rm)
+
+        wf_on = int(cfg["wordfilter_enabled"] or 0) == 1
+        bb_on = int(cfg["wordfilter_botban"] or 0) == 1
+
+        b_wf = discord.ui.Button(
+            label="Word Filter: ON" if wf_on else "Word Filter: OFF",
+            style=discord.ButtonStyle.success if wf_on else discord.ButtonStyle.danger,
+        )
+
+        async def b_wf_cb(inter):
+            new = 0 if int(get_safety_config(guild_id)["wordfilter_enabled"] or 0) else 1
+            set_safety_field(guild_id, "wordfilter_enabled", new)
+            await inter.response.send_message(f"Word filter **{'ON' if new else 'OFF'}**.", ephemeral=True)
+
+        b_wf.callback = b_wf_cb
+        v.add_item(b_wf)
+
+        b_bb = discord.ui.Button(
+            label="Bot-Ban: ON" if bb_on else "Bot-Ban: OFF",
+            style=discord.ButtonStyle.success if bb_on else discord.ButtonStyle.danger,
+        )
+
+        async def b_bb_cb(inter):
+            new = 0 if int(get_safety_config(guild_id)["wordfilter_botban"] or 0) else 1
+            set_safety_field(guild_id, "wordfilter_botban", new)
+            await inter.response.send_message(
+                "Bot-ban on banned word **" + ("ON — offenders also lose access to the bot" if new else "OFF") + "**.",
+                ephemeral=True,
+            )
+
+        b_bb.callback = b_bb_cb
+        v.add_item(b_bb)
+
+        shown = ", ".join(f"`{w}`" for w in words[:50]) if words else "*none yet*"
+        await interaction.followup.send(
+            "**🚫 Guard Banned Words**\n"
+            f"Filter: **{'ON' if wf_on else 'OFF'}** · Punishment: **{str(cfg['wordfilter_punishment'] or 'delete')}** · "
+            f"Bot-ban offenders: **{'YES' if bb_on else 'NO'}**\n"
+            f"Words ({len(words)}): {shown}\n\n"
+            "Pick a punishment, add words, and flip the toggles below.",
+            view=v, ephemeral=True,
+        )
+        return
+
     # hub
     roles = get_autorole_ids(guild_id)
     emb = discord.Embed(
@@ -5560,6 +5981,10 @@ async def open_safety_admin(interaction, guild_id, tool: str = "hub"):
             f"**Anti-raid:** {'ON' if int(cfg['antiraid_enabled'] or 1) else 'OFF'} "
             f"({cfg['antiraid_joins']} joins / {cfg['antiraid_window']}s → {cfg['antiraid_action']})\n"
             f"**Anti-phish:** {'ON' if int(cfg['antiphish_enabled'] or 1) else 'OFF'}\n"
+            f"**🚨 Guard reports:** {'ON' if int(cfg['guard_log_enabled'] or 0) else 'OFF'} → "
+            f"{('<#' + str(cfg['guard_log_channel_id']) + '>') if int(cfg['guard_log_channel_id'] or 0) else 'no channel set'}\n"
+            f"**🚫 Word filter:** {'ON' if int(cfg['wordfilter_enabled'] or 0) else 'OFF'} "
+            f"({len(get_banned_words(guild_id))} words · punish: {cfg['wordfilter_punishment']})\n"
             f"**Welcome:** {('<#' + str(cfg['welcome_channel_id']) + '>') if int(cfg['welcome_channel_id'] or 0) else 'off'}\n"
             f"**Goodbye:** {('<#' + str(cfg['goodbye_channel_id']) + '>') if int(cfg['goodbye_channel_id'] or 0) else 'off'}\n"
             f"**Auto-roles:** {len(roles)} configured"
