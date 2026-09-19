@@ -5445,7 +5445,8 @@ async def punish_guard_word(message, words):
     user = message.author
     if action == "timeout":
         try:
-            mins = max(1, int(cfg["wordfilter_timeout_minutes"] or 10))
+            mins = get_scaled_timeout(message.guild.id, user.id, max(1, int(cfg["wordfilter_timeout_minutes"] or 10)))
+            note_timeout_served(message.guild.id, user.id)
             until = discord.utils.utcnow() + __import__("datetime").timedelta(minutes=mins)
             await user.timeout(until, reason=f"Papyrus Guard: {detail}")
         except Exception as e:

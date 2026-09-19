@@ -150,7 +150,8 @@ async def guard_punish_escalating(message, words):
         pass
     if action == "timeout":
         try:
-            until = discord.utils.utcnow() + __import__("datetime").timedelta(minutes=10)
+            until = discord.utils.utcnow() + __import__("datetime").timedelta(minutes=get_scaled_timeout(gid, user.id, 10))
+            note_timeout_served(gid, user.id)
             await user.timeout(until, reason=f"Papyrus Guard: {detail}")
         except Exception as e:
             print("ladder timeout:", e)

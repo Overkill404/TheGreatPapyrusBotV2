@@ -35,6 +35,14 @@ _PARTS = [
     "m23_pets_skills.py",
     "m24_gathering_weather.py",
     "m25_clans_dex.py",
+    "m26_economy_a.py",
+    "m27_economy_b.py",
+    "m28_economy_c.py",
+    "m29_econ2_admin.py",
+    "m30_backpack_econ.py",
+    "m31_safety_a.py",
+    "m32_safety_b.py",
+    "m33_safety_admin.py",
     "m11_economy_run.py",
 ]
 
