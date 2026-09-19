@@ -91,6 +91,34 @@ def mat_count(guild_id, user_id, material_id):
                    (guild_id, user_id, material_id)).fetchone()
     return int(r["qty"] or 0) if r else 0
 
+async def open_gather_panel(interaction, member, gid):
+    """Player-facing gathering panel (backpack + /gather collect)."""
+    uid = member.id
+    if not figet(gid, "gather_enabled", 1):
+        await interaction.response.send_message("Gathering is disabled here.", ephemeral=True)
+        return
+    player = get_player(gid, uid)
+    if not player:
+        await interaction.response.send_message("Use `/start` first.", ephemeral=True)
+        return
+    nodes = db.execute("SELECT * FROM gather_nodes WHERE guild_id=? AND enabled=1", (gid,)).fetchall()
+    if not nodes:
+        await interaction.response.send_message("No gathering nodes set up yet. Admins: admin panel → World → Gathering.", ephemeral=True)
+        return
+    emb = discord.Embed(title="⛏️ Gathering Grounds",
+        description="Pick a spot to work. Each has its own cooldown and loot table.",
+        color=style_color(gid))
+    spirit = _g.get("spirit_line")
+    if spirit:
+        try:
+            line = spirit(gid, uid)
+            if line:
+                emb.description += "\n" + line
+        except Exception:
+            pass
+    view = GatherView(gid, uid, nodes)
+    await _send_panel(interaction, emb, view)
+
 async def _gather_cmd(interaction, action: str = "collect", material: str = ""):
     gid = interaction.guild_id
     uid = interaction.user.id
@@ -103,23 +131,7 @@ async def _gather_cmd(interaction, action: str = "collect", material: str = ""):
         return
 
     if action == "collect":
-        nodes = db.execute("SELECT * FROM gather_nodes WHERE guild_id=? AND enabled=1", (gid,)).fetchall()
-        if not nodes:
-            await interaction.response.send_message("No gathering nodes set up yet. Admins: admin panel → World → Gathering.", ephemeral=True)
-            return
-        emb = discord.Embed(title="⛏️ Gathering Grounds",
-            description="Pick a spot to work. Each has its own cooldown and loot table.",
-            color=style_color(gid))
-        spirit = _g.get("spirit_line")
-        if spirit:
-            try:
-                line = spirit(gid, uid)
-                if line:
-                    emb.description += "\n" + line
-            except Exception:
-                pass
-        view = GatherView(gid, uid, nodes)
-        await _send_panel(interaction, emb, view)
+        await open_gather_panel(interaction, interaction.user, gid)
         return
 
     if action == "sell":
@@ -630,6 +642,7 @@ except Exception:
 _g["open_gather_admin"] = open_gather_admin
 _g["open_weather_admin"] = open_weather_admin
 _g["open_secret_admin"] = open_secret_admin
+_g["open_gather_panel"] = open_gather_panel
 _g["weather_mult"] = weather_mult
 _g["current_weather"] = current_weather
 _g["mat_add"] = mat_add

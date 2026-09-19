@@ -127,9 +127,25 @@ async def _clan_cmd(interaction, action: str, name: str = "", amount: int = 0, u
         await interaction.response.send_message(embed=discord.Embed(title="🏰 Clans", description="\n".join(lines) or "No clans yet — `/clan create`!", color=style_color(gid)), ephemeral=True)
         return
 
+    if action == "join":
+        if get_clan_of(gid, uid):
+            await interaction.response.send_message("You're already in a clan — `/clan leave` first.", ephemeral=True)
+            return
+        if not name:
+            await interaction.response.send_message("Which clan? `/clan join name:Clan Name` (see `/clan list`).", ephemeral=True)
+            return
+        target = db.execute("SELECT * FROM clans WHERE guild_id=? AND name LIKE ? LIMIT 1", (gid, f"%{name}%")).fetchone()
+        if not target:
+            await interaction.response.send_message("No clan by that name.", ephemeral=True)
+            return
+        execute("INSERT OR IGNORE INTO clan_members (guild_id, clan_id, user_id, officer, joined_ts) VALUES (?,?,?,0,?)",
+                (gid, target["id"], uid, int(__import__('time').time())))
+        await interaction.response.send_message(f"🏰 Welcome to **{target['name']}**! `/clan deposit` to contribute to the shared bank.", ephemeral=True)
+        return
+
     clan = get_clan_of(gid, uid)
     if not clan:
-        await interaction.response.send_message("You're not in a clan. `/clan create` or ask a member to invite you.", ephemeral=True)
+        await interaction.response.send_message("You're not in a clan. `/clan create` or `/clan join name:...`.", ephemeral=True)
         return
 
     if action == "info":
@@ -328,7 +344,166 @@ class DexClaimView(CooldownView):
         else:
             await inter.response.send_message("No complete sets to claim yet. Keep hunting!", ephemeral=True)
 
-# ---------------------------------------------------------------- backpack integration (dex lives here)
+# ---------------------------------------------------------------- clan hub panel (backpack)
+async def open_clans_panel(interaction, member, gid):
+    """Player-facing clan panel (backpack)."""
+    uid = member.id
+    if not figet(gid, "clans_enabled", 1):
+        await interaction.response.send_message("Clans are disabled here.", ephemeral=True)
+        return
+    player = get_player(gid, uid)
+    if not player:
+        await interaction.response.send_message("Use `/start` first.", ephemeral=True)
+        return
+    clan = get_clan_of(gid, uid)
+    view = ClanPanelView(gid, uid, clan, bool(clan and (uid == clan["owner_id"] or clan["officer"])))
+    emb = discord.Embed(color=style_color(gid))
+    if clan:
+        members = db.execute("SELECT user_id, officer FROM clan_members WHERE clan_id=? ORDER BY officer DESC, joined_ts", (clan["id"],)).fetchall()
+        mlines = []
+        for m in members[:20]:
+            try:
+                mem = member.guild.get_member(m["user_id"]) if member.guild else None
+                nm = mem.display_name if mem else f"<@{m['user_id']}>"
+            except Exception:
+                nm = str(m["user_id"])
+            mlines.append(f"{'👑' if m['user_id'] == clan['owner_id'] else ('🛡️' if m['officer'] else '•')} {nm}")
+        emb.title = f"🏰 {clan['name']} [{clan['tag']}]"
+        emb.add_field(name="Shared Bank", value=f"{eco_fmt(clan['bank'])} — clan level **{clan_level(clan)}** (+{clan_level(clan)-1}% XP for members)")
+        emb.add_field(name="Members", value="\n".join(mlines)[:1024] or "—")
+        emb.set_footer(text="Use the dropdown below to manage.")
+    else:
+        emb.title = "🏰 Clans"
+        rows = db.execute("""SELECT c.*, COUNT(cm.user_id) members FROM clans c
+            LEFT JOIN clan_members cm ON cm.clan_id=c.id AND cm.guild_id=c.guild_id
+            WHERE c.guild_id=? GROUP BY c.id ORDER BY c.bank DESC LIMIT 15""", (gid,)).fetchall()
+        emb.description = "\n".join(f"**{r['name']}** [{r['tag']}] — Lv {clan_level(r)} — bank {eco_fmt(r['bank'])} — {r['members']} members" for r in rows) or "No clans yet."
+        emb.set_footer(text=f"Create one with /clan create (costs {eco_fmt(CLAN_CREATE_COST)}) or join one below.")
+    await _send_panel(interaction, emb, view)
+
+class ClanPanelView(CooldownView):
+    def __init__(self, gid, uid, clan, can_withdraw):
+        super().__init__(timeout=180)
+        self.gid, self.uid, self.clan = gid, uid, clan
+        if clan:
+            sel = discord.ui.Select(placeholder="Clan actions...", options=[
+                discord.SelectOption(label="Deposit to bank", value="deposit", emoji="💼"),
+                discord.SelectOption(label="Withdraw (leaders)", value="withdraw", emoji="💸"),
+                discord.SelectOption(label="Leave clan", value="leave", emoji="🚪"),
+            ])
+            sel.callback = self._action
+            try:
+                self.add_item(sel)
+            except Exception:
+                pass
+        else:
+            rows = db.execute("SELECT * FROM clans WHERE guild_id=? ORDER BY bank DESC LIMIT 25", (gid,)).fetchall()
+            if rows:
+                opts = [discord.SelectOption(label=r["name"][:100], value=str(r["id"]),
+                        description=f"Lv {clan_level(r)} • bank {r['bank']}") for r in rows]
+                sel = discord.ui.Select(placeholder="Join a clan...", options=opts)
+                sel.callback = self._join
+                try:
+                    self.add_item(sel)
+                except Exception:
+                    pass
+
+    async def interaction_check(self, inter):
+        return inter.user.id == self.uid
+
+    async def _join(self, inter):
+        if get_clan_of(self.gid, self.uid):
+            await inter.response.send_message("You're already in a clan.", ephemeral=True)
+            return
+        c = db.execute("SELECT * FROM clans WHERE id=? AND guild_id=?", (int(inter.data["values"][0]), self.gid)).fetchone()
+        if not c:
+            await inter.response.send_message("Clan gone.", ephemeral=True)
+            return
+        execute("INSERT OR IGNORE INTO clan_members (guild_id, clan_id, user_id, officer, joined_ts) VALUES (?,?,?,0,?)",
+                (self.gid, c["id"], self.uid, int(__import__('time').time())))
+        await inter.response.send_message(f"🏰 Welcome to **{c['name']}**!", ephemeral=True)
+
+    async def _action(self, inter):
+        val = inter.data["values"][0]
+        if val == "deposit":
+            await inter.response.send_modal(_clan_deposit_modal(self.gid, self.uid, self.clan))
+        elif val == "withdraw":
+            await inter.response.send_modal(_clan_withdraw_modal(self.gid, self.uid, self.clan))
+        elif val == "leave":
+            c = get_clan_of(self.gid, self.uid)
+            if not c:
+                await inter.response.send_message("Not in a clan.", ephemeral=True)
+                return
+            if c["owner_id"] == self.uid:
+                cnt = db.execute("SELECT COUNT(*) c FROM clan_members WHERE clan_id=?", (c["id"],)).fetchone()["c"]
+                if cnt > 1:
+                    await inter.response.send_message("You're the leader — handle members first (use /clan kick).", ephemeral=True)
+                    return
+                execute("DELETE FROM clans WHERE id=?", (c["id"],))
+                execute("DELETE FROM clan_members WHERE clan_id=?", (c["id"],))
+                await inter.response.send_message("Clan disbanded.", ephemeral=True)
+                return
+            execute("DELETE FROM clan_members WHERE guild_id=? AND user_id=?", (self.gid, self.uid))
+            await inter.response.send_message("You left the clan.", ephemeral=True)
+
+def _clan_deposit_modal(gid, uid, clan):
+    class _M(discord.ui.Modal, title=f"Deposit to {clan['name'][:20]}"):
+        amount = discord.ui.TextInput(label="Amount", max_length=10)
+        async def on_submit(self, inter):
+            try:
+                amt = int(str(self.amount.value).strip().replace(",", ""))
+            except Exception:
+                await inter.response.send_message("That's not a number.", ephemeral=True)
+                return
+            if amt <= 0:
+                await inter.response.send_message("Amount must be positive.", ephemeral=True)
+                return
+            try:
+                bal = get_eco_balance(gid, uid)["cash"]
+                if bal < amt:
+                    await inter.response.send_message(f"You only have {eco_fmt(bal)}.", ephemeral=True)
+                    return
+                eco_add_cash(gid, uid, -amt, earned=False)
+            except Exception:
+                await inter.response.send_message("Economy not available.", ephemeral=True)
+                return
+            before = clan_level(clan)
+            execute("UPDATE clans SET bank = bank + ? WHERE id=?", (amt, clan["id"]))
+            execute("INSERT INTO clan_bank_log (guild_id, clan_id, user_id, amount, ts) VALUES (?,?,?,?,?)",
+                    (gid, clan["id"], uid, amt, int(__import__('time').time())))
+            after = clan_level(dict(clan, bank=clan["bank"] + amt))
+            extra = "\n🎉 **The clan leveled up!**" if after > before else ""
+            await inter.response.send_message(f"💼 Deposited **{eco_fmt(amt)}**.{extra}", ephemeral=True)
+    return _M
+
+def _clan_withdraw_modal(gid, uid, clan):
+    class _M(discord.ui.Modal, title=f"Withdraw from {clan['name'][:20]}"):
+        amount = discord.ui.TextInput(label="Amount", max_length=10)
+        async def on_submit(self, inter):
+            c = get_clan_of(gid, uid)
+            if not c or not (uid == c["owner_id"] or c["officer"]):
+                await inter.response.send_message("Only the leader/officers can withdraw.", ephemeral=True)
+                return
+            try:
+                amt = int(str(self.amount.value).strip().replace(",", ""))
+            except Exception:
+                await inter.response.send_message("That's not a number.", ephemeral=True)
+                return
+            if amt <= 0 or amt > int(c["bank"] or 0):
+                await inter.response.send_message(f"Bank holds {eco_fmt(c['bank'])}.", ephemeral=True)
+                return
+            execute("UPDATE clans SET bank = bank - ? WHERE id=?", (amt, c["id"]))
+            try:
+                eco_add_cash(gid, uid, amt, earned=False)
+            except Exception:
+                execute("UPDATE players SET gold = gold + ? WHERE guild_id=? AND user_id=?", (amt, gid, uid))
+            execute("INSERT INTO clan_bank_log (guild_id, clan_id, user_id, amount, ts) VALUES (?,?,?,?,?)",
+                    (gid, c["id"], uid, -amt, int(__import__('time').time())))
+            audit_log(gid, uid, "clan_withdraw", f"{amt} from {c['name']}")
+            await inter.response.send_message(f"💸 Withdrew **{eco_fmt(amt)}**.", ephemeral=True)
+    return _M
+
+# ---------------------------------------------------------------- backpack integration (feature hub)
 def _wire_backpack():
     inv = _g.get("InventoryView")
     if inv is None:
@@ -338,8 +513,15 @@ def _wire_backpack():
     def _opts_wrap(self):
         opts = _opts_base(self)
         try:
-            if self.page == 0 and figet(self.guild_id, "dex_enabled", 1):
-                opts.append(discord.SelectOption(label="Soul Dex", value="soul_dex", emoji="📕", description="Your boss soul collection"))
+            if self.page == 0:
+                for val, label, emoji, desc in [
+                    ("spirit_hub", "Guardian Spirits", "👻", "Adopt, activate, release"),
+                    ("skills_hub", "Skill Trees", "🌳", "Spend skill points"),
+                    ("gather_hub", "Gathering", "⛏️", "Collect and sell materials"),
+                    ("clan_hub", "Clans", "🏰", "Shared bank and roster"),
+                    ("soul_dex", "Soul Dex", "📕", "Your boss soul collection"),
+                ]:
+                    opts.append(discord.SelectOption(label=label, value=val, emoji=emoji, description=desc))
         except Exception:
             pass
         return opts
@@ -347,6 +529,18 @@ def _wire_backpack():
     _handle_base = inv._handle_action
 
     async def _handle_wrap(self, interaction, value):
+        if value == "spirit_hub":
+            await open_spirits_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "skills_hub":
+            await open_skills_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "gather_hub":
+            await open_gather_panel(interaction, self.owner, self.guild_id)
+            return
+        if value == "clan_hub":
+            await open_clans_panel(interaction, self.owner, self.guild_id)
+            return
         if value == "soul_dex":
             await open_dex_panel(interaction, self.owner, self.guild_id)
             return
@@ -356,7 +550,7 @@ def _wire_backpack():
         inv._page_options = _opts_wrap
         inv._handle_action = _handle_wrap
     except Exception as e:
-        print("dex backpack wire:", e)
+        print("backpack feature hub wire:", e)
 
 try:
     _wire_backpack()
@@ -487,6 +681,7 @@ class _AdminPickViewM25(CooldownView):
 
 _g["open_clans_admin"] = open_clans_admin
 _g["open_dex_admin"] = open_dex_admin
+_g["open_clans_panel"] = open_clans_panel
 _g["get_clan_of"] = get_clan_of
 _g["clan_level"] = clan_level
 _g["open_dex_panel"] = open_dex_panel

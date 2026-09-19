@@ -296,6 +296,39 @@ async def _spirit_cmd(interaction, action: str, name: str = "", nickname: str = 
 _spirit_cmd = bot.tree.command(name="spirit", description="Guardian spirits: adopt, list, activate, rename, release.")(_spirit_cmd)
 
 # ---------------------------------------------------------------- /skills
+async def open_skills_panel(interaction, member, gid):
+    """Player-facing skill tree panel (used by /skills and the backpack)."""
+    uid = member.id
+    if not figet(gid, "skills_enabled", 1):
+        await interaction.response.send_message("Skill trees are disabled here.", ephemeral=True)
+        return
+    player = get_player(gid, uid)
+    if not player:
+        await interaction.response.send_message("Use `/start` first.", ephemeral=True)
+        return
+    trees = db.execute("SELECT * FROM skill_trees WHERE guild_id=? AND enabled=1", (gid,)).fetchall()
+    if not trees:
+        await interaction.response.send_message("No skill trees yet. Admins can build them in the admin panel → Content → Skill Trees.", ephemeral=True)
+        return
+    emb = discord.Embed(title="🌳 Skill Trees", color=style_color(gid))
+    learned = {r["node_id"] for r in db.execute("SELECT node_id FROM player_skills WHERE guild_id=? AND user_id=?", (gid, uid)).fetchall()}
+    pts = get_skill_points(gid, uid)
+    emb.add_field(name="Skill Points", value=f"**{pts}** — earn 1 per level-up", inline=False)
+    for t in trees[:10]:
+        nodes = db.execute("SELECT * FROM skill_nodes WHERE guild_id=? AND tree_id=? ORDER BY cost", (gid, t["id"])).fetchall()
+        if not nodes:
+            continue
+        lines = []
+        for n in nodes[:12]:
+            mark = "✅" if n["id"] in learned else ("🔓" if n["requires_id"] in (0, None) or n["requires_id"] in learned else "🔒")
+            eff_txt = n["description"] or (SKILL_EFFECTS.get(n["effect"], n["effect"]) + " +" + str(n["value"]))
+            lines.append(f"{mark} {n['emoji']} **{n['name']}** ({n['cost']} pt) — {eff_txt}")
+        tname = f"{t['emoji']} {t['name']}" + (f" ({t['soul_path']})" if t["soul_path"] else "")
+        emb.add_field(name=tname, value="\n".join(lines)[:1024] or "No nodes yet", inline=False)
+    emb.set_footer(text="Buy nodes in the panel below.")
+    view = SkillsView(gid, uid, trees)
+    await _send_panel(interaction, emb, view)
+
 async def _skills_cmd(interaction, tree: str = ""):
     gid = interaction.guild_id
     uid = interaction.user.id
@@ -511,6 +544,104 @@ def _points_grant_modal():
                 await inter.response.send_message("Check the user ID and amount.", ephemeral=True)
     return _M
 
+# ---------------------------------------------------------------- player spirit panel (backpack)
+async def open_spirits_panel(interaction, member, gid):
+    """Player-facing guardian spirit panel (backpack + /spirit me alternative)."""
+    uid = member.id
+    if not figet(gid, "spirits_enabled", 1):
+        await interaction.response.send_message("Spirits are disabled here.", ephemeral=True)
+        return
+    player = get_player(gid, uid)
+    if not player:
+        await interaction.response.send_message("Use `/start` first.", ephemeral=True)
+        return
+    rows = db.execute("""SELECT ps.*, ss.name AS sname, ss.emoji AS semoji, ss.base_atk
+        FROM player_spirits ps JOIN spirit_species ss ON ss.id=ps.species_id
+        WHERE ps.guild_id=? AND ps.user_id=?""", (gid, uid)).fetchall()
+    species = db.execute("SELECT * FROM spirit_species WHERE guild_id=? AND enabled=1", (gid,)).fetchall()
+    emb = discord.Embed(title="👻 Guardian Spirits", color=style_color(gid))
+    if rows:
+        lines = []
+        for r in rows:
+            need = 50 * int(r["level"] or 1)
+            lines.append(f"{'🟢' if r['active'] else '⚪'} {r['semoji']} **{r['nickname'] or r['sname']}** (Lv {r['level']}) — XP {r['xp']}/{need} — +{int(r['base_atk']) + int(r['level'])*2} ATK")
+        emb.add_field(name="Your spirits", value="\n".join(lines)[:1024], inline=False)
+        emb.add_field(name="Active bonus", value=f"+{spirit_atk_bonus(gid, uid)} ATK, +{spirit_hp_bonus(gid, uid)} MAX HP")
+    else:
+        emb.description = "No spirits yet — adopt one below!"
+    emb.set_footer(text=f"{len(rows)}/{figet(gid, 'spirits_max', 3)} spirits • earn spirit XP by battling and gathering")
+    view = SpiritPanelView(gid, uid, rows, species)
+    await _send_panel(interaction, emb, view)
+
+class SpiritPanelView(CooldownView):
+    def __init__(self, gid, uid, owned_rows, species):
+        super().__init__(timeout=180)
+        self.gid, self.uid = gid, uid
+        owned_ids = {r["species_id"] for r in owned_rows}
+        max_n = figet(gid, "spirits_max", 3)
+
+        adoptable = [s for s in species if s["id"] not in owned_ids][:25]
+        if adoptable and len(owned_rows) < max_n:
+            opts = [discord.SelectOption(label=s["name"][:100], value=str(s["id"]),
+                    description=f"ATK {s['base_atk']} • {s['rarity']}", emoji=(s["emoji"] or "👻")[:2]) for s in adoptable]
+            sel = discord.ui.Select(placeholder="Adopt a spirit...", options=opts)
+            sel.callback = self._adopt
+            try:
+                self.add_item(sel)
+            except Exception:
+                pass
+
+        if owned_rows:
+            act_opts = [discord.SelectOption(label=(r["nickname"] or r["sname"])[:100], value=str(r["species_id"]),
+                        description=f"Lv {r['level']}", emoji=(r["semoji"] or "👻")[:2]) for r in owned_rows]
+            act = discord.ui.Select(placeholder="Set active spirit...", options=act_opts)
+            act.callback = self._activate
+            try:
+                self.add_item(act)
+            except Exception:
+                pass
+
+            rel_opts = [discord.SelectOption(label=(r["nickname"] or r["sname"])[:100], value=str(r["species_id"]),
+                        description="say goodbye", emoji=(r["semoji"] or "👻")[:2]) for r in owned_rows]
+            rel = discord.ui.Select(placeholder="Release a spirit...", options=rel_opts)
+            rel.callback = self._release
+            try:
+                self.add_item(rel)
+            except Exception:
+                pass
+
+    async def interaction_check(self, inter):
+        return inter.user.id == self.uid
+
+    async def _adopt(self, inter):
+        sp = db.execute("SELECT * FROM spirit_species WHERE id=? AND guild_id=?", (int(inter.data["values"][0]), self.gid)).fetchone()
+        if not sp:
+            await inter.response.send_message("Species gone.", ephemeral=True)
+            return
+        have = db.execute("SELECT COUNT(*) c FROM player_spirits WHERE guild_id=? AND user_id=?", (self.gid, self.uid)).fetchone()["c"]
+        if have >= figet(self.gid, "spirits_max", 3):
+            await inter.response.send_message("Spirit slots full — release one first.", ephemeral=True)
+            return
+        execute("""INSERT INTO player_spirits (guild_id, user_id, species_id, active) VALUES (?,?,?,?)
+            ON CONFLICT(guild_id, user_id, species_id) DO NOTHING""",
+            (self.gid, self.uid, sp["id"], 1 if have == 0 else 0))
+        await inter.response.send_message(f"{sp['emoji']} {sp['name']} now fights beside you!", ephemeral=True)
+
+    async def _activate(self, inter):
+        sid = int(inter.data["values"][0])
+        owned = db.execute("SELECT species_id FROM player_spirits WHERE guild_id=? AND user_id=? AND species_id=?", (self.gid, self.uid, sid)).fetchone()
+        if not owned:
+            await inter.response.send_message("You don't have that spirit.", ephemeral=True)
+            return
+        execute("UPDATE player_spirits SET active=0 WHERE guild_id=? AND user_id=?", (self.gid, self.uid))
+        execute("UPDATE player_spirits SET active=1 WHERE guild_id=? AND user_id=? AND species_id=?", (self.gid, self.uid, sid))
+        await inter.response.send_message("Active spirit set — its bonus applies now.", ephemeral=True)
+
+    async def _release(self, inter):
+        sid = int(inter.data["values"][0])
+        execute("DELETE FROM player_spirits WHERE guild_id=? AND user_id=? AND species_id=?", (self.gid, self.uid, sid))
+        await inter.response.send_message("Your spirit drifted away... 💫", ephemeral=True)
+
 # shared mini helper: admin tools with buttons that open modals
 class _AdminPickView(CooldownView):
     def __init__(self, guild_id, tag, buttons, emb=None):
@@ -532,6 +663,8 @@ class _AdminPickView(CooldownView):
 
 _g["open_spirits_admin"] = open_spirits_admin
 _g["open_skills_admin"] = open_skills_admin
+_g["open_spirits_panel"] = open_spirits_panel
+_g["open_skills_panel"] = open_skills_panel
 _g["spirit_atk_bonus"] = spirit_atk_bonus
 _g["spirit_hp_bonus"] = spirit_hp_bonus
 _g["skill_bonus"] = skill_bonus
