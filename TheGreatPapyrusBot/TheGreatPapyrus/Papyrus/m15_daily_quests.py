@@ -210,6 +210,36 @@ async def quest_cmd(interaction: discord.Interaction):
 
     claim_b.callback = claim_cb
     view.add_item(claim_b)
+
+    if CV2:
+        class QuestPanel(ui.LayoutView):
+            def __init__(self):
+                super().__init__(timeout=120)
+                c = ui.Container(accent_color=style_color(gid))
+                c.add_item(ui.TextDisplay(f"## 📋 Daily Quests — {_today()}"))
+                for i, q in enumerate(quests, 1):
+                    bar = "█" * int(10 * q["progress"] / q["target"]) + "░" * (10 - int(10 * q["progress"] / q["target"]))
+                    mark = "✅" if q["done"] else "▫️"
+                    c.add_item(ui.TextDisplay(
+                        f"**{mark} Quest {i}:** {q['desc']}\n-# `{bar}` {q['progress']}/{q['target']}"
+                    ))
+                c.add_item(ui.Separator())
+                c.add_item(ui.TextDisplay(
+                    f"🔥 **{streak}**-day streak (best: {best}) · 🎁 **{figet(gid, 'quest_gold', 150):,}** gold + "
+                    f"**{figet(gid, 'quest_xp', 60)}** XP per quest"
+                    + ("\n\n### ✨ All complete — claim below!" if all_done else "")
+                ))
+                row = ui.ActionRow()
+                cb_btn = ui.Button(label="Claim Rewards", style=discord.ButtonStyle.success, emoji="🎁",
+                                   disabled=not all_done)
+                cb_btn.callback = claim_cb
+                row.add_item(cb_btn)
+                c.add_item(row)
+                self.add_item(c)
+
+        await interaction.response.send_message(view=QuestPanel(), ephemeral=True)
+        return
+
     await interaction.response.send_message(embed=emb, view=view, ephemeral=True)
 
 

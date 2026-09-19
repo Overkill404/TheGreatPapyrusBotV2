@@ -471,6 +471,11 @@ class EconomyPanelPageSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         page = int(self.values[0])
+        if hasattr(discord.ui, "LayoutView"):
+            await interaction.response.edit_message(
+                view=EconomyPanelView(interaction.guild.id, page),
+            )
+            return
         await interaction.response.edit_message(
             embed=build_economy_panel_embed(interaction.guild.id, page),
             view=EconomyPanelView(interaction.guild.id, page),
@@ -512,11 +517,16 @@ class EconomyPanelActionSelect(discord.ui.Select):
         await _run_economy_panel_action(interaction, action)
 
 
-class EconomyPanelView(CooldownView):
+class EconomyPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") else CooldownView):
+    _CV2 = hasattr(discord.ui, "LayoutView")
+
     def __init__(self, guild_id, page=0):
         super().__init__(timeout=300)
         self.guild_id = int(guild_id)
         self.page = max(0, min(int(page), len(ECONOMY_PANEL_PAGES) - 1))
+        if self._CV2:
+            self._build_v2()
+            return
         self.add_item(EconomyPanelPageSelect(self.page))
         self.add_item(EconomyPanelActionSelect(self.page))
 
@@ -553,6 +563,42 @@ class EconomyPanelView(CooldownView):
         next_page.callback = next_panel_page
         self.add_item(previous)
         self.add_item(next_page)
+
+    def _build_v2(self):
+        """CV2 game-panel rendering reusing the page embed's content."""
+        emb = build_economy_panel_embed(self.guild_id, self.page)
+        c = discord.ui.Container(accent_color=discord.Color.dark_green())
+        c.add_item(discord.ui.TextDisplay(f"## {emb.title}"))
+        if emb.description:
+            c.add_item(discord.ui.TextDisplay(emb.description))
+        c.add_item(discord.ui.Separator())
+        # action select
+        sel = EconomyPanelActionSelect(self.page)
+        c.add_item(discord.ui.ActionRow(sel))
+        # page select + nav
+        page_sel = EconomyPanelPageSelect(self.page)
+        c.add_item(discord.ui.ActionRow(page_sel))
+        prev_b = discord.ui.Button(label="Previous", emoji="◀️", style=discord.ButtonStyle.secondary,
+                           disabled=(self.page == 0))
+        next_b = discord.ui.Button(label="Next", emoji="▶️", style=discord.ButtonStyle.secondary,
+                           disabled=(self.page == len(ECONOMY_PANEL_PAGES) - 1))
+
+        async def previous_page(interaction):
+            await interaction.response.edit_message(
+                view=EconomyPanelView(self.guild_id, self.page - 1))
+
+        async def next_panel_page(interaction):
+            await interaction.response.edit_message(
+                view=EconomyPanelView(self.guild_id, self.page + 1))
+
+        prev_b.callback = previous_page
+        next_b.callback = next_panel_page
+        nav = discord.ui.ActionRow()
+        nav.add_item(prev_b)
+        nav.add_item(next_b)
+        c.add_item(nav)
+        c.add_item(discord.ui.TextDisplay(f"-# Page {self.page + 1}/{len(ECONOMY_PANEL_PAGES)} · Actions use the player who clicks them"))
+        self.add_item(c)
 
 
 @bot.tree.command(name="econ", description="Economy hub (balance, daily, work, crime, games…) — economy channel only.")
@@ -596,10 +642,13 @@ async def econ_cmd(
     now = time.time()
 
     if act == "panel":
-        await interaction.response.send_message(
-            embed=build_economy_panel_embed(gid, 0),
-            view=EconomyPanelView(gid, 0),
-        )
+        if hasattr(discord.ui, "LayoutView"):
+            await interaction.response.send_message(view=EconomyPanelView(gid, 0))
+        else:
+            await interaction.response.send_message(
+                embed=build_economy_panel_embed(gid, 0),
+                view=EconomyPanelView(gid, 0),
+            )
         return
 
     if act == "help":
@@ -644,7 +693,21 @@ async def econ_cmd(
         return
 
     if act == "bal":
-        await interaction.response.send_message(embed=_econ_bal_embed(gid, interaction.user))
+        bal_emb = _econ_bal_embed(gid, interaction.user)
+        if hasattr(discord.ui, "LayoutView"):
+            class WalletPanel(discord.ui.LayoutView):
+                def __init__(self):
+                    super().__init__(timeout=300)
+                    c = discord.ui.Container(accent_color=discord.Color.dark_green())
+                    c.add_item(discord.ui.TextDisplay(f"## {bal_emb.title}"))
+                    if bal_emb.description:
+                        c.add_item(discord.ui.TextDisplay(bal_emb.description))
+                    for f in bal_emb.fields:
+                        c.add_item(discord.ui.TextDisplay(f"**{f.name}**\n{f.value}"))
+                    self.add_item(c)
+            await interaction.response.send_message(view=WalletPanel())
+            return
+        await interaction.response.send_message(embed=bal_emb)
         return
 
     if act == "daily":

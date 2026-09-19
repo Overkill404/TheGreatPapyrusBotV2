@@ -2896,10 +2896,7 @@ class PostBattleView(CooldownView):
             guild_id, interaction.user.id, levels,
             player_name=label_for_member(getattr(self, 'player_ref', None) or interaction.user),
         )
-        await interaction.response.edit_message(
-            embed=embed,
-            view=LevelSelectView(self.player_ref, guild_id, levels),
-        )
+        await battle_edit(interaction, embed, LevelSelectView(self.player_ref, guild_id, levels))
         self.stop()
 
     @discord.ui.button(label="Main Menu", emoji="🏠", style=discord.ButtonStyle.secondary)
@@ -2912,10 +2909,7 @@ class PostBattleView(CooldownView):
         guild_id = interaction.guild.id
         levels = get_levels(guild_id)
         embed = build_level_menu_embed(guild_id, interaction.user.id, levels, player_name=label_for_member(getattr(self, 'player_ref', None) or interaction.user))
-        await interaction.response.edit_message(
-            embed=embed,
-            view=LevelSelectView(self.player_ref, guild_id, levels)
-        )
+        await battle_edit(interaction, embed, LevelSelectView(self.player_ref, guild_id, levels))
         self.stop()
 
 

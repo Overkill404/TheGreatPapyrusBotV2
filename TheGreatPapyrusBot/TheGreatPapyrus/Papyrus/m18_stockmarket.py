@@ -121,6 +121,24 @@ async def stocks_cmd(interaction: discord.Interaction, action: str = "view", sym
 
     if action == "view" or not symbol:
         rows = db.execute("SELECT * FROM stocks WHERE guild_id = ? ORDER BY symbol", (gid,)).fetchall()
+        if CV2:
+            class TickerPanel(ui.LayoutView):
+                def __init__(self):
+                    super().__init__(timeout=120)
+                    c = ui.Container(accent_color=discord.Color.green())
+                    c.add_item(ui.TextDisplay("## 📈 Underground Stock Exchange"))
+                    c.add_item(ui.Separator())
+                    for r in rows:
+                        c.add_item(ui.TextDisplay(
+                            f"**{r['symbol']}** — *{r['name']}*\n-# Price: **{r['price']:,.2f}**"
+                        ))
+                    c.add_item(ui.Separator())
+                    c.add_item(ui.TextDisplay(
+                        "-# Buy: `/stocks action:buy symbol:SNAIL shares:10` · Prices drift with server activity."
+                    ))
+                    self.add_item(c)
+            await interaction.response.send_message(view=TickerPanel(), ephemeral=True)
+            return
         lines = []
         for r in rows:
             lines.append(f"`{r['symbol']:>7}` {r['name'][:28]:<28} — **{r['price']:,.2f}**")
@@ -208,7 +226,22 @@ async def stocks_cmd(interaction: discord.Interaction, action: str = "view", sym
             value = float(cur["price"] or 0) * int(h["shares"]) if cur else 0
             total += value
             pl = value - float(h["cost_basis"] or 0)
-            lines.append(f"`{h['symbol']:>7}` {h['shares']} sh — worth **{value:,.0f}** ({pl:+,.0f})")
+            arrow = "🟢" if pl >= 0 else "🔴"
+            lines.append((f"**{h['symbol']}** — {h['shares']} sh · worth **{value:,.0f}** · "
+                          f"{arrow} {pl:+,.0f}"))
+        if CV2:
+            class PortfolioPanel(ui.LayoutView):
+                def __init__(self):
+                    super().__init__(timeout=120)
+                    c = ui.Container(accent_color=style_color(gid))
+                    c.add_item(ui.TextDisplay(f"## 💼 {interaction.user.display_name}'s Portfolio"))
+                    c.add_item(ui.TextDisplay(f"### Total value: {eco_fmt(gid, int(total))}"))
+                    c.add_item(ui.Separator())
+                    for l in lines:
+                        c.add_item(ui.TextDisplay(l))
+                    self.add_item(c)
+            await interaction.response.send_message(view=PortfolioPanel(), ephemeral=True)
+            return
         emb = discord.Embed(
             title=f"💼 Your Portfolio — total {eco_fmt(gid, int(total))}",
             description="\n".join(lines),

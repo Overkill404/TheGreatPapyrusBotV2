@@ -443,6 +443,10 @@ async def export_profile_cmd(interaction: discord.Interaction, member: discord.M
             continue
         lines.append(f"• {k}: **{v}**")
     text = "\n".join(str(l) for l in lines)
+    panel = build_profile_panel(interaction, target, p)
+    if panel is not None:
+        await interaction.response.send_message(view=panel, ephemeral=True)
+        return
     emb = discord.Embed(
         title=f"👤 {target.display_name} — Profile Export",
         description=text[:4000],

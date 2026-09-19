@@ -4188,6 +4188,12 @@ async def admin_panel_cmd(interaction: discord.Interaction):
             ephemeral=True,
         )
         return
+    if hasattr(discord.ui, "LayoutView"):
+        await interaction.response.send_message(
+            view=AdminPanelView(interaction.user, interaction.guild.id, page=0),
+            ephemeral=True,
+        )
+        return
     embed = build_admin_panel_embed(interaction.guild.id, 0)
     await interaction.response.send_message(
         embed=embed,
