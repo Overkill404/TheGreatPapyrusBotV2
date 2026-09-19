@@ -244,6 +244,12 @@ def _dex_universes(gid):
     except Exception:
         return []
 
+def _uget(u, key, default=None):
+    try:
+        return u[key] if (u is not None and key in u.keys()) else default
+    except Exception:
+        return default
+
 def build_dex_embed(gid, member):
     rows = db.execute("""SELECT pk.boss_id, pk.kills FROM player_boss_kills pk WHERE pk.guild_id=? AND pk.user_id=?""",
                       (gid, member.id)).fetchall()
@@ -253,29 +259,66 @@ def build_dex_embed(gid, member):
         bosses = get_spawnable_bosses(gid) or []
     except Exception:
         bosses = []
-    total = 0
-    have = 0
-    lines = []
-    for b in bosses[:60]:
-        bid = b["id"]
-        if not figet(gid, f"dex_boss_{bid}", 1):
-            continue
-        total += 1
-        if bid in kills:
-            have += 1
-            lines.append(f"✅ {b['emoji']} **{b['name']}** — {kills[bid]} kills")
-        else:
-            lines.append(f"⬜ ??? (undiscovered)")
-    uni_note = ""
-    for u in _dex_universes(gid)[:8]:
-        ulevel_bosses = [b for b in bosses if (b["level_id"] and _level_universe(gid, b["level_id"]) == u["id"])]
-        if not ulevel_bosses:
-            continue
-        uni_note += f"• {u['name']}: {sum(1 for b in ulevel_bosses if b['id'] in kills)}/{len(ulevel_bosses)}\n"
-    emb = discord.Embed(title="📕 Soul Dex", description=(f"Collected **{have}/{total}** boss souls." + (f"\n\n**Universe completion**\n{uni_note}" if uni_note else "") or "Nothing yet."), color=style_color(gid))
-    if lines:
-        emb.add_field(name="Collection", value="\n".join(lines)[:1024], inline=False)
-    emb.set_footer(text="Defeat bosses to register them. Complete a universe for rewards!")
+    collectible = [b for b in bosses if figet(gid, "dex_boss_" + str(b["id"]), 1)]
+
+    levels = {}
+    try:
+        levels = {lv["id"]: lv for lv in (get_levels(gid, enabled_only=True) or [])}
+    except Exception:
+        levels = {}
+    universes = {0: {"id": 0, "name": "Default Areas", "emoji": "🌀"}}
+    try:
+        for u in (list_universes(gid, enabled_only=True) or []):
+            universes[int(u["id"] or 0)] = u
+    except Exception:
+        pass
+
+    # bosses -> level -> universe
+    by_level = {}
+    for b in collectible:
+        by_level.setdefault(int(b["level_id"] or 0), []).append(b)
+
+    by_universe = {}
+    for lid, lbosses in by_level.items():
+        lv = levels.get(lid)
+        uid_ = int(lv["universe_id"] or 0) if lv is not None and "universe_id" in lv.keys() else 0
+        by_universe.setdefault(uid_, []).append((lv, lid, lbosses))
+
+    have = sum(1 for b in collectible if b["id"] in kills)
+    total = len(collectible)
+    emb = discord.Embed(title="📕 Soul Dex",
+                        description=f"Collected **{have}/{total}** boss souls, organized by area.",
+                        color=style_color(gid))
+
+    # claimed sets for ✅ markers
+    claimed = {int(r["universe_id"] or 0) for r in db.execute(
+        "SELECT universe_id FROM dex_claims WHERE guild_id=? AND user_id=?", (gid, member.id)).fetchall()}
+
+    ordered = sorted(by_universe.keys(), key=lambda u: (u == 0, str(_uget(universes.get(u), "name", ""))))
+    fields_used = 0
+    for uid_ in ordered:
+        if fields_used >= 24:
+            emb.add_field(name="…", value="More areas — claim rewards with the button below.", inline=False)
+            break
+        u = universes.get(uid_)
+        ucollect = [b for _, _, lbs in by_universe[uid_] for b in lbs]
+        uhave = sum(1 for b in ucollect if b["id"] in kills)
+        head = f"{_uget(u, 'emoji') or '🌌'} **{_uget(u, 'name', 'Unknown Universe')}** — {uhave}/{len(ucollect)}" + (" 🏆" if uid_ in claimed else "")
+        lines = []
+        for lv, lid, lbosses in sorted(by_universe[uid_], key=lambda x: (_uget(x[0], "name", "~unassigned"))):
+            if lv is not None:
+                lname = lv["name"] + (f" ({lv['emoji']})" if _uget(lv, "emoji") else "")
+            else:
+                lname = "⚙️ Unassigned bosses"
+            boss_txt = " ".join(
+                ("✅" if b["id"] in kills else "⬜") + f" {b['name']}" + (f" x{kills[b['id']]}" if b["id"] in kills else "")
+                for b in lbosses[:8])
+            lines.append(f"**{lname}**: {boss_txt}")
+        emb.add_field(name=head, value="\n".join(lines)[:1024] or "No bosses", inline=False)
+        fields_used += 1
+    if not collectible:
+        emb.description = "No collectible bosses yet — admins enable them in Papyrus+ → Soul Dex."
+    emb.set_footer(text="Defeat bosses to register their souls. Complete a universe's set for the 🏆 reward!")
     return emb
 
 def _level_universe(gid, level_id):
