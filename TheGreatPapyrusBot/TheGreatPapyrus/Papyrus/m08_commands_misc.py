@@ -5661,6 +5661,7 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Welcome", value="safe_welcome", emoji="👋", description="Welcome channel + message"),
                 discord.SelectOption(label="Goodbye", value="safe_goodbye", emoji="🚪", description="Leave channel + message"),
                 discord.SelectOption(label="Safety Hub", value="safe_hub", emoji="📋", description="View current settings"),
+                discord.SelectOption(label="Safety II Hub", value="safety2_hub", emoji="🛡️", description="Verify gate, anti-nuke, integrity + 17 more"),
             ]
         return [discord.SelectOption(label="Catalog", value="catalog", emoji="📖")]
 
@@ -5932,6 +5933,9 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
             return
         if value == "econ2_hub":
             await open_econ2_admin(interaction, self.guild_id)
+            return
+        if value == "safety2_hub":
+            await open_safety2_admin(interaction, self.guild_id)
             return
         if value == "gather_admin":
             await open_gather_admin(interaction, self.guild_id)
