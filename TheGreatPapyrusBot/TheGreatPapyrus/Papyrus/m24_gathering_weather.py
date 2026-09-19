@@ -147,10 +147,17 @@ async def _gather_cmd(interaction, action: str = "collect", material: str = ""):
             return
         sold = 0
         total = 0
+        pm = _g.get("mat_price_mult")
         for r in rows:
             if material.lower() in r["name"].lower():
+                mult = 1.0
+                try:
+                    if pm:
+                        mult = pm(gid, r["mid"])
+                except Exception:
+                    mult = 1.0
                 sold = r["qty"]
-                total = r["value"] * r["qty"]
+                total = int(r["value"] * r["qty"] * mult)
                 execute("UPDATE player_materials SET qty=0 WHERE guild_id=? AND user_id=? AND material_id=?", (gid, uid, r["mid"]))
                 break
         if not sold:

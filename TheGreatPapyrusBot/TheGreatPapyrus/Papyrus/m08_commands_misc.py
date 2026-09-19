@@ -5628,6 +5628,7 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Stock Market", value="stockmkt", emoji="📈", description="Buy fee, on/off"),
                 discord.SelectOption(label="PvP Betting", value="pvpbets", emoji="🎲", description="Min bet, rake, on/off"),
                 discord.SelectOption(label="Clans", value="clans_admin", emoji="🏰", description="Shared banks, settings"),
+                discord.SelectOption(label="Economy II Hub", value="econ2_hub", emoji="🎮", description="Jobs, fishing, rentals, heists + 17 more"),
             ]
         if p == 7:  # Papyrus+
             return [
@@ -5928,6 +5929,9 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
             return
         if value == "pvpbets":
             await open_betting_admin(interaction, self.guild_id)
+            return
+        if value == "econ2_hub":
+            await open_econ2_admin(interaction, self.guild_id)
             return
         if value == "gather_admin":
             await open_gather_admin(interaction, self.guild_id)
