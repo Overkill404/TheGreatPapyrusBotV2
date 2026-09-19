@@ -479,7 +479,144 @@ def _register_routes():
     _API_APP.router.add_post("/api/guild/{gid}/mod/warn", api_warn)
     _API_APP.router.add_post("/api/guild/{gid}/mod/timeout", api_timeout)
     _API_APP.router.add_post("/api/guild/{gid}/mod/ban", api_ban)
+
+
+# ---------------------------------------------------------------- web admin tools
+async def api_meta(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    g = member.guild
+    chans = [{"id": str(c.id), "name": c.name} for c in g.text_channels]
+    roles = [{"id": str(r.id), "name": r.name} for r in sorted(g.roles, key=lambda r: -r.position) if not r.is_default()]
+    return _api_json({"ok": True, "channels": chans, "roles": roles})
+
+
+async def api_tool_announce(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    body = await request.json()
+    chan = member.guild.get_channel(int(body.get("channel_id", 0)))
+    msg = str(body.get("message", "")).strip()[:2000]
+    if not chan or not msg:
+        return _api_json({"error": "need channel_id and message"}, 400)
+    try:
+        sent = await chan.send(f"📢 **{msg}**")
+    except Exception as e:
+        return _api_json({"error": f"Discord refused: {e}"}, 400)
+    _audit(member.guild.id, member.id, f"web announcement in #{chan.name}", member.id)
+    return _api_json({"ok": True, "message_id": str(sent.id)})
+
+
+async def api_tool_slowmode(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    body = await request.json()
+    chan = member.guild.get_channel(int(body.get("channel_id", 0)))
+    secs = min(max(int(body.get("seconds", 0)), 0), 21600)
+    if not chan:
+        return _api_json({"error": "need channel_id"}, 400)
+    try:
+        await chan.edit(slowmode_delay=secs, reason=f"web slowmode by {member}")
+    except Exception as e:
+        return _api_json({"error": f"Discord refused: {e}"}, 400)
+    _audit(member.guild.id, member.id, f"web slowmode #{chan.name} = {secs}s", member.id)
+    return _api_json({"ok": True, "seconds": secs})
+
+
+async def api_tool_massrole(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    body = await request.json()
+    role = member.guild.get_role(int(body.get("role_id", 0)))
+    action = body.get("action", "add")
+    if not role or action not in ("add", "remove"):
+        return _api_json({"error": "need role_id and action add|remove"}, 400)
+    done = failed = 0
+    for m in member.guild.members:
+        if m.bot or m.id == member.id:
+            continue
+        try:
+            if action == "add":
+                if role not in m.roles:
+                    await m.add_roles(role, reason=f"web mass role by {member}"); done += 1
+            else:
+                if role in m.roles:
+                    await m.remove_roles(role, reason=f"web mass role by {member}"); done += 1
+        except Exception:
+            failed += 1
+    _audit(member.guild.id, member.id, f"web mass role {action} {role.name}: {done} ok, {failed} failed", member.id)
+    return _api_json({"ok": True, "changed": done, "failed": failed})
+
+
+async def api_tool_jail(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    gid = member.guild.id
+    body = await request.json()
+    uid = int(body.get("user_id", 0))
+    reason = str(body.get("reason", "jailed via website"))[:200]
+    if not uid:
+        return _api_json({"error": "need user_id"}, 400)
+    target = member.guild.get_member(uid)
+    if target is None:
+        return _api_json({"error": "member not in server"}, 404)
+    role = await _get_or_create_role(member.guild, "quarantine_role_id", "Holding Cells")
+    if not role:
+        return _api_json({"error": "I need Manage Roles, or set quarantine_role_id in settings"}, 400)
+    old_roles = [r.id for r in target.roles if not r.is_default() and r.id != role.id]
+    try:
+        await target.remove_roles(*[r for r in target.roles if not r.is_default() and r.id != role.id], reason=f"Web jail: {reason}")
+        await target.add_roles(role, reason=f"Web jail: {reason}")
+    except Exception as e:
+        return _api_json({"error": f"check my role position vs theirs: {e}"}, 400)
+    import json as _json, time as _time
+    execute("""INSERT INTO quarantine_log (guild_id, user_id, by_id, reason, roles_json, ts) VALUES (?,?,?,?,?,?)
+        ON CONFLICT(guild_id, user_id) DO UPDATE SET by_id=excluded.by_id, reason=excluded.reason, roles_json=excluded.roles_json, ts=excluded.ts""",
+        (gid, uid, member.id, reason[:200], _json.dumps(old_roles), int(_time.time())))
+    log_player_action(gid, uid, "quarantine", f"Jailed via website. Reason: {reason}", admin_id=member.id)
+    _audit(gid, uid, f"web jail ({reason})", member.id)
+    return _api_json({"ok": True})
+
+
+async def api_tool_release(request):
+    member = await _verify_admin(request, request.match_info["gid"])
+    if not member:
+        return _api_json({"error": "forbidden", "why": _LAST_WHY["why"]}, 403)
+    gid = member.guild.id
+    body = await request.json()
+    uid = int(body.get("user_id", 0))
+    q = db.execute("SELECT * FROM quarantine_log WHERE guild_id=? AND user_id=?", (gid, uid)).fetchone()
+    if not q:
+        return _api_json({"error": "no quarantine record for that ID"}, 404)
+    target = member.guild.get_member(uid)
+    role = await _get_or_create_role(member.guild, "quarantine_role_id", "Holding Cells")
+    if target:
+        import json as _json
+        roles = [member.guild.get_role(r) for r in _json.loads(q["roles_json"] or "[]")]
+        roles = [r for r in roles if r and r.id != (role.id if role else 0)]
+        try:
+            if role and role in target.roles:
+                await target.remove_roles(role, reason="Released via website")
+            if roles:
+                await target.add_roles(*roles, reason="Released via website")
+        except Exception as e:
+            return _api_json({"error": f"role restore failed: {e}"}, 400)
+    execute("DELETE FROM quarantine_log WHERE guild_id=? AND user_id=?", (gid, uid))
+    _audit(gid, uid, "web release", member.id)
+    return _api_json({"ok": True})
+
     _API_APP.router.add_post("/api/guild/{gid}/battle/preview", api_battle_preview)
+    _API_APP.router.add_get("/api/guild/{gid}/meta", api_meta)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/announce", api_tool_announce)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/slowmode", api_tool_slowmode)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/massrole", api_tool_massrole)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/jail", api_tool_jail)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/release", api_tool_release)
 
 
 async def _run_api_server():
