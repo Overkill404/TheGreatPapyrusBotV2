@@ -202,26 +202,78 @@ async def worldboss_cmd(interaction: discord.Interaction):
             m = medal[i] if i < 3 else f"`#{i+1}`"
             lines.append(f"{m} <@{u}> — +{gold:,} gold · +{xp} XP")
         execute("DELETE FROM world_boss WHERE guild_id = ?", (gid,))
+        victory_text = (
+            f"**{boss['name']} DEFEATED!**\n\nThe Underground shakes... **the server took it down together!**\n\n"
+            + "\n".join(f"{medal[i] if i < 3 else f'`#{i+1}`'} <@{u}> — +{gold:,} gold · +{xp} XP"
+                        for i, (u, gold, xp) in enumerate(results[:10]))
+        )
+        if CV2:
+            class VictoryPanel(ui.LayoutView):
+                def __init__(self):
+                    super().__init__(timeout=600)
+                    c = ui.Container(accent_color=discord.Color.gold())
+                    c.add_item(ui.TextDisplay(f"## 🏆 {boss['name']} DEFEATED!"))
+                    c.add_item(ui.TextDisplay(victory_text.split("\n\n", 1)[1]))
+                    c.add_item(ui.Separator())
+                    c.add_item(ui.TextDisplay("*A new boss arrives next week (or when an admin summons one).*"))
+                    self.add_item(c)
+            await interaction.response.send_message(view=VictoryPanel())
+            return
         emb = discord.Embed(
             title=f"🏆 {boss['name']} DEFEATED!",
-            description="The Underground shakes... **the server took it down together!**\n\n"
-                        + "\n".join(lines),
+            description=victory_text,
             color=discord.Color.gold(),
         )
         emb.set_footer(text="A new boss arrives next week (or when an admin summons one).")
         await interaction.response.send_message(embed=emb)
         return
 
-    emb = discord.Embed(
-        title=f"⚔️ {boss['name']}",
-        description=f"You hit for **{dmg:,}** damage!\n\n`{bar}`\n**{new_hp:,}** / {boss['max_hp']:,} HP",
-        color=style_color(gid),
+    emb_desc = (
+        f"`{hp_bar(new_hp, int(boss['max_hp'] or 1), 20, '▓', '░')}`\n"
+        f"**{new_hp:,}** / {boss['max_hp']:,} HP\n\n"
+        f"You hit for **{dmg:,}** damage!"
     )
     my = db.execute(
         "SELECT damage, hits FROM world_boss_damage WHERE guild_id = ? AND user_id = ?", (gid, uid)
     ).fetchone()
-    if my:
-        emb.set_footer(text=f"Your total: {int(my['damage']):,} damage in {int(my['hits'])} hits · next attack in {attack_cd}s")
+    foot = f"Your total: {int(my['damage']):,} damage in {int(my['hits'])} hits · next attack in {attack_cd}s" if my else None
+
+    if CV2:
+        class AttackPanel(ui.LayoutView):
+            def __init__(self):
+                super().__init__(timeout=120)
+                c = ui.Container(accent_color=discord.Color.red())
+                c.add_item(ui.TextDisplay(f"## ⚔️ {boss['name']}"))
+                c.add_item(ui.Section(
+                    ui.TextDisplay(f"`{hp_bar(new_hp, int(boss['max_hp'] or 1), 20, '▓', '░')}`\n"
+                                   f"❤️ **{new_hp:,}** / {boss['max_hp']:,} HP"),
+                    accessory=ui.Thumbnail(media="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f432.svg"),
+                ))
+                c.add_item(ui.Separator())
+                c.add_item(ui.TextDisplay(f"🎯 You hit for **{dmg:,}**!"))
+                row = ui.ActionRow()
+                b = ui.Button(label="ATTACK!", style=discord.ButtonStyle.danger, emoji="⚔️")
+                b.callback = self._atk
+                row.add_item(b)
+                c.add_item(row)
+                self.add_item(c)
+
+            async def _atk(self, inter):
+                try:
+                    await worldboss_attack_from_button(inter, self.message)
+                except Exception as e:
+                    print("boss cmd attack:", e)
+
+        await interaction.response.send_message(view=AttackPanel())
+        return
+
+    emb = discord.Embed(
+        title=f"⚔️ {boss['name']}",
+        description=emb_desc,
+        color=style_color(gid),
+    )
+    if foot:
+        emb.set_footer(text=foot)
     await interaction.response.send_message(embed=emb)
 
 
@@ -243,9 +295,24 @@ async def open_worldboss_admin(interaction, guild_id):
     async def spawn_cb(inter):
         spawn_world_boss(guild_id, spawned_by=inter.user.id)
         boss2 = get_world_boss(guild_id)
+        # post a persistent live panel in the RPG channel so everyone can attack
+        posted = ""
+        try:
+            ch_id = get_command_channel(guild_id, "rpg")
+            ch = inter.guild.get_channel(int(ch_id)) if ch_id else inter.guild.system_channel
+            if ch is None:
+                ch = inter.guild.system_channel
+            if ch:
+                panel = build_worldboss_panel(guild_id, boss2, ch)
+                if panel:
+                    msg = await ch.send(view=panel)
+                    panel.message = msg
+                    posted = f"\n📬 Live boss panel posted in {ch.mention} — everyone smash **ATTACK!**"
+        except Exception as e:
+            print("boss panel post:", e)
         await inter.response.send_message(
             f"🐲 **{boss2['name']}** has descended — **{boss2['max_hp']:,} HP**! "
-            f"Everyone: `/worldboss` to attack!",
+            f"Everyone: `/worldboss` to attack!{posted}",
             ephemeral=True,
         )
 

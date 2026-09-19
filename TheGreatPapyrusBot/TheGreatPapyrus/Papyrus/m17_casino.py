@@ -60,7 +60,10 @@ RANKS = [("A", 11), ("2", 2), ("3", 3), ("4", 4), ("5", 5), ("6", 6), ("7", 7),
 
 
 def _new_deck():
-    deck = [(r, s, v) for r, s, v in RANKS for s in SUITS]
+    deck = []
+    for rank, val in RANKS:
+        for s in SUITS:
+            deck.append((rank, s, val))
     random.shuffle(deck)
     return deck
 
@@ -78,69 +81,108 @@ def _card_str(cards):
     return " ".join(f"`{c[0]}{c[1]}`" for c in cards)
 
 
-class BlackjackView(CooldownView):
-    def __init__(self, guild_id, user_id, bet, deck, player, dealer, interaction):
+class BlackjackView(ui.LayoutView if CV2 else CooldownView):
+    def __init__(self, guild_id, user_id, user, bet, deck, player, dealer, interaction):
         super().__init__(timeout=120)
         self.guild_id = int(guild_id)
         self.user_id = int(user_id)
+        self.user = user
         self.bet = int(bet)
         self.deck = deck
         self.player = player
         self.dealer = dealer
         self.interaction = interaction
         self.done = False
-        for child in self.children:
-            if isinstance(child, discord.ui.Button) and child.label in ("Hit", "Stand", "Double"):
-                pass
+        self.message = None
+        _active_blackjack.add(int(user_id))
+        self._rebuild()
 
-        hit_b = discord.ui.Button(label="Hit", style=discord.ButtonStyle.primary, emoji="🃏")
-        stand_b = discord.ui.Button(label="Stand", style=discord.ButtonStyle.secondary, emoji="✋")
-        dbl_b = discord.ui.Button(label="Double", style=discord.ButtonStyle.success, emoji="💰")
+    # ---------- rendering ----------
+    def _rebuild(self, result=None):
+        self.clear_items()
+        if CV2:
+            c = ui.Container(accent_color=discord.Color.dark_green())
+            c.add_item(ui.TextDisplay("## 🃏 BLACKJACK — *The Great Papyrus Casino*"))
+            if result:
+                c.add_item(ui.TextDisplay(f"### {result}"))
+            if self.done:
+                dealer_show = self.dealer
+                dval = _hand_value(self.dealer)
+            else:
+                dealer_show = [self.dealer[0], "🂠"]
+                dval = _hand_value([self.dealer[0]])
+            c.add_item(ui.Section(
+                ui.TextDisplay(f"**DEALER** ({dval})\n" + " ".join(
+                    f"`{cd[0]}{cd[1]}`" if isinstance(cd, tuple) else cd for cd in dealer_show
+                )),
+                accessory=ui.Thumbnail(media="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f0cf.svg"),
+            ))
+            c.add_item(ui.Separator())
+            c.add_item(ui.TextDisplay(
+                f"**{self.user.display_name}** ({_hand_value(self.player)})\n"
+                + " ".join(f"`{cd[0]}{cd[1]}`" for cd in self.player)
+                + f"\n\n💰 Bet: **{eco_fmt(self.guild_id, self.bet)}**"
+            ))
+            row = ui.ActionRow()
+            if not self.done:
+                hit_b = ui.Button(label="Hit", style=discord.ButtonStyle.primary, emoji="🃏")
+                stand_b = ui.Button(label="Stand", style=discord.ButtonStyle.secondary, emoji="✋")
+                dbl_b = ui.Button(label="Double", style=discord.ButtonStyle.success, emoji="💰")
+                hit_b.callback = self._hit
+                stand_b.callback = self._stand
+                dbl_b.callback = self._double
+                row.add_item(hit_b)
+                row.add_item(stand_b)
+                row.add_item(dbl_b)
+            c.add_item(row)
+            self.add_item(c)
+        else:
+            # classic embed fallback for old discord.py
+            dealer_show = [self.dealer[0]] + (["🂠"] if not self.done else self.dealer[1:])
+            dv = _hand_value([self.dealer[0]]) if not self.done else _hand_value(self.dealer)
+            self.fallback_embed = discord.Embed(
+                title="🃏 Blackjack — The Great Papyrus Casino",
+                color=style_color(self.guild_id),
+            )
+            if result:
+                self.fallback_embed.description = result
+            self.fallback_embed.add_field(name=f"Dealer ({dv})",
+                                          value=_card_str(dealer_show))
+            self.fallback_embed.add_field(name=f"You ({_hand_value(self.player)})",
+                                          value=_card_str(self.player))
+            self.fallback_embed.set_footer(text=f"Bet: {eco_fmt(self.guild_id, self.bet)}")
+            hit_b = ui.Button(label="Hit", style=discord.ButtonStyle.primary, emoji="🃏")
+            stand_b = ui.Button(label="Stand", style=discord.ButtonStyle.secondary, emoji="✋")
+            dbl_b = ui.Button(label="Double", style=discord.ButtonStyle.success, emoji="💰")
+            hit_b.callback = self._hit
+            stand_b.callback = self._stand
+            dbl_b.callback = self._double
+            for b in (hit_b, stand_b, dbl_b):
+                b.disabled = self.done
+                self.add_item(b)
 
-        hit_b.callback = self._hit
-        stand_b.callback = self._stand
-        dbl_b.callback = self._double
-        self.add_item(hit_b)
-        self.add_item(stand_b)
-        self.add_item(dbl_b)
-
+    # ---------- flow ----------
     async def interaction_check(self, interaction):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("Not your table.", ephemeral=True)
             return False
         return True
 
-    def _board_embed(self, hide_hole=True, result=None):
-        dealer_show = [self.dealer[0]] + (["🂠"] if hide_hole else self.dealer[1:])
-        dv = _hand_value([self.dealer[0]]) if hide_hole else _hand_value(self.dealer)
-        emb = discord.Embed(
-            title="🃏 Blackjack — The Great Papyrus Casino",
-            color=style_color(self.guild_id),
-        )
-        if result:
-            emb.description = result
-        emb.add_field(
-            name=f"Dealer ({dv})",
-            value=_card_str(dealer_show) if hide_hole else _card_str(self.dealer),
-        )
-        emb.add_field(
-            name=f"You ({_hand_value(self.player)})",
-            value=_card_str(self.player),
-        )
-        emb.set_footer(text=f"Bet: {eco_fmt(self.guild_id, self.bet)}")
-        return emb
-
     async def _settle(self, inter, result, payout):
         """payout: total returned to player (0 = lost)."""
         self.done = True
         _active_blackjack.discard(self.user_id)
-        self.stop()
         rake = 0
         if self.bet > payout:
             rake = int((self.bet - payout) * figet(self.guild_id, "bj_rake_pct", 5) / 100.0)
             treasury_add(self.guild_id, rake)
+        self._rebuild(result=result)
+        self.stop()
         try:
-            await inter.response.edit_message(embed=self._board_embed(hide_hole=False, result=result), view=None)
+            if CV2:
+                await inter.response.edit_message(view=self)
+            else:
+                await inter.response.edit_message(embed=self.fallback_embed, view=self)
         except Exception:
             pass
 
@@ -151,28 +193,32 @@ class BlackjackView(CooldownView):
         if _hand_value(self.player) > 21:
             await self._settle(inter, "💥 **Bust!** You went over 21. House wins.", 0)
         elif _hand_value(self.player) == 21:
-            await self._stand_from_hit(inter)
+            await self._dealer_finish(inter)
         else:
+            self._rebuild()
             try:
-                await inter.response.edit_message(embed=self._board_embed(), view=self)
+                if CV2:
+                    await inter.response.edit_message(view=self)
+                else:
+                    await inter.response.edit_message(embed=self.fallback_embed, view=self)
             except Exception:
                 pass
 
-    async def _stand_from_hit(self, inter):
+    async def _dealer_finish(self, inter):
         while _hand_value(self.dealer) < 17:
             self.dealer.append(self.deck.pop())
         pv, dv = _hand_value(self.player), _hand_value(self.dealer)
         if dv > 21 or pv > dv:
             await self._settle(inter, f"🎉 **You win!** {pv} vs {dv}", self.bet * 2)
         elif pv == dv:
-            await self._settle(inter, f"🤝 **Push.** Bet returned.", self.bet)
+            await self._settle(inter, "🤝 **Push.** Bet returned.", self.bet)
         else:
             await self._settle(inter, f"😌 **Dealer wins** {dv} vs {pv}.", 0)
 
     async def _stand(self, inter):
         if self.done:
             return
-        await self._stand_from_hit(inter)
+        await self._dealer_finish(inter)
 
     async def _double(self, inter):
         if self.done:
@@ -185,7 +231,7 @@ class BlackjackView(CooldownView):
         if _hand_value(self.player) > 21:
             await self._settle(inter, "💥 **Bust on the double!** House wins big.", 0)
         else:
-            await self._stand_from_hit(inter)
+            await self._dealer_finish(inter)
 
 
 async def blackjack_cmd(interaction: discord.Interaction, bet: int):
@@ -227,8 +273,11 @@ async def blackjack_cmd(interaction: discord.Interaction, bet: int):
         )
         return
     _active_blackjack.add(uid)
-    view = BlackjackView(gid, uid, bet, deck, player, dealer, interaction)
-    await interaction.response.send_message(embed=view._board_embed(), view=view, ephemeral=False)
+    view = BlackjackView(gid, uid, interaction.user, bet, deck, player, dealer, interaction)
+    if CV2:
+        await interaction.response.send_message(view=view, ephemeral=False)
+    else:
+        await interaction.response.send_message(embed=view.fallback_embed, view=view, ephemeral=False)
 
 
 bot.tree.command(name="blackjack", description="Play blackjack at the Papyrus casino (bets economy cash).")(
