@@ -362,7 +362,7 @@ async def _career_cmd(interaction: discord.Interaction, action: str = "board"):
     emb.set_footer(text=f"Licensed hunters earn +{figet(gid, 'hunter_bonus_pct', 20)}% on claimed bounties.")
     await interaction.response.send_message(embed=emb, ephemeral=True)
 
-_career_slash = bot.tree.command(name="career", description="Careers: view the bounty board (hunters), get licensed (action:license), Royal Guard tryouts (action:tryout).")(_career_cmd)
+_career_slash = bot.tree.command(name="career", description="Careers hub: bounty board, get a hunting license, Royal Guard tryouts.")(_career_cmd)
 
 # ---------------------------------------------------------------- admin panels
 async def open_music_admin(interaction, guild_id):

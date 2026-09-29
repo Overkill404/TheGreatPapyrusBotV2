@@ -301,7 +301,7 @@ async def _scheduler_loop():
                         break
         except Exception as e:
             print("scheduler loop:", e)
-        await discord.utils.sleep(30)
+        await asyncio.sleep(30)
 
 
 async def open_scheduler_admin(interaction, guild_id):

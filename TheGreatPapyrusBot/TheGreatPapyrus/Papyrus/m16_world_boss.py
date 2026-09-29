@@ -146,7 +146,7 @@ async def _weekly_loop():
             _try_weekly_spawn()
         except Exception:
             pass
-        await discord.utils.sleep(3600)  # hourly check
+        await asyncio.sleep(3600)  # hourly check
 
 
 async def worldboss_cmd(interaction: discord.Interaction):
