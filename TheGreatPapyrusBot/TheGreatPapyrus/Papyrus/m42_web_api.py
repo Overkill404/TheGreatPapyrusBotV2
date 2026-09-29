@@ -625,8 +625,19 @@ async def _run_api_server():
         print("web_api: disabled (webapi_enabled=0)")
         return
     port = int(os.environ.get("WEB_API_PORT") or figet(0, "webapi_port", 15657) or 15657)  # WispByte panel Address port (8080 is taken by their own panel API!)
+    # Register routes FIRST, before any fallible step. aiohttp raises
+    # RuntimeError("Added route will never be executed...") if a catch-all
+    # route already exists, so _register_routes must not sit inside the
+    # try below: one transient failure (or a re-run of this coroutine)
+    # would permanently poison _API_APP for every later attempt, silently
+    # killing the dashboard API until restart.
     try:
         _register_routes()
+    except Exception as e:
+        print(f"web_api: route registration failed ({e}) — bot continues normally")
+        return
+    print(f"web_api: routes registered, starting on 0.0.0.0:{port}")
+    try:
         _build_table_cols()
         _API_RUNNER = web.AppRunner(_API_APP)
         await _API_RUNNER.setup()
