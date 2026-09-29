@@ -57,12 +57,26 @@ def embed_panel(emb, classic_view=None):
                         c.add_item(ui.TextDisplay(f"**{f.name}** — {f.value}"))
                     else:
                         c.add_item(ui.TextDisplay(f"**{f.name}**\n{f.value}"))
-                # controls, chunked into rows of 5
-                for i in range(0, min(len(kids), 15), 5):
-                    row = ui.ActionRow()
-                    for k in kids[i:i + 5]:
-                        row.add_item(k)
-                    c.add_item(row)
+                # controls, chunked into width-aware rows (max width 5/row)
+                def _kid_width(k):
+                    return 1 if isinstance(k, ui.Button) else 5
+
+                def _flush(r):
+                    if r:
+                        ar = ui.ActionRow()
+                        for x in r:
+                            ar.add_item(x)
+                        c.add_item(ar)
+
+                row, width = [], 0
+                for k in kids[:15]:
+                    kw = _kid_width(k)
+                    if row and width + kw > 5:
+                        _flush(row)
+                        row, width = [], 0
+                    row.append(k)
+                    width += kw
+                _flush(row)
                 if emb.footer and emb.footer.text:
                     c.add_item(ui.TextDisplay(f"-# {emb.footer.text}"))
                 self.add_item(c)
