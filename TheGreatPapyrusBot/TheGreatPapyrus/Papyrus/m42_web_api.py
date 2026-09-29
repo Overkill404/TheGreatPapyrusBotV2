@@ -38,6 +38,15 @@ async def _cors_middleware(request, handler):
 
 _API_APP = web.Application(middlewares=[web.middleware(_cors_middleware)])
 
+# Settings read once at startup from guild_id 0 (see _run_api_server). A guild
+# admin writing these per-guild through /config has no effect on the process, so
+# the write is refused instead of silently reported as "changed".
+_GLOBAL_ONLY_KEYS = {
+    "webapi_enabled",
+    "webapi_port",
+    "webapi_allowed_origin_str",
+}
+
 # tables the website may read/write (whitelist — never trust the URL)
 _API_TABLES = {
     # combat / boss design
@@ -189,13 +198,32 @@ async def api_config_set(request):
     gid = member.guild.id
     body = await request.json()
     changed = []
+    ignored = []
     for k, v in body.items():
-        if not str(k).replace("_", "").isalnum():
+        k = str(k)
+        # reject anything that is not an ASCII snake_case key; the old check
+        # stripped "_" before testing, so names like "webapi_port" passed
+        # validation while still being a process-wide setting.
+        if (not k or not k[0].isalpha()
+                or not all(c.isascii() and (c.isalnum() or c == "_") for c in k)):
+            ignored.append(k)
+            continue
+        if k in _GLOBAL_ONLY_KEYS:
+            # process-level settings (listener port, CORS origin, API toggle)
+            # are read once from guild_id 0 at startup. Letting a guild admin
+            # write them per-guild was a no-op at best and a confusing trap at
+            # worst: the panel reports success, nothing ever changes.
+            ignored.append(k)
             continue
         fset(gid, k, v)
         changed.append(k)
     _audit(gid, member.id, f"config edit via web: {', '.join(changed)[:400]}", member.id)
-    return _api_json({"ok": True, "changed": changed})
+    out = {"ok": True, "changed": changed}
+    if ignored:
+        out["ignored"] = ignored
+        out["note"] = ("these keys are process-wide and can only be set by the "
+                       "host (env / panel), not per-guild")
+    return _api_json(out)
 
 
 # ------------------------------------------------------------- table CRUD
@@ -625,8 +653,19 @@ async def _run_api_server():
         print("web_api: disabled (webapi_enabled=0)")
         return
     port = int(os.environ.get("WEB_API_PORT") or figet(0, "webapi_port", 15657) or 15657)  # WispByte panel Address port (8080 is taken by their own panel API!)
+    # Register routes FIRST, before any fallible step. aiohttp raises
+    # RuntimeError("Added route will never be executed...") if a catch-all
+    # route already exists, so _register_routes must not sit inside the
+    # try below: one transient failure (or a re-run of this coroutine)
+    # would permanently poison _API_APP for every later attempt, silently
+    # killing the dashboard API until restart.
     try:
         _register_routes()
+    except Exception as e:
+        print(f"web_api: route registration failed ({e}) — bot continues normally")
+        return
+    print(f"web_api: routes registered, starting on 0.0.0.0:{port}")
+    try:
         _build_table_cols()
         _API_RUNNER = web.AppRunner(_API_APP)
         await _API_RUNNER.setup()
