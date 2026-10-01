@@ -479,6 +479,31 @@ def _register_routes():
     _API_APP.router.add_post("/api/guild/{gid}/mod/warn", api_warn)
     _API_APP.router.add_post("/api/guild/{gid}/mod/timeout", api_timeout)
     _API_APP.router.add_post("/api/guild/{gid}/mod/ban", api_ban)
+    # --- web admin tools. These MUST live here: they used to sit at the bottom of
+    # api_tool_release() *after* its return statement, so they were unreachable and
+    # never registered — /meta and every /tools/* route 404'd for the dashboard.
+    _API_APP.router.add_post("/api/guild/{gid}/battle/preview", api_battle_preview)
+    _API_APP.router.add_get("/api/guild/{gid}/meta", api_meta)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/announce", api_tool_announce)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/slowmode", api_tool_slowmode)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/massrole", api_tool_massrole)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/jail", api_tool_jail)
+    _API_APP.router.add_post("/api/guild/{gid}/tools/release", api_tool_release)
+    # MUST stay last: aiohttp picks the FIRST registered match, so any route
+    # added after this catch-all would be unreachable.
+    _API_APP.router.add_route("*", "/{tail:.*}", _fallback_404)
+
+
+async def _fallback_404(request):
+    # aiohttp's built-in 404 body is HTML, so a dashboard fetch() over it dies
+    # with "Unexpected token '<' ... is not valid JSON" instead of surfacing the
+    # real status. Answer unmatched paths in this API's own JSON shape instead.
+    return _api_json({
+        "ok": False,
+        "error": "not found",
+        "path": request.path,
+        "method": request.method,
+    }, 404)
 
 
 # ---------------------------------------------------------------- web admin tools
@@ -609,14 +634,6 @@ async def api_tool_release(request):
     execute("DELETE FROM quarantine_log WHERE guild_id=? AND user_id=?", (gid, uid))
     _audit(gid, uid, "web release", member.id)
     return _api_json({"ok": True})
-
-    _API_APP.router.add_post("/api/guild/{gid}/battle/preview", api_battle_preview)
-    _API_APP.router.add_get("/api/guild/{gid}/meta", api_meta)
-    _API_APP.router.add_post("/api/guild/{gid}/tools/announce", api_tool_announce)
-    _API_APP.router.add_post("/api/guild/{gid}/tools/slowmode", api_tool_slowmode)
-    _API_APP.router.add_post("/api/guild/{gid}/tools/massrole", api_tool_massrole)
-    _API_APP.router.add_post("/api/guild/{gid}/tools/jail", api_tool_jail)
-    _API_APP.router.add_post("/api/guild/{gid}/tools/release", api_tool_release)
 
 
 async def _run_api_server():
