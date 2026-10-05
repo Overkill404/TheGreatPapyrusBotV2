@@ -1710,7 +1710,7 @@ def ensure_default_error_ranks(guild_id):
         n = db.execute("SELECT COUNT(*) AS c FROM error_rel_ranks WHERE guild_id=?", (guild_id,)).fetchone()
         if n and int(n["c"] or 0) > 0: return
     except Exception: return
-    for rn, name, emoji, mn, disc, desc in [(0,"Annoyance","💢",0,0,"Barely tolerated."),(1,"Tolerated","😐",25,0,"You exist."),(2,"Useful","🧵",75,0.02,"Sometimes helpful."),(3,"Favorite Glitch","💜",150,0.05,"Error almost smiles."),(4,"Stringbound","🕸️",300,0.10,"Bound by strings.")]:
+    for rn, name, emoji, mn, disc, desc in [(0,"Stranger","💢",0,0,"Barely tolerated."),(1,"Acquaintance","😐",25,0,"You exist."),(2,"Friend of Puzzles","🧵",75,0.02,"Sometimes helpful."),(3,"Cool Friend","💜",150,0.05,"THE GREAT PAPYRUS APPROVES!"),(4,"Royal Friend","⭐",300,0.10,"Bound by friendship! NYEH HEH HEH!")]:
         try: execute("INSERT INTO error_rel_ranks (guild_id,rank_num,name,emoji,min_score,shop_discount,description,enabled) VALUES (?,?,?,?,?,?,?,1)", (guild_id,rn,name,emoji,mn,disc,desc))
         except Exception: pass
 
@@ -1892,7 +1892,7 @@ async def open_content_pack_admin(interaction, guild_id, tool: str):
         "souls": "Create souls via SQL or future modals; players pick in Social+ → Soul Path.",
         "bounty": "Players set bounties in Social+ → Bounty Board.",
         "rooms": "Set room category ID in room_config; players buy apartments in Social+.",
-        "rel": "Error relationship ranks auto-seed; view in Social+ → Hazel Rank.",
+        "rel": "Friendship ranks auto-seed; view in Social+ → Friendship Rank.",
         "gauntlet": "Insert gauntlets rows; players start runs in Social+ → Gauntlets.",
     }
     key = tool if tool in help_map else "roles"

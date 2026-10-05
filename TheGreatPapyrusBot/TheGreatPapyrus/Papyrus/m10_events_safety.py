@@ -6151,7 +6151,7 @@ async def on_ready():
                     try:
                         p = get_error_persona(g.id)
                         if p and not str(p["display_name"] or "").strip():
-                            set_error_persona_field(g.id, "display_name", "Hazel")
+                            set_error_persona_field(g.id, "display_name", "The Great Papyrus")
                             set_error_persona_field(g.id, "gender", "female")
                             set_error_persona_field(g.id, "talk_style", "calm")
                     except Exception:
@@ -6169,7 +6169,7 @@ async def on_ready():
                 try:
                     p = get_error_persona(g.id)
                     if p is not None and not str(p["display_name"] or "").strip():
-                        set_error_persona_field(g.id, "display_name", "Hazel")
+                        set_error_persona_field(g.id, "display_name", "The Great Papyrus")
                         set_error_persona_field(g.id, "gender", "female")
                         set_error_persona_field(g.id, "talk_style", "calm")
                 except Exception:
@@ -6572,7 +6572,7 @@ async def on_message(message: discord.Message):
                     pass
                 try:
                     await message.author.send(
-                        f"🦴 You've been **captured** by The Great Papyrus. You can only talk in the Holding Cell"
+                        f"🦴 You've been **captured** by The Great Papyrus. You can only talk in the Cool Jail"
                         + (f" (<#{jail_id}>)" if jail_id else "")
                         + "."
                     )

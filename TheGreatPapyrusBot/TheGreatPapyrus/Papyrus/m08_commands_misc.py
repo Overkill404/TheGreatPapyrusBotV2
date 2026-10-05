@@ -2137,7 +2137,7 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
                     f"{ping} no contest",
                 ]
             return random.choice(lines)
-        return f"{mention} nobody worth pinging. void's the {kind} today"
+        return f"{mention} nobody worth pinging. the Great Papyrus is the {kind} today"
 
     if not is_q:
         return None
@@ -2229,15 +2229,15 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
         ) and "boss" not in low
     ):
         lines = [
-            f"{mention} heh. try me",
-            f"{mention} weakest? say that again",
-            f"{mention} i delete AUs. you delete your HP",
-            f"{mention} call me weak again. carefully",
-            f"{mention} the void does not rank me. i rank it",
-            f"{mention} mid question. stronger answer: no",
-            f"{mention} i'm not a boss list entry",
-            f"{mention} come closer and find out",
-            f"{mention} ink wishes he was this problem",
+            f"{mention} NYEH! try me",
+            f"{mention} WEAKEST? SAY THAT AGAIN, FRIEND!",
+            f"{mention} I JUDGE BATTLES. you are losing yours",
+            f"{mention} I AM THE FUTURE ROYAL GUARD. CAREFUL",
+            f"{mention} nobody ranks the Great Papyrus. I rank THEM",
+            f"{mention} A MID QUESTION! A STRONGER ANSWER: NO!",
+            f"{mention} I AM NOT A BOSS LIST ENTRY. I AM THE STANDARD!",
+            f"{mention} COME TO A PUZZLE AND FIND OUT!",
+            f"{mention} even UNDYNE would train you harder",
             f"{mention} weak is what i leave behind",
         ]
         return random.choice(lines)
@@ -3881,7 +3881,7 @@ class ErrorSansActionSelect(discord.ui.Select):
                 description="Where Swiss Cheese announcements post",
             ),
         ]
-        super().__init__(placeholder="Hazel tools...", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="Papyrus tools...", options=options, min_values=1, max_values=1)
 
     async def callback(self, interaction: discord.Interaction):
         if not is_bot_admin(interaction):
@@ -3952,7 +3952,7 @@ class ErrorSansActionSelect(discord.ui.Select):
                 cur = "*none*"
             await interaction.response.send_message(
                 "📢 **Arrested notifications**\n"
-                "Pick up to **5** channels. When Error strings someone, those channels get a chaotic notice "
+                "Pick up to **5** channels. When Papyrus jails someone, those channels get a dramatic notice "
                 "(who, why, how long + random quote).\n\n"
                 f"**Current:** {cur}",
                 view=view,
@@ -4041,7 +4041,7 @@ class ErrorSansActionSelect(discord.ui.Select):
             view.add_item(ErrorTalkChannelSelect(self.guild_id))
             view.add_item(ErrorTalkClearButton(self.guild_id))
             msg = (
-                "💬 **Error Talking channels**\n"
+                "💬 **Papyrus Talking channels**\n"
                 "Spontaneous chat only happens in these channels.\n"
                 "If set, @ping replies also only work here.\n"
                 "Clear = no spontaneous talk; pings work everywhere again.\n\n"
@@ -4107,7 +4107,7 @@ class ErrorSansActionSelect(discord.ui.Select):
         view = CooldownView(timeout=120)
         view.add_item(ErrorSpeakChannelSelect(self.guild_id))
         await interaction.response.send_message(
-            "🧵 **Speak as Error**\nPick the channel to post in:",
+            "🧵 **Speak as Papyrus**\nPick the channel to post in:",
             view=view,
             ephemeral=True,
         )
@@ -4668,7 +4668,7 @@ class ErrorTalkChannelSelect(discord.ui.ChannelSelect):
         set_talk_channel_ids(self.guild_id, ids)
         mentions = ", ".join(c.mention for c in self.values)
         await interaction.response.send_message(
-            f"✅ Error can talk in: {mentions}\n"
+            f"✅ Papyrus can talk in: {mentions}\n"
             f"Spontaneous + @pings limited to these channels.",
             ephemeral=True,
         )
@@ -4887,8 +4887,8 @@ def build_admin_panel_embed(guild_id, page: int = 0):
             "🔄 **Refresh** — rebuild this panel with fresh data\n"
             "📢 **Announcement Channels** — pick where bot announcements post\n"
             "🎮 **RPG Channel** — set the main RPG play channel\n"
-            "🍗 **Character Tools** — edit Error Sans / Hazel persona\n"
-            "🎭 **Style** — Hazel (nugget) or Error Sans skin\n"
+            "🍝 **Character Tools** — edit the Papyrus persona\n"
+            "🎭 **Persona** — Papyrus theming\n"
             "📊 **Poll** — create a poll · 🔔 **Update Role** — self-assign role"
         ),
         1: (
@@ -4923,7 +4923,7 @@ def build_admin_panel_embed(guild_id, page: int = 0):
             "**Seasons+** — seasonal content pack\n\n"
             "🗓️ **Seasons** · 👥 **Party Roles** · ⚖️ **Court** · 📖 **Memory Codex**\n"
             "👻 **Soul Paths** · 🎯 **Bounties/Events** · 🏢 **Apartments**\n"
-            "💜 **Hazel Relationship** · 🏁 **Gauntlets**\n"
+            "💜 **Friendship Ranks** · 🏁 **Gauntlets**\n"
             "Each one opens its own editor in the dropdown."
         ),
         6: (
@@ -4931,7 +4931,7 @@ def build_admin_panel_embed(guild_id, page: int = 0):
             "💰 **Hub** — overview · 📢 **Channel** — where economy posts go\n"
             "🪙 **Currency** — name/symbol · ⚙️ **Rates** — earn rates\n"
             "🛒 **Shop Add / List** — items for sale · 🗓️ **Season**\n"
-            "🎟️ **Lottery** · 💸 **Give/Take** · ⏻ **Toggle** · 🎭 **Hazel Persona**"
+            "🎟️ **Lottery** · 💸 **Give/Take** · ⏻ **Toggle** · 🎭 **Papyrus Persona**"
         ),
         7: (
             "**Papyrus+** — feature controls for the Papyrus systems\n\n"
@@ -5058,10 +5058,10 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="RPG Channel", value="rpg_channel", emoji="🎮"),
                 discord.SelectOption(label="Character Tools", value="error_sans", emoji="🍗"),
                 discord.SelectOption(
-                    label="Style: Hazel / Error Sans",
+                    label="Persona theme",
                     value="style_pack",
                     emoji="🎭",
-                    description="Switch this server between Hazel and Error Sans",
+                    description="Refresh the Papyrus persona for this server",
                 ),
                 discord.SelectOption(label="Poll", value="poll", emoji="📊"),
                 discord.SelectOption(
@@ -5120,7 +5120,7 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Soul Paths", value="pack_souls", emoji="👻"),
                 discord.SelectOption(label="Bounties/Events", value="pack_bounty", emoji="🎯"),
                 discord.SelectOption(label="Apartments", value="pack_rooms", emoji="🏢"),
-                discord.SelectOption(label="Hazel Relationship", value="pack_rel", emoji="💜"),
+                discord.SelectOption(label="Friendship Ranks", value="pack_rel", emoji="💜"),
                 discord.SelectOption(label="Gauntlets", value="pack_gauntlet", emoji="🏁"),
             ]
         if p == 6:  # Economy+
@@ -5135,7 +5135,7 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
                 discord.SelectOption(label="Draw Lottery", value="econ_draw_lotto", emoji="🎫"),
                 discord.SelectOption(label="Give / Take", value="econ_give", emoji="💸"),
                 discord.SelectOption(label="Toggle On/Off", value="econ_toggle", emoji="🔁"),
-                discord.SelectOption(label="Hazel Persona", value="econ_persona", emoji="🎭", description="Name, gender, talk style, pfp"),
+                discord.SelectOption(label="Papyrus Persona", value="econ_persona", emoji="🎭", description="Name, gender, talk style, pfp"),
                 discord.SelectOption(label="Server Treasury", value="econ_treasury", emoji="🏦", description="Raked cash — spend on events"),
                 discord.SelectOption(label="Casino / Blackjack", value="casino", emoji="🃏", description="Min bet, rake, on/off"),
                 discord.SelectOption(label="Stock Market", value="stockmkt", emoji="📈", description="Buy fee, on/off"),
@@ -5511,42 +5511,27 @@ class AdminPanelView(discord.ui.LayoutView if hasattr(discord.ui, "LayoutView") 
         if value == "style_pack":
             pack = get_style_pack(self.guild_id)
             view = CooldownView(timeout=90)
-            b_h = discord.ui.Button(label="Hazel (nugget)", style=discord.ButtonStyle.success, emoji="🍗")
-            b_e = discord.ui.Button(label="Error Sans", style=discord.ButtonStyle.danger, emoji="🕸️")
+            b_p = discord.ui.Button(label="Refresh Papyrus persona", style=discord.ButtonStyle.success, emoji="🦴")
 
-            async def to_hazel(inter: discord.Interaction):
-                set_style_pack(self.guild_id, "hazel")
+            async def to_papyrus(inter: discord.Interaction):
+                set_style_pack(self.guild_id, "papyrus")
                 try:
-                    await apply_error_nickname(inter.guild, "Hazel")
+                    await apply_error_nickname(inter.guild, "The Great Papyrus")
                 except Exception:
                     pass
                 emb = build_admin_panel_embed(self.guild_id, self.page)
                 await inter.response.send_message(
-                    "🍗 **Style set to Hazel** for this server.\n"
-                    "Name, colors, and tools labels now use the chicken-nugget aesthetic.",
+                    "🦴 **Persona set to the Great Papyrus** for this server.\n"
+                    "Name, colors, and tools labels use the magnificent Papyrus aesthetic. NYEH HEH HEH!",
                     ephemeral=True,
                 )
 
-            async def to_error(inter: discord.Interaction):
-                set_style_pack(self.guild_id, "error")
-                try:
-                    await apply_error_nickname(inter.guild, "Error Sans")
-                except Exception:
-                    pass
-                await inter.response.send_message(
-                    "🕸️ **Style set to Error Sans** for this server.\n"
-                    "Name, colors, and tools labels now use the classic Error aesthetic.",
-                    ephemeral=True,
-                )
-
-            b_h.callback = to_hazel
-            b_e.callback = to_error
-            view.add_item(b_h)
-            view.add_item(b_e)
+            b_p.callback = to_papyrus
+            view.add_item(b_p)
             cur = pack["name"]
             await interaction.response.send_message(
-                f"🎭 **Server style pack**\nCurrent: **{cur}** {pack['emoji']}\n"
-                f"Pick Hazel (sweet / nugget) or Error Sans (glitchy / strings).",
+                f"🎭 **Server persona**\nCurrent: **{cur}** {pack['emoji']}\n"
+                f"The persona is always the Great Papyrus. NYEH HEH HEH!",
                 view=view,
                 ephemeral=True,
             )
@@ -11910,7 +11895,7 @@ def build_summon_portal_embed(guild, summoner_name, boss):
                 f"⚠️ **This is not a Final Boss.**\n"
                 f"This is the **last truth** of an entire universe.\n\n"
                 f"**🌀 ENTER UNIVERSE FINAL** to claim the fight.\n"
-                f"*the strings of a whole world are watching...*"
+                f"*the Great Papyrus watches the whole world... supportively...*"
             ),
             color=theme,
         )

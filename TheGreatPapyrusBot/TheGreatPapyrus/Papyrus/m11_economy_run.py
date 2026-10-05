@@ -235,8 +235,8 @@ def _econ_season_mult(guild_id) -> float:
 
 def _econ_cur(guild_id):
     cfg = _econ_cfg(guild_id)
-    name = (cfg["currency_name"] if cfg else None) or "Strings"
-    em = (cfg["currency_emoji"] if cfg else None) or "🧵"
+    name = (cfg["currency_name"] if cfg else None) or "Gold"
+    em = (cfg["currency_emoji"] if cfg else None) or "🪙"
     return em, name
 
 
@@ -1174,8 +1174,8 @@ async def open_economy_admin(interaction, guild_id, tool: str = "hub"):
 
     if tool == "currency":
         class M(discord.ui.Modal, title="Currency"):
-            n = discord.ui.TextInput(label="Name", default=str(cfg["currency_name"] or "Strings"), max_length=32)
-            e = discord.ui.TextInput(label="Emoji", default=str(cfg["currency_emoji"] or "🧵"), max_length=8)
+            n = discord.ui.TextInput(label="Name", default=str(cfg["currency_name"] or "Gold"), max_length=32)
+            e = discord.ui.TextInput(label="Emoji", default=str(cfg["currency_emoji"] or "🪙"), max_length=8)
 
             async def on_submit(self, inter):
                 _econ_set_cfg(guild_id, currency_name=str(self.n.value)[:32], currency_emoji=str(self.e.value)[:8])
@@ -1315,7 +1315,7 @@ async def open_economy_admin(interaction, guild_id, tool: str = "hub"):
 
     if tool == "season":
         class M(discord.ui.Modal, title="Economy season"):
-            name = discord.ui.TextInput(label="Name", default="Double Strings")
+            name = discord.ui.TextInput(label="Name", default="Double Gold")
             mult = discord.ui.TextInput(label="Multiplier", default="1.5")
             hours = discord.ui.TextInput(label="Duration hours", default="48")
 
@@ -1489,7 +1489,7 @@ async def open_economy_admin(interaction, guild_id, tool: str = "hub"):
     opts = [
         discord.SelectOption(label="Set Channel(s)", value="channel", emoji="📢"),
         discord.SelectOption(label="Toggle On/Off", value="toggle", emoji="🔁"),
-        discord.SelectOption(label="Currency Name/Emoji", value="currency", emoji="🧵"),
+        discord.SelectOption(label="Currency Name/Emoji", value="currency", emoji="🪙"),
         discord.SelectOption(label="Rates & Cooldowns", value="rates", emoji="🔧"),
         discord.SelectOption(label="Add Shop Item", value="shop_add", emoji="🛒"),
         discord.SelectOption(label="List Shop", value="shop_list", emoji="📜"),

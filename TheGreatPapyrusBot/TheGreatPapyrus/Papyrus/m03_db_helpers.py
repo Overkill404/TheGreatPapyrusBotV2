@@ -2880,7 +2880,7 @@ def level_unlock_status(guild_id, user_id, level):
     """
     if not level:
         return False, "Level missing."
-    if ("is_start" in level.keys() and level["is_start"]) or level["name"] == "Void":
+    if ("is_start" in level.keys() and level["is_start"]) or level["name"] in ("Void", "Puzzle Field"):
         return True, ""
 
     req_lv = 0
@@ -3085,7 +3085,7 @@ def ensure_void_level(guild_id):
     if not row:
         row = db.execute("""
             SELECT id FROM levels
-            WHERE guild_id = ? AND name = 'Void'
+            WHERE guild_id = ? AND name IN ('Void', 'Puzzle Field')
             ORDER BY id LIMIT 1
         """, (guild_id,)).fetchone()
         if row:
@@ -3095,7 +3095,7 @@ def ensure_void_level(guild_id):
     else:
         cur = execute("""
             INSERT INTO levels (guild_id, name, description, intro, emoji, sort_order, is_start)
-            VALUES (?, 'Void', 'The starting realm of portals.', 'You stand at the edge of the Void.', '🌑', 0, 1)
+            VALUES (?, 'Puzzle Field', 'THE GREAT PAPYRUS''S MAGNIFICENT STARTING LEVEL! FULL OF PUZZLES, FRIENDSHIP, AND PORTALS!', 'YOU STAND IN THE PUZZLE FIELD! A HANDSOME SKELETON IN A COOL SCARF WAVES AT YOU ENTHUSIASTICALLY!', '🧩', 0, 1)
         """, (guild_id,))
         void_id = cur.lastrowid
 

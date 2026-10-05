@@ -329,7 +329,7 @@ def build_jail_shop_embed(guild_id, page=0):
         stock_info = f" (📦 {r['stock']})" if int(r['stock'] or -1) >= 0 else " (∞)"
         shop_text += f"│ {r['emoji']} **{r['name'][:25]}**  {cost_visual}│\n"
         shop_text += f"│ ↳ {r['description'][:35]}{'...' if len(r['description']) > 35 else ''}  {stock_info}│\n"
-        shop_text += f"│ Cost: {cost:,} Strings                     │\n"
+        shop_text += f"│ Cost: {cost:,} {_econ_cur(guild_id)[1]}                     │\n"
         shop_text += "├─────────────────────────────────┤\n"
     
     shop_text += f"│ Page {page + 1}/{pages} · {total_count} items total      │\n"
@@ -394,7 +394,7 @@ class JailShopView(CooldownView):
                         label=f"{r['name'][:80]}",
                         value=str(r["id"]),
                         emoji=(r["emoji"][:1] if r["emoji"] else "🛒"),
-                        description=f"{int(r['cost']):,} Strings"[:100],
+                        description=f"{int(r['cost']):,} {_econ_cur(self.guild_id)[1]}"[:100],
                     )
                 )
             
@@ -417,7 +417,7 @@ class JailShopView(CooldownView):
                 
                 cost = int(item["cost"] or 0)
                 if _econ_cash(self.guild_id, self.user_id) < cost:
-                    await inter.response.send_message("Not enough Strings!", ephemeral=True)
+                    await inter.response.send_message(f"Not enough {_econ_cur(self.guild_id)[1]}!", ephemeral=True)
                     return
                 
                 stock = int(item["stock"] or -1)
@@ -436,7 +436,7 @@ class JailShopView(CooldownView):
                 try:
                     if rtype == "cash":
                         _econ_add_cash(self.guild_id, self.user_id, ramt, note="jail_shop_reward")
-                        msg += f" +{ramt:,} Strings"
+                        msg += f" +{ramt:,} {_econ_cur(self.guild_id)[1]}"
                     elif rtype == "gold":
                         execute(
                             "UPDATE players SET gold = gold + ? WHERE guild_id = ? AND user_id = ?",
@@ -822,7 +822,7 @@ async def jail_cmd(
             pass
         
         await interaction.response.send_message(
-            f"🦴 You **{job}** and earned **+{earnings} Strings**!\n"
+            f"🦴 You **{job}** and earned **+{earnings} {_econ_cur(guild_id)[1]}**!\n"
             f"*HOW COOL IS THAT? NYEH HEH HEH!*",
             ephemeral=True
         )

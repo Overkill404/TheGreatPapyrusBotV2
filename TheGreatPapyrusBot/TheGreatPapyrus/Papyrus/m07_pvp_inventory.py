@@ -1480,12 +1480,12 @@ class InventoryView(CooldownView):
             ]
         if p == 9:  # Social+
             return [
-                discord.SelectOption(label="Strings Court", value="court", emoji="⚖️", description="Accuse a player"),
+                discord.SelectOption(label="Papyrus Court", value="court", emoji="⚖️", description="Accuse a player"),
                 discord.SelectOption(label="Bounty Board", value="bounty", emoji="🎯"),
                 discord.SelectOption(label="Apartment", value="room", emoji="🏢"),
                 discord.SelectOption(label="Soul Path", value="soulpath", emoji="👻"),
                 discord.SelectOption(label="Gauntlets", value="gauntlet", emoji="🏁"),
-                discord.SelectOption(label="Hazel Rank", value="errrank", emoji="💜"),
+                discord.SelectOption(label="Friendship Rank", value="errrank", emoji="💜"),
                 discord.SelectOption(label="Codex", value="codex", emoji="📖"),
             ]
         if p == 10:  # Commands
@@ -1918,18 +1918,18 @@ class InventoryView(CooldownView):
         await interaction.response.send_modal(VisitTimerModal())
 
     async def _do_court_from_inv(self, interaction: discord.Interaction):
-        """Inventory → Strings Court: pick target then charge."""
+        """Inventory → Papyrus Court: pick target then charge."""
         guild = interaction.guild
         if not guild:
             await interaction.response.send_message("Server only.", ephemeral=True)
             return
 
-        class CourtChargeModal(discord.ui.Modal, title="Strings Court — Charge"):
+        class CourtChargeModal(discord.ui.Modal, title="Papyrus Court — Charge"):
             charge_in = discord.ui.TextInput(
                 label="Charge (what did they do?)",
                 style=discord.TextStyle.paragraph,
                 max_length=200,
-                placeholder="e.g. griefing the void / toxicity / steal loot",
+                placeholder="e.g. griefing / toxicity / stealing loot",
             )
 
             def __init__(self, accused: discord.Member):
@@ -2088,7 +2088,7 @@ class InventoryView(CooldownView):
                                 await string_up_member(
                                     i.guild, accused, f"Court #{case_id}: {charge}", float(dur), i.user.id
                                 )
-                                msg += f"\n🧵 {accused.mention} strung **{dur // 60}m**."
+                                msg += f"\n🦴 {accused.mention} jailed for **{dur // 60}m**."
                             except Exception as e:
                                 msg += f"\n(string fail {e})"
                         elif accused and sentence == "erase":
@@ -2228,7 +2228,7 @@ class InventoryView(CooldownView):
                         pass
 
         # Step 1: pick accused via member select is hard in inventory — use modal asking for user ID/mention
-        class CourtTargetModal(discord.ui.Modal, title="Strings Court — Who?"):
+        class CourtTargetModal(discord.ui.Modal, title="Papyrus Court — Who?"):
             who_in = discord.ui.TextInput(
                 label="Player @mention or ID",
                 placeholder="@player or 123456789",
@@ -2962,7 +2962,7 @@ class CustomNameModal(discord.ui.Modal, title="Customize RPG Name"):
         self.user_id = user_id
         self.name_in = discord.ui.TextInput(
             label="Display name (blank = Discord name)",
-            placeholder="e.g. Error Chara, Dust Frisk...",
+            placeholder="e.g. Papyrus, Sans, Undyne...",
             default=(current or "")[:64],
             required=False,
             max_length=64,

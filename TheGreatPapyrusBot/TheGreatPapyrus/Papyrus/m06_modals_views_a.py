@@ -648,60 +648,50 @@ async def broadcast_online_notice():
 
 
 ERROR_DEATH_TAUNTS = [
-    "{m} skill issue. textbook",
-    "{m} heh. knew it",
-    "{m} that was pathetic. even for you",
-    "{m} delete and retry. or do not",
-    "{m} mid fight. mid ending",
-    "{m} the boss was not even trying",
-    "{m} i blinked and you died",
-    "{m} strings could not save that",
-    "{m} L. shipped",
-    "{m} go touch grass then come back",
-    "{m} even ink could've lasted longer",
-    "{m} hp is a suggestion to you apparently",
-    "{m} washed. air dry",
-    "{m} that death was free content",
-    "{m} try blocking. or existing",
-    "{m} boss sends its regards. i send mockery",
-    "{m} i almost felt something. almost",
-    "{m} 404: competence not found",
-    "{m} sit down. stay down",
-    "{m} again? predictable",
-    "{m} you fought like a loading screen",
-    "{m} next time bring a brain",
-    "{m} that HP bar was decorative",
-    "{m} void called. wants its skill back",
-    "{m} respawn with dignity. fail again quietly",
-    "{m} hehheh. crunch",
-    "{m} you made that look hard",
-    "{m} do not blame lag. blame yourself",
-    "{m} inventory full of excuses",
-    "{m} the portal is ashamed of you",
+    "{m} NYEH! A VALIANT EFFORT! THE BOSS SENDS ITS REGARDS!",
+    "{m} DO NOT GIVE UP, HUMAN! EVEN THE GREAT PAPYRUS LOST HIS FIRST BATTLE! AND HIS SECOND!",
+    "{m} DEFEAT IS JUST A PUZZLE YOU HAVE NOT SOLVED YET!",
+    "{m} WORRY NOT! I HAVE ALREADY PREPARED ENCOURAGEMENT! AND SPAGHETTI!",
+    "{m} THAT BOSS WAS NOT EVEN TRYING! TRAIN AND RETURN COOLER!",
+    "{m} I BLINKED AND YOU WERE DOWN! MAGNIFICENTLY DRAMATIC, THOUGH!",
+    "{m} YOUR HP IS A SUGGESTION YOU APPARENTLY DECLINED! NYEH HEH HEH!",
+    "{m} THE GREAT PAPYRUS BELIEVES IN YOUR NEXT ATTEMPT!",
+    "{m} A HONORABLE DEATH! I MEAN, DEFEAT! YOU WILL GET THEM NEXT TIME!",
+    "{m} STAY DETERMINED, FRIEND! THE PORTAL IS NOT ASHAMED OF YOU!",
+    "{m} NEXT TIME: MORE BLOCKING! LESS STANDING STILL!",
+    "{m} EVEN UNDYNE LOST TO THIS BOSS! ...SHE WOULD ADMIT IT EVENTUALLY!",
+    "{m} THAT DEATH WAS VERY THEATRICAL! I ALMOST APPLAUDED!",
+    "{m} RESPAWN AND TRY AGAIN! I WILL CHEER! LOUDLY!",
+    "{m} THE BOSS SENDS ITS REGARDS. I SEND SPAGHETTI. WE ARE NOT THE SAME.",
+    "{m} YOU FIGHT LIKE A LOADING SCREEN! LOVINGLY MEANT, FRIEND!",
+    "{m} AGAIN! WITH 20% MORE COOLNESS THIS TIME!",
+    "{m} DO NOT BLAME LAG! BLAME THE PUZZLE! THEN SOLVE IT!",
+    "{m} YOUR INVENTORY IS FULL OF EXCUSES! AND ONE (1) STICK!",
+    "{m} NYEH HEH HEH! I HAVE ALREADY FORGOTTEN YOUR DEFEAT! TRY AGAIN!",
 ]
 
+
 ERROR_WIN_TAUNTS = [
-    "{m} fine. you won",
-    "{m} acceptable. barely",
-    "{m} not bad. do not celebrate",
-    "{m} hm. noted",
-    "{m} ok. take the loot and leave",
-    "{m} that'll do. for a human",
-    "{m} do not get cocky",
-    "{m} noted. still not impressed",
-    "{m} passable",
-    "{m} whatever. take the loot",
-    "{m} i'll allow it",
-    "{m} surprising. keep it rare",
-    "{m} keep going. maybe you will not die next",
-    "{m} not mid. for once",
-    "{m} heh. lucky",
-    "{m} clean enough. i'll allow the brag for five seconds",
-    "{m} the boss lost. you still talk too much",
-    "{m} fine. gold. now shut up",
-    "{m} ok that one counted",
-    "{m} void shrugs. i shrug harder",
+    "{m} NYEH HEH HEH! VICTORY! AS FORETOLD BY THE GREAT PAPYRUS!",
+    "{m} MAGNIFICENT! I AM TAKING NOTES FOR MY MEMOIRS!",
+    "{m} A COOL AND HONORABLE WIN! WELL DONE, HUMAN!",
+    "{m} THE BOSS HAS BEEN DEFEATED! FRIENDSHIP PREVAILS!",
+    "{m} EXCELLENT! UNDYNE WOULD FLEX APPROVINGLY!",
+    "{m} YOU HAVE MADE THE GREAT PAPYRUS PROUD! AND PROUD IS MY SPECIALTY!",
+    "{m} CLEAN WIN! DESERVE THE LOOT! ALL OF IT!",
+    "{m} I CHEERED! YOU CANNOT HEAR ME BUT I DID! NYEH!",
+    "{m} A TRUE HERO'S VICTORY! SPAGHETTI ALL AROUND!",
+    "{m} THE BOSS LOST AND YOU WON! THAT IS HOW BATTLES WORK! MAGNIFICENT!",
+    "{m} NOT BAD! ACTUALLY, VERY GOOD! I LIED, IT IS GREAT!",
+    "{m} KEEP THAT COOLNESS! GUARD IT WITH YOUR LIFE!",
+    "{m} WINNING SUITS YOU, FRIEND!",
+    "{m} NYEH! EVEN MY BROTHER WOULD BE IMPRESSED! THAT IS HIGH PRAISE!",
+    "{m} VICTORY ACHIEVED! PUZZLE STATUS: SOLVED!",
+    "{m} THE GREAT PAPYRUS SAW EVERYTHING! IT WAS SUPER COOL!",
+    "{m} GOLD! LOOT! GLORY! YOU EARNED IT!",
+    "{m} NOW THAT WAS A BATTLE WORTH JUDGING! TEN OUT OF TEN!",
 ]
+
 
 
 # channel_id -> next allowed taunt time (anti-spam)
@@ -1144,10 +1134,10 @@ async def global_bot_ban_check(interaction: discord.Interaction) -> bool:
                         reason = (row["reason"] if row else "unknown")[:120]
                         left = _format_duration_left(float(row["ends_at"]) if row else 0)
                         msg = (
-                            "🧵 **You are strung up.**\n"
+                            "🦴 **You are in the Cool Jail.**\n"
                             f"Reason: {reason}\n"
                             f"Time left: **{left}**\n"
-                            "Only `/appeal` works. Sit in the string channel."
+                            "Only `/appeal` works. Sit tight — the Great Papyrus is judging your appeal."
                         )
                         if not interaction.response.is_done():
                             await interaction.response.send_message(msg, ephemeral=True)
@@ -1246,7 +1236,7 @@ def _string_parse_duration(raw: str) -> float:
 
 def _format_duration_left(ends_at: float) -> str:
     if not ends_at or ends_at <= 0:
-        return "until an admin unstrings them"
+        return "until an admin releases them"
     left = max(0, int(ends_at - time.time()))
     if left <= 0:
         return "expiring now"
@@ -1961,32 +1951,34 @@ async def notify_string_release(guild, member, *, released_by=None, reason=None)
 
 
 VAPORIZE_QUOTES = [
-    "erased. no respawn this turn.",
-    "muted by the void. sit still.",
-    "bot.exe: speech.dll missing.",
-    "blue strings on the throat. quiet now.",
-    "glitched out of the conversation.",
-    "determination cannot out-talk this mute.",
-    "the timeline forgot your mic.",
-    "heh. enjoy the silence.",
-    "your words became dust. fitting.",
-    "ERROR 403: shut the fuck up.",
-    "even papyrus would mute that take.",
-    "speech.exe has stopped responding.",
-    "the void ate your sentence mid-type.",
-    "try talking. oh wait.",
-    "static fills the channel where you used to be.",
-    "muted. not deleted. worse — still watching.",
+    "speech paused. dramatically. by the Great Papyrus.",
+    "muted for the cause of justice. sit still.",
+    "bot.exe: volume.dll lowered. temporarily.",
+    "muted with honor and a fair trial. sort of.",
+    "the timeline paused your mic. for training purposes.",
+    "determination cannot out-talk the royal guard.",
+    "your mic is in the puzzle box. solve it to retrieve.",
+    "NYEH. enjoy the quiet. but not too much.",
+    "your words are on break. they will return cooler.",
+    "MUTED BY ROYAL DECREE. IT SOUNDS FANCIER IN WRITING.",
+    "even the Great Papyrus needs quiet to think about puzzles.",
+    "speech.exe is reorganizing itself. politely.",
+    "your sentence went on hold. the hold is very tidy.",
+    "try talking. after the timer. it is a puzzle of patience.",
+    "silence fills the channel where your words used to be. peacefully.",
+    "muted. not jailed. different paperwork.",
 ]
 
+
 ERROR_VAPORIZE_FLAVOR = [
-    "*Error snaps his fingers. the sound never arrives.*",
-    "*pixels peel off their voice like old paint.*",
-    "*somewhere between AUs, a mic cable severs.*",
-    "*glitch-laughter. then nothing.*",
-    "*the anti-void presses mute. permanent enough.*",
-    "*silence is the only language he respects right now.*",
+    "*the Great Papyrus snaps his fingers. politely. it still worked.*",
+    "*a bone gently presses the mute button. with honor.*",
+    "*somewhere, a puzzle piece clicks into place. your mic is inside it.*",
+    "*a cheerful NYEH HEH HEH echoes. then respectful silence.*",
+    "*the Cool Jail lobby files your voice for safekeeping.*",
+    "*silence is sometimes the coolest puzzle of all.*",
 ]
+
 
 
 def get_vaporize_config(guild_id):
@@ -2133,7 +2125,7 @@ async def notify_vaporize(guild, member, reason, duration_secs, by_user=None):
     ends_at = (time.time() + duration_secs) if duration_secs and duration_secs > 0 else 0.0
     dur = _format_duration_left(ends_at)
     by = by_user.mention if by_user else error_display_name(getattr(by_user, "guild", None) and getattr(by_user.guild, "id", None))
-    by_name = getattr(by_user, "display_name", None) or (by_user.name if by_user else "Hazel")
+    by_name = getattr(by_user, "display_name", None) or (by_user.name if by_user else "the Great Papyrus")
     reason_txt = (str(reason) or "No reason given").strip()[:300]
     quote = random.choice(VAPORIZE_QUOTES) if VAPORIZE_QUOTES else "erased. no respawn this turn."
     flavor = random.choice(ERROR_VAPORIZE_FLAVOR) if ERROR_VAPORIZE_FLAVOR else "*Error snaps his fingers. the sound never arrives.*"
@@ -2157,7 +2149,7 @@ async def notify_vaporize(guild, member, reason, duration_secs, by_user=None):
         embed.set_image(url=VAPORIZE_ANNOUNCE_GIF)
     except Exception:
         pass
-    embed.set_footer(text=f"{guild.name} · Hazel mute protocol")
+    embed.set_footer(text=f"{guild.name} · the Great Papyrus mute protocol")
     if ch:
         try:
             await ch.send(content=f"💨 {member.mention}", embed=embed)
@@ -2184,7 +2176,7 @@ async def notify_vaporize(guild, member, reason, duration_secs, by_user=None):
                 "• Your voice is gone — muted across the server.\n"
                 "• You can still see the timeline. You cannot speak in it.\n"
                 "• When the timer ends (or an admin unvaporizes you), speech returns.\n"
-                "• Fighting the mute only makes the void laugh harder."
+                "• Fighting the mute only makes the Great Papyrus cheer louder."
             ),
             inline=False,
         )
@@ -2201,7 +2193,7 @@ async def notify_vaporize(guild, member, reason, duration_secs, by_user=None):
             dm.set_image(url=VAPORIZE_ANNOUNCE_GIF)
         except Exception:
             pass
-        dm.set_footer(text="Hazel · erase protocol · silence is mandatory")
+        dm.set_footer(text="the Great Papyrus · quiet time protocol · silence is mandatory")
         await member.send(
             content=f"💨 **ERASED** in **{guild.name}** — `{dur}`",
             embed=dm,
@@ -2391,20 +2383,21 @@ SWISS_CHEESE_QUOTES = [
     "you got cheesed. the timeline is cleaner for it.",
     "purge complete. mute applied. next.",
     "determination cannot patch these holes.",
-    "error prefers swiss over silent. more humiliating.",
+    "the Great Papyrus prefers swiss. more memorable.",
     "your chat history is now artisanal.",
     "holes where your messages used to be.",
-    "the void snacked. you were the cheese.",
+    "a skeleton got hungry. you were the cheese.",
     "enjoy the mute. the holes stay forever in memory.",
 ]
 
 ERROR_SWISS_FLAVOR = [
-    "*Error pokes a dozen holes through their message history.*",
-    "*pixel cheese. mute. the multiverse looks away.*",
-    "*a yellow flash. then nothing worth reading.*",
-    "*the anti-void files them under 'dairy product'.*",
-    "*glitch-laughter. swiss style.*",
+    "*the Great Papyrus organizes their message history. neatly. with holes.*",
+    "*pixel cheese. a tidy mute. justice, sort of.*",
+    "*a yellow flash. then a very orderly quiet.*",
+    "*the Cool Jail files them under 'dairy product'.*",
+    "*NYEH HEH HEH. swiss style.*",
 ]
+
 
 async def notify_swiss_cheese(guild, member, reason, duration_secs, by_user=None):
     cfg = get_swiss_config(guild.id)
@@ -2412,7 +2405,7 @@ async def notify_swiss_cheese(guild, member, reason, duration_secs, by_user=None
     ends_at = (time.time() + duration_secs) if duration_secs and duration_secs > 0 else 0.0
     dur = _format_duration_left(ends_at)
     by = by_user.mention if by_user else error_display_name(getattr(by_user, "guild", None) and getattr(by_user.guild, "id", None))
-    by_name = getattr(by_user, "display_name", None) or (by_user.name if by_user else "Hazel")
+    by_name = getattr(by_user, "display_name", None) or (by_user.name if by_user else "the Great Papyrus")
     reason_txt = (str(reason) or "No reason given").strip()[:300]
     quote = random.choice(SWISS_CHEESE_QUOTES) if SWISS_CHEESE_QUOTES else "full of holes. just like your argument."
     flavor = random.choice(ERROR_SWISS_FLAVOR) if ERROR_SWISS_FLAVOR else "*Error pokes a dozen holes through their message history.*"
@@ -2435,7 +2428,7 @@ async def notify_swiss_cheese(guild, member, reason, duration_secs, by_user=None
         embed.set_image(url=SWISS_CHEESE_IMAGE)
     except Exception:
         pass
-    embed.set_footer(text=f"{guild.name} · Hazel swiss protocol")
+    embed.set_footer(text=f"{guild.name} · the Great Papyrus swiss protocol")
     content = f"{member.mention} Got Fucking Swiss Cheesed By {by}"
     if ch:
         try:
@@ -2484,7 +2477,7 @@ async def notify_swiss_cheese(guild, member, reason, duration_secs, by_user=None
             dm.set_image(url=SWISS_CHEESE_IMAGE)
         except Exception:
             pass
-        dm.set_footer(text="Hazel · swiss protocol · purge + mute")
+        dm.set_footer(text="the Great Papyrus · swiss protocol · purge + mute")
         await member.send(
             content=f"🧀 **SWISS CHEESED** in **{guild.name}** — `{dur}`",
             embed=dm,
@@ -2918,7 +2911,7 @@ def _error_poll_build_embed(question, options, counts, ends_at, author_name=None
     emb = discord.Embed(
         title="📊 ERROR POLL",
         description=(
-            f"*the void is taking attendance.*\n\n"
+            f"*attendance is being taken. enthusiastically.*\n\n"
             f"### {question}\n\n"
             + "\n\n".join(lines)
             + f"\n\n{status}"
@@ -2926,9 +2919,9 @@ def _error_poll_build_embed(question, options, counts, ends_at, author_name=None
         color=discord.Color.from_rgb(120, 20, 40) if not closed else discord.Color.dark_grey(),
     )
     if author_name:
-        emb.set_footer(text=f"called by {author_name} · strings don't lie")
+        emb.set_footer(text=f"called by {author_name} · JUSTICE!")
     else:
-        emb.set_footer(text="strings don't lie · vote once")
+        emb.set_footer(text="justice counts the votes · vote once")
     return emb
 
 
@@ -3025,7 +3018,7 @@ class ErrorPollView(CooldownView):
                 ch = channel
                 if ch:
                     await ch.send(
-                        f"📊 **Poll closed.** Winner: **{options[best_i]}** (`{counts[best_i]}` votes). the strings approve."
+                        f"📊 **Poll closed.** Winner: **{options[best_i]}** (`{counts[best_i]}` votes). THE GREAT PAPYRUS APPROVES."
                     )
             except Exception:
                 pass
@@ -3083,7 +3076,7 @@ async def start_error_poll(channel, *, question, options, minutes, author):
 async def open_error_poll_modal(interaction: discord.Interaction):
     """Admin menu entry → modal to create a poll."""
     class PollModal(discord.ui.Modal, title="Error Poll"):
-        q = discord.ui.TextInput(label="Question", max_length=200, placeholder="Who survives the void?")
+        q = discord.ui.TextInput(label="Question", max_length=200, placeholder="Who wins this debate?")
         opts = discord.ui.TextInput(
             label="Answers (comma-separated, 2–10)",
             style=discord.TextStyle.paragraph,
@@ -3153,7 +3146,7 @@ async def poll_cmd(
             minutes=minutes,
             author=interaction.user,
         )
-        await interaction.followup.send("📊 Poll is live. the void is watching.", ephemeral=True)
+        await interaction.followup.send("📊 Poll is live. Democracy! How exciting!", ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"❌ {e}", ephemeral=True)
 
@@ -3208,9 +3201,9 @@ def _court_build_embed(case_id, accuser, accused, charge, ends, judge_member, ta
     t = tallies or {"erase": 0, "string": 0, "innocent": 0}
     judge_line = judge_member.mention if judge_member else "*awaiting appointment*"
     return discord.Embed(
-        title="⚖️ STRINGS COURT",
+        title="⚖️ PAPYRUS COURT",
         description=(
-            f"**Case `#{case_id}`** — Error holds the strings.\n\n"
+            f"**Case `#{case_id}`** — Justice is served. Possibly with spaghetti.\n\n"
             f"🧑‍⚖️ **Judge:** {judge_line}\n"
             f"📢 **Accuser:** {accuser.mention if hasattr(accuser, 'mention') else accuser}\n"
             f"🎯 **Accused:** {accused.mention if hasattr(accused, 'mention') else accused}\n"
@@ -3220,10 +3213,10 @@ def _court_build_embed(case_id, accuser, accused, charge, ends, judge_member, ta
             f"Ends <t:{int(ends)}:R>."
         ),
         color=discord.Color.dark_purple(),
-    ).set_footer(text="heh. try not to disappoint the void.")
+    ).set_footer(text="try not to disappoint the Great Papyrus.")
 
 
-@bot.tree.command(name="court", description="Summon Strings Court — accuse a player.")
+@bot.tree.command(name="court", description="Summon Papyrus Court — accuse a player.")
 @app_commands.describe(user="Player to accuse", charge="What did they do?")
 async def court_cmd(interaction: discord.Interaction, user: discord.Member, charge: str):
     if not interaction.guild or not is_guild_subscribed(interaction.guild.id):
@@ -3364,7 +3357,7 @@ async def court_cmd(interaction: discord.Interaction, user: discord.Member, char
         judge_m = _judge_member(inter.guild)
         msg = (
             f"⚖️ **GAVEL — Case #{case_id}: {sentence.upper()}**\n"
-            f"Judge: {judge_m.mention if judge_m else 'the void'}\n"
+            f"Judge: {judge_m.mention if judge_m else 'the Great Papyrus'}\n"
             f"Erase `{tallies['erase']}` · String `{tallies['string']}` · Innocent `{tallies['innocent']}`"
         )
         if accused and sentence == "string":
@@ -3373,7 +3366,7 @@ async def court_cmd(interaction: discord.Interaction, user: discord.Member, char
                 await string_up_member(
                     inter.guild, accused, f"Court #{case_id}: {charge}", float(dur), inter.user.id
                 )
-                msg += f"\n🧵 {accused.mention} strung for **{dur // 60}m**. heh."
+                msg += f"\n🦴 {accused.mention} jailed for **{dur // 60}m**. NYEH!"
             except Exception as e:
                 msg += f"\n(string fail: {e})"
         elif accused and sentence == "erase":
@@ -3389,7 +3382,7 @@ async def court_cmd(interaction: discord.Interaction, user: discord.Member, char
             except Exception as e:
                 msg += f"\n(erase fail: {e})"
         else:
-            msg += "\n✅ Walks free. The strings go slack. for now."
+            msg += "\n✅ Walks free! Justice has been served. With mercy."
         try:
             await inter.channel.send(msg)
         except Exception:
@@ -3426,7 +3419,7 @@ async def court_cmd(interaction: discord.Interaction, user: discord.Member, char
         )
         try:
             await inter.channel.send(
-                f"🎲 The void spins the wheel… **{pick.mention}** is now the Judge of Case `#{case_id}`."
+                f"🎲 Fate spins the wheel… **{pick.mention}** is now the Judge of Case `#{case_id}`."
             )
         except Exception:
             pass
@@ -3565,7 +3558,7 @@ def _parse_member_targets(guild, *parts) -> list:
     return found
 
 
-@bot.tree.command(name="arrest", description="Arrest one or more players (Hazel holding cell). Admin only.")
+@bot.tree.command(name="arrest", description="Arrest one or more players (the Cool Jail). Admin only.")
 @bot_admin()
 @app_commands.describe(
     player="Primary target",
@@ -3796,7 +3789,7 @@ async def uncheese_cmd(interaction: discord.Interaction, player: discord.Member)
         pass
 
 
-@bot.tree.command(name="appeal", description="Appeal being strung up — opens a private ticket with admins.")
+@bot.tree.command(name="appeal", description="Appeal your jail time — opens a private ticket with admins.")
 async def appeal_cmd(interaction: discord.Interaction):
     await handle_string_appeal(interaction)
 
@@ -4178,7 +4171,7 @@ async def visit_cmd(interaction: discord.Interaction, minutes: Optional[int] = N
 
 @bot.tree.command(
     name="admin",
-    description="Open the Hazel admin panel (chicken-nugget edition).",
+    description="Open the admin panel (Papyrus edition).",
 )
 @bot_admin()
 async def admin_panel_cmd(interaction: discord.Interaction):
@@ -4547,7 +4540,7 @@ async def backpack(
 
     embed = build_inventory_embed(interaction.guild, interaction.user)
     try:
-        embed.insert_field_at(0, name="📂 Home", value="🏠 **Home** - equip gear - use ◀ ▶ for Shop, Craft, Combat, Progress...", inline=False)
+        embed.insert_field_at(0, name="📂 Home", value=f"🦴 **{_pap_backpack_line()}**\n🏠 **Home** - equip gear - use ◀ ▶ for Shop, Craft, Combat, Progress...", inline=False)
         embed.set_footer(text="Page 1/7 - Home - ◀ ▶ switch pages")
     except Exception:
         pass
