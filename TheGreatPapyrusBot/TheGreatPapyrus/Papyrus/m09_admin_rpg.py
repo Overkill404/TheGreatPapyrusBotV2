@@ -3350,6 +3350,16 @@ def build_portal_embed(guild, level, boss, player=None):
     except Exception:
         uni_line = ""
 
+    # Aligned power card — caps keep the bars readable across boss tiers
+    cap_hp, cap_atk, cap_def = 20000, 1000, 600
+    stats_box = ui_frame([
+        f"BOSS  {ui_plain(str(boss['name']))[:27].upper()}",
+        f"HP    {ui_bar(min(boss_hp, cap_hp), cap_hp, 16)}  {boss_hp:,}",
+        f"ATK   {ui_bar(min(boss_atk, cap_atk), cap_atk, 16)}  {boss_atk:,}",
+        f"DEF   {ui_bar(min(boss_def, cap_def), cap_def, 16)}  {boss_def:,}",
+        f"XP {boss_xp:,}  -  GOLD {boss_gold:,}",
+    ], width=42)
+
     if is_uf:
         embed = discord.Embed(
             title="🌌━━━ UNIVERSE FINAL ━━━🌌",
@@ -3365,14 +3375,7 @@ def build_portal_embed(guild, level, boss, player=None):
                 f"**{level_emoji} {level_name}**"
                 + (f" — _{intro[:60]}_" if intro else "")
                 + "\n\n"
-                f"┌─────────────────────────────────┐\n"
-                f"│ **👹 BOSS POWER STATS**                │\n"
-                f"│ ❤️ HP:  {hp_visual} {boss_hp:,}                    │\n"
-                f"│ ⚔️ ATK: {atk_visual} {boss_atk:,}                     │\n"
-                f"│ 🛡️ DEF: {def_visual} {boss_def:,}                     │\n"
-                f"│ ⭐ XP:  ✨ {boss_xp:,}                     │\n"
-                f"│ 💰 GLD: 💰 {boss_gold:,}                     │\n"
-                f"└─────────────────────────────────┘\n\n"
+                f"```\n{stats_box}\n```\n\n"
                 "**🌀 ENTER UNIVERSE FINAL · ⏭️ SKIP · 📋 MENU**\n"
                 f"🦴 *{_pap_portal_line()}*"
             ),
@@ -3393,8 +3396,8 @@ def build_portal_embed(guild, level, boss, player=None):
             description=(
                 f"```\n"
                 "╔══════════════════════════════════════╗\n"
-                "║      💀  F I N A L  C H A L L E N G  ║\n"
-                "║        the ultimate confrontation    ║\n"
+                "║     💀  F I N A L  C H A L L E N G E ║\n"
+                "║       the ultimate confrontation     ║\n"
                 "╚══════════════════════════════════════╝\n"
                 "```\n"
                 f"**👹 {boss['name']}**\n"
@@ -3402,14 +3405,7 @@ def build_portal_embed(guild, level, boss, player=None):
                 f"**{level_emoji} {level_name}**"
                 + (f" - _{intro[:50]}_" if intro else "")
                 + "\n\n"
-                f"┌─────────────────────────────────┐\n"
-                f"│ **👹 BOSS POWER STATS**                │\n"
-                f"│ ❤️ HP:  {hp_visual} {boss_hp:,}                    │\n"
-                f"│ ⚔️ ATK: {atk_visual} {boss_atk:,}                     │\n"
-                f"│ 🛡️ DEF: {def_visual} {boss_def:,}                     │\n"
-                f"│ ⭐ XP:  ✨ {boss_xp:,}                     │\n"
-                f"│ 💰 GLD: 💰 {boss_gold:,}                     │\n"
-                f"└─────────────────────────────────┘\n\n"
+                f"```\n{stats_box}\n```\n\n"
                 f"🦴 *{_pap_portal_line()}*\n\n"
                 "**💀 ENTER FINAL · ⏭️ SKIP · 📋 MENU**"
             ),
@@ -3440,14 +3436,7 @@ def build_portal_embed(guild, level, boss, player=None):
             + f"**{level_emoji} {level_name}**"
             + (f" - _{intro[:50]}_" if intro else "")
             + "\n\n"
-            f"┌─────────────────────────────────┐\n"
-            f"│ **👹 BOSS POWER STATS**                │\n"
-            f"│ ❤️ HP:  {hp_visual} {boss_hp:,}                    │\n"
-            f"│ ⚔️ ATK: {atk_visual} {boss_atk:,}                     │\n"
-            f"│ 🛡️ DEF: {def_visual} {boss_def:,}                     │\n"
-            f"│ ⭐ XP:  ✨ {boss_xp:,}                     │\n"
-            f"│ 💰 GLD: 💰 {boss_gold:,}                     │\n"
-            f"└─────────────────────────────────┘\n\n"
+            f"```\n{stats_box}\n```\n\n"
             f"🦴 **{_pap_portal_line()}**\n\n"
             "**🌀 ENTER · ⏭️ SKIP · 📋 MENU**"
         ),
@@ -3669,7 +3658,7 @@ def build_level_menu_embed(guild_id, user_id, levels, player_name=None):
             f"{ui_rule('thick')}\n"
             f"🦴 **{_pap_menu_line()}**\n"
             f"*Choose a path. Each area has its own boss pool.*\n"
-            f"🏁 = starting area\n"
+            f"{ui_chip('🏁 starting area', '🌀 portals', '💀 finals')}\n"
             f"{ui_rule()}"
         ),
         color=discord.Color.from_str("#5B2C6F")
@@ -3691,7 +3680,10 @@ def build_level_menu_embed(guild_id, user_id, levels, player_name=None):
             value=f"{intro or '*No intro*'}\n🌀 **{count}** bosses - {status}",
             inline=True
         )
-    embed.set_footer(text=(f"{player_name}'s summon menu - select a level" if player_name else "Select a level button below"))
+    embed.set_footer(text=(
+        f"✦ {player_name}'s summon menu — select a level below ✦" if player_name
+        else "✦ Select a level button below ✦"
+    ))
     return embed
 
 

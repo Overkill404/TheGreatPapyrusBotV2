@@ -2720,6 +2720,73 @@ def ui_label(text):
     return f"▸ **{text}**"
 
 
+# ==================== UI KIT (used by battle/portal/menu/backpack/admin) ====================
+
+def ui_plain(text):
+    """Strip emoji/wide chars so text aligns inside monospace frames."""
+    out = []
+    for ch in str(text or ""):
+        o = ord(ch)
+        if (0x1F000 <= o <= 0x1FAFF) or (0x2600 <= o <= 0x27BF) or (0x2B00 <= o <= 0x2BFF) \
+                or (0xFE00 <= o <= 0xFE0F) or (0x2190 <= o <= 0x21FF):
+            continue
+        out.append(ch)
+    return "".join(out).strip()
+
+
+def _disp_len(s):
+    """Approximate display width (emoji/wide chars count as 2)."""
+    n = 0
+    for ch in str(s):
+        o = ord(ch)
+        if (0x1F000 <= o <= 0x1FAFF) or (0x2600 <= o <= 0x27BF) or (0x2B00 <= o <= 0x2BFF) \
+                or (0xFE00 <= o <= 0xFE0F) or (0x2190 <= o <= 0x21FF):
+            n += 2
+        else:
+            n += 1
+    return n
+
+
+def ui_bar(cur, mx, width=14, full="▰", empty="▱"):
+    """Clean power bar: ▰▰▰▰▰▰▰▱▱▱  progress."""
+    cur_i = max(0, int(cur or 0))
+    mx_i = max(1, int(mx or 1))
+    n = int(round((cur_i / mx_i) * width))
+    n = max(0, min(width, n))
+    if 0 < cur_i < mx_i:
+        n = max(1, n)
+    if cur_i >= mx_i:
+        n = width
+    return full * n + empty * (width - n)
+
+
+def ui_chip(*parts):
+    """Status chips: 「 STUNNED 」 「 WEAKENED 」"""
+    return "  ".join(f"「 {p} 」" for p in parts if str(p).strip())
+
+
+def ui_pulse(turn=0):
+    """Rotating spark so frequently-refreshed panels feel alive turn to turn."""
+    chars = ["✦", "✧", "⋆", "✧"]
+    try:
+        return chars[int(turn) % len(chars)]
+    except Exception:
+        return "✦"
+
+
+def ui_frame(rows, width=40):
+    """Aligned monospace box (put it inside a codeblock). Emoji-aware padding."""
+    lines = ["┌" + "─" * width + "┐"]
+    for r in rows:
+        r = str(r)
+        pad = width - 2 - _disp_len(r)
+        if pad < 0:
+            pad = 0
+        lines.append("│ " + r + " " * pad + "│")
+    lines.append("└" + "─" * width + "┘")
+    return "\n".join(lines)
+
+
 def hp_bar(
     current,
     maximum,

@@ -1563,12 +1563,14 @@ async def open_economy_admin(interaction, guild_id, tool: str = "hub"):
     emb = discord.Embed(
         title=f"{em} Economy+ Admin",
         description=(
-            f"**Currency:** {cname} {em}\n"
-            f"**Enabled:** {bool(int(cfg['enabled'] or 1))}\n"
-            f"**Channels:** {ch_txt}\n"
-            f"Daily `{cfg['daily_min']}-{cfg['daily_max']}` · Work `{cfg['work_min']}-{cfg['work_max']}`\n"
-            f"Crime success `{cfg['crime_success_pct']}%` · Rob `{cfg['rob_success_pct']}%`\n"
-            f"Convert → gold ×`{cfg['convert_rate_to_gold']}` · shards ×`{cfg['convert_rate_to_shards']}`\n\n"
+            f"{ui_rule('thick')}\n"
+            f"{em} **{cname}** {ui_chip('ONLINE' if int(cfg['enabled'] or 1) else 'OFFLINE')}\n"
+            f"📍 Channels: {ch_txt}\n"
+            f"{ui_rule()}\n"
+            f"📅 Daily `{cfg['daily_min']}-{cfg['daily_max']}` — 💼 Work `{cfg['work_min']}-{cfg['work_max']}`\n"
+            f"🕵️ Crime `{cfg['crime_success_pct']}%` — 💸 Rob `{cfg['rob_success_pct']}%`\n"
+            f"🔁 Convert: gold ×`{cfg['convert_rate_to_gold']}` — shards ×`{cfg['convert_rate_to_shards']}`\n"
+            f"{ui_rule()}\n"
             "Players: `/econ` **in the economy channel only**."
         ),
         color=discord.Color.dark_green(),

@@ -1207,25 +1207,28 @@ def build_inventory_embed(guild, member, page: int = 0):
     # Enhanced HP bar with backpack aesthetic
     hp_visual = "█" * int((player['hp'] or 0) / max_hp_total * 10) + "░" * (10 - int((player['hp'] or 0) / max_hp_total * 10))
     
+    # Aligned stat + gear cards (monospace, emoji-stripped)
+    stats_box_bk = ui_frame([
+        f"LEVEL {player['level']}  -  {ui_plain(display_label)[:26].upper()}",
+        f"HP    {ui_bar(int(player['hp'] or 0), max_hp_total, 16)}  {int(player['hp'] or 0):,}/{max_hp_total:,}",
+        f"XP    {ui_bar(int(player['xp'] or 0), max(1, xp_need or 1), 16)}  {int(player['xp'] or 0):,}/{xp_need or 0:,}",
+        f"ATK {atk:>10,}  DEF {deff:>10,}",
+        f"GOLD {int(player['gold'] or 0):,}",
+    ], width=44)
+    gear_box_bk = ui_frame([
+        f"WEAPON {ui_plain(weapon_line)[:36]}",
+        f"ARMOR  {ui_plain(armor_line)[:36]}",
+        f"SOUL   {ui_plain(soul_line)[:36]}",
+        f"ITEMS  {ui_plain(item_summary)[:43]}",
+    ], width=44)
+
     # Backpack-themed design
     embed = discord.Embed(
         title=f"🎒  {display_label}'s BACKPACK",
         description=(
-            f"┌─────────────────────────────────┐\n"
-            f"│ 📊 **CHARACTER STATS**                │\n"
-            f"│ Level: **{player['level']}**                    │\n"
-            f"│ HP:    {hp_visual} {int(player['hp'] or 0):,}/{max_hp_total:,}     │\n"
-            f"│ ATK:   ⚔️ {atk:,}    DEF: 🛡️ {deff:,}    Gold: 💰 {player['gold']:,}│\n"
-            f"│ XP:    ✨ {int(player['xp'] or 0):,}/{xp_need:,}                    │\n"
-            f"├─────────────────────────────────┤\n"
-            f"│ 🎒 **EQUIPPED GEAR**                   │\n"
-            f"│ ⚔️ Weapon: {weapon_line[:40] if weapon_line != '-' else 'None'}                                    │\n"
-            f"│ 🛡️ Armor:  {armor_line[:40] if armor_line != '-' else 'None'}                                     │\n"
-            f"│ 👻 Soul:   {soul_line[:40] if soul_line != '-' else 'None'}                                      │\n"
-            f"├─────────────────────────────────┤\n"
-            f"│ 📦 **INVENTORY**                        │\n"
-            f"│ {item_summary[:40] if item_summary != 'None' else 'Empty'}                                          │\n"
-            f"└─────────────────────────────────┘"
+            f"{ui_rule('thick')}\n"
+            f"```\n{stats_box_bk}\n```\n"
+            f"```\n{gear_box_bk}\n```"
         ),
         color=discord.Color.from_str("#8B4513"),  # Brown/saddle color for backpack theme
     )

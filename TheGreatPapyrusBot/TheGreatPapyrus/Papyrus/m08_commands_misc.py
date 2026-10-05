@@ -4879,6 +4879,9 @@ def build_admin_panel_embed(guild_id, page: int = 0):
     pack = get_style_pack(guild_id)
     bname = error_display_name(guild_id)
     title = f"{pack['emoji']} {bname} Admin · {pages[page]}"
+    page_strip = "  ".join(
+        (f"**{p}**" if i == page else p) for i, p in enumerate(pages)
+    )
     blurbs = {
         0: (
             "**Welcome, Admin.**\n"
@@ -4955,9 +4958,15 @@ def build_admin_panel_embed(guild_id, page: int = 0):
             "🎭 **Auto Roles** · 👋 **Welcome** · 🚪 **Goodbye** · 📋 **Safety Hub** — full status"
         ),
     }
+    _blurbs_txt = blurbs.get(page, "Admin tools")
     embed = discord.Embed(
         title=title,
-        description=blurbs.get(page, "Admin tools"),
+        description=(
+            f"{ui_pulse(page)} **ADMIN CONSOLE** — page {page + 1}/{len(pages)}\n"
+            f"{page_strip}\n"
+            f"{ui_rule()}\n"
+            f"{_blurbs_txt}"
+        ),
         color=style_color(guild_id) if page % 2 == 0 else style_color_dark(guild_id),
     )
     try:

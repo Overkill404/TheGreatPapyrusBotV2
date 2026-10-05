@@ -306,14 +306,32 @@ class Battle:
         except Exception:
             last_line = ""
 
+        # Framed battle cards — monospace boxes so bars align perfectly
+        turn_n = int(getattr(self, "turn_count", 0) or 0)
+        pulse = ui_pulse(turn_n)
+        boss_box = ui_frame([
+            f"BOSS  {ui_plain(str(self.boss['name']))[:28].upper()}",
+            f"HP    {ui_bar(boss_hp, boss_max, 16)}  {boss_hp:,}/{boss_max:,}",
+            f"SPARE {ui_bar(mercy_progress, mercy_required, 16)}  {mercy_progress}/{mercy_required}",
+            f"ATK {int(self.boss['attack']):>10,}  DEF {int(self.boss['defense']):>10,}",
+        ], width=44)
+        you_box = ui_frame([
+            f"YOU   {ui_plain(you)[:28].upper()}",
+            f"HP    {ui_bar(player_hp, player_max, 16)}  {player_hp:,}/{player_max:,}",
+            f"ATK {atk:>10,}  DEF {deff:>10,}",
+        ], width=44)
+        chips_line = ""
+        if status_effects:
+            chips_line = "✨ " + "  ".join(
+                f"「 {ui_plain(s)} 」" for s in status_effects
+            ) + nl
+
         desc = (
-            f"{threat_emoji} **{self.boss['name']}** · {threat_text}{nl}"
-            f"❤️ `{boss_bar_visual}` **{boss_hp:,}/{boss_max:,}** · {boss_pct}%{nl}"
-            f"💛 `{mercy_bar}` **{mercy_progress}/{mercy_required}** · {mercy_pct}% MERCY{nl}"
-            f"⚔️ {int(self.boss['attack']):,}  🛡️ {int(self.boss['defense']):,}{nl}{nl}"
+            f"{pulse} **TURN {turn_n + 1}** 「 {threat_emoji} {threat_text} 」{nl}"
+            f"```{nl}{boss_box}{nl}```{nl}"
             f"🧡 **{you}**{nl}"
-            f"❤️ `{player_bar_visual}` **{player_hp:,}/{player_max:,}** · {player_pct}%{nl}"
-            f"⚔️ {atk:,}  🛡️ {deff:,}{status_text}{nl}{nl}{last_line}"
+            f"```{nl}{you_box}{nl}```{nl}"
+            f"{chips_line}{last_line}"
             f"📜 **Recent actions**{nl}{log_text}"
         )
 
