@@ -3384,7 +3384,7 @@ def build_portal_embed(guild, level, boss, player=None):
         embed.set_author(name=f"{player_name}'s COSMIC APEX" if player_name else "🌌 COSMIC APEX")
         if boss_img:
             apply_embed_media(embed, boss_img)
-        fill_boss_info_embed(embed, guild, boss, compact=True)
+        fill_boss_info_embed(embed, guild, boss, compact=True, skip_stats=True)
         foot = f"🌌 UNIVERSE FINAL · {level_name} · cosmic realm"
         if player_name:
             foot = f"{player_name}'s portal · {foot}"
@@ -3414,7 +3414,7 @@ def build_portal_embed(guild, level, boss, player=None):
         embed.set_author(name=f"{player_name}'s FINAL PORTAL" if player_name else "FINAL PORTAL")
         if boss_img:
             apply_embed_media(embed, boss_img)
-        fill_boss_info_embed(embed, guild, boss, compact=True)
+        fill_boss_info_embed(embed, guild, boss, compact=True, skip_stats=True)
         foot = f"💀 FINAL BOSS · {level_name}"
         if player_name:
             foot = f"{player_name}'s portal - {foot}"
@@ -3447,7 +3447,7 @@ def build_portal_embed(guild, level, boss, player=None):
         apply_embed_media(embed, boss_img)
     elif level_img:
         embed.set_thumbnail(url=level_img)
-    fill_boss_info_embed(embed, guild, boss, compact=True)
+    fill_boss_info_embed(embed, guild, boss, compact=True, skip_stats=True)
     embed.set_footer(text=f"🌀 {level_name} · dimension gate")
     return embed
 

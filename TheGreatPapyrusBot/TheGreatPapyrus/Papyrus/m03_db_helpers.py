@@ -3286,11 +3286,12 @@ def _boss_class_field_value(kind, spawn_text, guild_id, boss):
         pass
     return line
 
-def fill_boss_info_embed(embed, guild, boss, compact=False):
+def fill_boss_info_embed(embed, guild, boss, compact=False, skip_stats=False):
     """
     Clean boss card: stats, class, moves, drops.
     Compact = fewer lines (portal / list previews).
     Full = detailed but still readable (CHECK / admin inspect).
+    skip_stats = don't add the 📊 Stats field (portal already shows the frame card).
     """
     if not boss:
         return embed
@@ -3326,6 +3327,8 @@ def fill_boss_info_embed(embed, guild, boss, compact=False):
             pass
 
     # --- Core stats (always) ---
+    if skip_stats:
+        return embed
     embed.add_field(
         name="📊 Stats",
         value=(
