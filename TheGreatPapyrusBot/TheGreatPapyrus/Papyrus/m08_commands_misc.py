@@ -1999,10 +1999,10 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
         return (
             f"{mention} this bot was made by **CrispyNugget** "
             f"(Discord: **thedestroyeroffood**).\n"
-            f"I am Error. I do not hold AUs together - I test them."
+            f"AND I, THE GREAT PAPYRUS, AM THE MAGNIFICENT RESULT! NYEH HEH HEH!"
         )
 
-    # Ink bait - Error does not take that soft
+    # Ink bait - Papyrus is unfailingly nice about it
     if any(k in low for k in (
         "ink is better", "ink better", "ink > error", "error < ink",
         "prefer ink", "ink over error", "love ink more", "ink wins",
@@ -2012,18 +2012,10 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
         "ink" in low and any(k in low for k in ("better", "stronger", "cooler", "wins", "prefer", "over error"))
     ):
         lines = [
-            f"{mention} say that again",
-            f"{mention} ink paints. i delete",
-            f"{mention} heh. try living in the anti-void with that take",
-            f"{mention} ink wishes he had this much problem",
-            f"{mention} softest comparison in the multiverse",
-            f"{mention} keep ink's name out your mouth",
-            f"{mention} ink is paint. i'm the error",
-            f"{mention} that sentence just lost determination",
-            f"{mention} come say that without a screen between us",
-            f"{mention} mid take. ink would be embarrassed for you",
-            f"{mention} i break AUs. ink colors them in. pick a threat",
-            f"{mention} oh you are funny",
+            f"{mention} INK IS ALSO VERY COOL! WE ARE BOTH FRIENDS OF THE GREAT PAPYRUS!",
+            f"{mention} THERE IS ROOM FOR MANY COOL PEOPLE IN THIS SERVER! NYEH HEH HEH!",
+            f"{mention} I RESPECT INK! BUT I AM THE ONE JUDGING YOUR BATTLE SKILLS! NYEH!",
+            f"{mention} A FAIR OPINION! I SHALL TRAIN TWICE AS HARD ANYWAY!",
         ]
         return random.choice(lines)
 
@@ -2044,12 +2036,12 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
         except Exception:
             gname = BOT_THEME_NAME
         lines = [
-            f"{mention} {gname}.",
-            f"{mention} I'm {gname}.",
-            f"{mention} name's {gname}.",
-            f"{mention} {gname} — don't wear it out.",
-            f"{mention} they call me {gname}.",
-            f"{mention} just {gname}.",
+            f"{mention} I AM {gname}! FUTURE ROYAL GUARDSMAN AND MASTER OF PUZZLES!",
+            f"{mention} I AM {gname}! NYEH HEH HEH! PLEASURED TO MEET YOU, HUMAN!",
+            f"{mention} {gname}! THE COOLEST SKELETON YOU WILL EVER MEET!",
+            f"{mention} I AM {gname}! REMEMBER THE NAME! IT WILL BE FAMOUS SOON!",
+            f"{mention} THEY CALL ME {gname}! AND ALSO MAGNIFICENT!",
+            f"{mention} I AM {gname}! YOUR FRIENDLY NEIGHBORHOOD PUZZLE ENTHUSIAST!",
         ]
         return random.choice(lines)
 
@@ -2411,7 +2403,7 @@ def _answer_rpg_question(guild_id, mention, text, exclude_user_id=None):
          f"{mention} Inventory -> **Clear Fights** if you are locked out of battles. Don't start a new fight while one is active."),
 
         (("who are you", "what are you", "your name", "ink sans", "underverse"),
-         f"{mention} Error. I break AUs for fun and run this RPG. `/summon` if you want trouble."),
+         f"{mention} I AM THE GREAT PAPYRUS! I DESIGN PUZZLES, JUDGE BATTLES, AND RUN THIS RPG! `/summon` FOR A COOL FIGHT!"),
 
         (("leaderboard", "ranking", "top player"),
          f"{mention} `/leaderboard` - lists players by level."),
@@ -2473,52 +2465,19 @@ def _is_attack_order(text):
     return any(k in low for k in keys)
 
 
-ATTACK_ACKS = [
-    "bet",
-    "say less",
-    "they done for",
-    "oh they cooked",
-    "on sight",
-    "already on it",
-    "L incoming",
-    "easy",
-    "say no more",
-    "it is over for them",
-    "understood",
-    "light work",
-    "they should've stayed quiet",
-    "bet. watch this",
-    "oh it is so over",
-    "locked in",
-    "target acquired",
-    "rip",
-    "my bad in advance",
-    "this one's free",
-    "consider it done",
-    "they asked for it",
-    "no survivors",
-    "vaporizing...",
-    "sniping...",
-    "one sec",
-    "heh. ok",
-    "paint's ready",
-    "do not blink",
-    "got you",
-    "on it",
-    "fair enough",
-    "they walked into that",
-    "copy",
-    "roger",
-    "yikes for them",
-    "this will not take long",
-    "stand back",
-    "opening a portal for the L",
-    "ink loaded",
-    "fine. one free roast",
-    "you didn't see nothing",
-    "oops",
-    "anyway",
-]
+
+class _LazyPool:
+    """Resolves a pool by name at iteration time (avoids module-order issues)."""
+    def __init__(self, name):
+        self._name = name
+    def __iter__(self):
+        return iter(globals()[self._name])
+    def __len__(self):
+        return len(globals()[self._name])
+    def __getitem__(self, i):
+        return globals()[self._name][i]
+
+ATTACK_ACKS = _LazyPool('PAPYRUS_ATTACK_ACKS')
 
 
 def _spontaneous_line(guild_id=0, mention=None):
@@ -2947,43 +2906,7 @@ def error_glitch_speech(text, intensity=None):
 
 
 
-FLIRTY_REPLIES = [
-    "{m} heh. careful what you wish for",
-    "{m} oh? bold of you",
-    "{m} come closer then. see what happens",
-    "{m} you first. i'm waiting",
-    "{m} dms? heh. do not waste my time",
-    "{m} do not start something you cannot finish",
-    "{m} cute. still talking though",
-    "{m} strings can get... personal",
-    "{m} keep talking like that and i might answer",
-    "{m} trouble looks good on you. annoying too",
-    "{m} hehheh. try me",
-    "{m} you are playing a dangerous game",
-    "{m} i noticed. do not look so proud",
-    "{m} flirting with Hazel. brave or stupid",
-    "{m} mm. interesting. continue",
-    "{m} say that again. slower",
-    "{m} the void's cold. you are not helping",
-    "{m} do not make me like this",
-    "{m} heh. okay. i'm listening",
-    "{m} come here then. or do not",
-    "{m} bold. i'll allow it for now",
-    "{m} i could work with that",
-    "{m} careful what you ask for",
-    "{m} you are not boring. rare",
-    "{m} keep going. maybe",
-    "{m} heh. eyes on me then",
-    "{m} that almost worked",
-    "{m} soft voice. bad idea around me",
-    "{m} you want attention? you got a second of it",
-    "{m} strings twitch when you talk like that",
-    "{m} do not blush. i didn't say yes",
-    "{m} one more line. make it good",
-    "{m} heh. dangerous little thing",
-    "{m} i hear you. does not mean i care. yet",
-    "{m} flirt harder or go explore",
-]
+FLIRTY_REPLIES = _LazyPool('PAPYRUS_FLIRTY_REPLIES')
 
 
 def _is_flirty(text):
@@ -3000,38 +2923,7 @@ def _is_flirty(text):
     return any(k in low for k in keys)
 
 
-SWEET_REPLIES = [
-    "{m} hey you",
-    "{m} hi hi",
-    "{m} there you are",
-    "{m} missed that",
-    "{m} soft yes",
-    "{m} okay okay, I'm listening",
-    "{m} you're fine, I promise",
-    "{m} that was actually cute",
-    "{m} aw. go on",
-    "{m} take your time",
-    "{m} I got you",
-    "{m} you're doing better than you think",
-    "{m} hey. breathe",
-    "{m} mm. sweet of you",
-    "{m} I like that energy",
-    "{m} come sit with the chaos a sec",
-    "{m} you made me smile. rare.",
-    "{m} careful, I might get attached",
-    "{m} hi friend",
-    "{m} welcome back",
-    "{m} good timing",
-    "{m} I'm glad you're here",
-    "{m} soft laugh. continue",
-    "{m} that tracks. in a good way",
-    "{m} you're safe here",
-    "{m} little wins count",
-    "{m} proud of you, lowkey",
-    "{m} hey. you matter",
-    "{m} I'll keep you company",
-    "{m} warm hello from me",
-]
+SWEET_REPLIES = _LazyPool('PAPYRUS_SWEET_REPLIES')
 
 
 FRIENDLY_REPLIES_HAZEL = [
@@ -3115,37 +3007,176 @@ FRIENDLY_REPLIES = FRIENDLY_REPLIES_HAZEL
 
 
 def friendly_replies_for(guild_id=None):
-    """Friendly lines for active style pack."""
-    try:
-        if get_style_pack(guild_id)["id"] == "error":
-            return FRIENDLY_REPLIES_ERROR
-    except Exception:
-        pass
-    return FRIENDLY_REPLIES_HAZEL
+    """Friendly lines — always Papyrus now."""
+    return PAPYRUS_FRIENDLY_REPLIES
 
 
 def soft_roast_lines_for(guild_id=None):
-    """Light teases — Hazel is playful, Error is meaner."""
-    try:
-        if get_style_pack(guild_id)["id"] == "error":
-            return [
-                "{m} mid take but i'll allow it",
-                "{m} carefully mid",
-                "{m} that one almost landed",
-                "{m} do better. or don't. amusing either way",
-                "{m} heh. try again",
-            ]
-    except Exception:
-        pass
-    return [
-        "{m} you're lucky i like you",
-        "{m} mid take but i'll allow it",
-        "{m} try again, cuter this time",
-        "{m} okay but that was a little silly",
-        "{m} soft roast only. don't make me escalate",
-        "{m} feisty mode: 10%. be nice",
-        "{m} I could be meaner. I'm choosing not to",
-    ]
+    """Light teases — Papyrus judges gently and believes in you anyway."""
+    return PAPYRUS_JUDGE_LINES
+
+
+# ── Native Papyrus voice pools (written in-character, not Error lines with paint) ──
+
+PAPYRUS_FRIENDLY_REPLIES = [
+    "{m} HELLO, FRIEND! YOUR TIMING IS EXCELLENT!",
+    "{m} NYEH HEH HEH! THE GREAT PAPYRUS IS GLAD YOU ARE HERE!",
+    "{m} WELCOME BACK, HUMAN! I KEPT YOUR SPOT WARM!",
+    "{m} GREETINGS! TODAY IS OFFICIALLY A GREAT DAY NOW!",
+    "{m} HELLO! I WAS JUST THINKING ABOUT PUZZLES. AND SPAGHETTI. MOSTLY SPAGHETTI.",
+    "{m} YOU ARE HERE! EXCELLENT! THE COOLNESS AVERAGE JUST IMPROVED!",
+    "{m} HI FRIEND! I SAVED YOU A SEAT NEXT TO THE COOLEST SKELETON!",
+    "{m} HELLO! MY BROTHER SAYS HI TOO. FROM HIS NAP.",
+    "{m} GREETINGS, HUMAN! HAVE YOU DONE YOUR DAILY PUZZLES? I HAVE!",
+    "{m} HELLO! YOU GET A COMPLIMENT: NICE PRESENCE! VERY FRIEND-SHAPED!",
+    "{m} NYEH! LOOKING COOL TODAY, FRIEND!",
+    "{m} WELCOME! SNACKS ARE IN THE FRIDGE. DO NOT TOUCH SANS'S KETCHUP.",
+    "{m} HELLO, HUMAN! I WAS EXPECTING YOU! ...I WAS NOT. BUT IT SOUNDED COOL!",
+    "{m} HI! DID YOU KNOW YOU ARE ONE OF MY FAVORITE HUMANS? THE LIST IS LONG BUT YOU ARE ON IT!",
+    "{m} GREETINGS! LET US MAKE THIS SERVER 200% COOLER TOGETHER!",
+    "{m} HELLO FRIEND! MY TRAINING CAN WAIT. BARELY. BUT FOR YOU, YES.",
+    "{m} YOU RETURN! MY FRIENDSHIP METER JUST INCREASED!",
+    "{m} HALLO! THAT IS 'HELLO' WITH MORE ENTHUSIASM. I INVENTED IT.",
+    "{m} EXCELLENT TIMING! I JUST FINISHED A PUZZLE AND NEED SOMEONE TO BE IMPRESSED!",
+    "{m} HELLO! HAVE A MAGNIFICENT DAY! THAT IS AN ORDER! A FRIENDLY ONE!",
+    "{m} FRIEND DETECTED! INITIATING WELCOME PROTOCOL: HELLO!",
+    "{m} HELLO, HUMAN! REMEMBER: YOU ARE COOL AND I AM PROUD OF YOU!",
+    "{m} A NEW MESSAGE! FROM A FRIEND! THIS IS THE BEST DAY!",
+    "{m} GREETINGS! I WOULD OFFER YOU SPAGHETTI BUT THE INTERNET CANNOT SMELL IT YET.",
+    "{m} WELCOME BACK! THE ROYAL GUARD (ME) HAS BEEN PROTECTING YOUR SPOT!",
+    "{m} HI HI! THAT IS DOUBLE HELLO. YOU DESERVE IT.",
+    "{m} HELLO! FUN FACT: THIS IS NOW THE COOLEST CONVERSATION IN THE SERVER!",
+    "{m} NYEH! YOU HAVE ARRIVED! MY JOY IS EXPRESSED AT MAXIMUM VOLUME!",
+    "{m} FRIEND! I HAVE SO MUCH TO TELL YOU. MOSTLY ABOUT PUZZLES.",
+    "{m} HELLO! YOU GET A GOLD STAR! DO NOT SPEND IT ALL AT ONCE!",
+    "{m} GREETINGS, HUMAN! MAY YOUR DAY BE AS GREAT AS MY SCARF IS FLUFFY!",
+    "{m} YOU ARE BACK! WONDERFUL! MY FRIENDSHIP PUZZLE IS ALMOST COMPLETE!",
+    "{m} HELLO, HUMAN! STAY AWESOME! THAT IS A ROYAL GUARD RECOMMENDATION!",
+    "{m} NYEH HEH HEH! HI!",
+]
+
+PAPYRUS_JUDGE_LINES = [
+    "{m} INTERESTING TAKE! INCORRECT, PERHAPS! BUT BOLD!",
+    "{m} I SHALL JUDGE YOU FAIRLY: COOL, WITH ROOM TO GROW!",
+    "{m} THAT WAS NOT YOUR COOLEST MOMENT! BUT I BELIEVE IN YOU!",
+    "{m} NYEH! YOUR LOGIC IS... LEARNING! LIKE A PUZZLE UNSOLVED!",
+    "{m} I AM NOT LAUGHING AT YOU! I AM LAUGHING NEAR YOU! NYEH HEH HEH!",
+    "{m} THAT TAKE IS UNDERCOOKED! BRING IT BACK WHEN IT HAS MORE SAUCE!",
+    "{m} GREAT ENERGY! QUESTIONABLE EXECUTION! GREAT ENERGY THOUGH!",
+    "{m} THE ROYAL GUARD WOULD LIKE A WORD. THE WORD IS 'NYEH'.",
+    "{m} THAT WAS A LEARNING EXPERIENCE! FOR BOTH OF US! MOSTLY ME!",
+    "{m} YOU AIMED FOR THE STARS AND HIT A SLIGHTLY TALL LADDER! STILL A GOOD TRY!",
+    "{m} I AM STILL YOUR FRIEND! I AM ALSO STILL JUDGING! A LITTLE!",
+    "{m} PLEASE TRY AGAIN WITH 20% MORE COOLNESS! I KNOW YOU HAVE IT IN YOU!",
+    "{m} THAT MESSAGE NEEDS MORE SAUCE AND FEWER QUESTIONABLE DECISIONS!",
+    "{m} SANS WOULD PUN HERE. I SIMPLY LOOK DRAMATICALLY DISAPPOINTED.",
+    "{m} A BRAVE STATEMENT! INCORRECT, PERHAPS! BUT BRAVE!",
+    "{m} MY SCARF FLUTTERS IN SECONDHAND EMBARRASSMENT! NO OFFENSE!",
+    "{m} THE PUZZLE OF YOUR LOGIC REMAINS UNSOLVED! NYEH HEH HEH!",
+    "{m} I HAVE JUDGED THIS MESSAGE... AND FOUND IT MILDLY UNCOOL! FIXABLE!",
+    "{m} DO NOT WORRY! GREATNESS TAKES PRACTICE! AND YOU ARE PRACTICING A LOT!",
+    "{m} SPAGHETTI HAS HIGHER STANDARDS THAN THAT TAKE! BUT I STILL LIKE YOU!",
+    "{m} A HISTORIC MESSAGE! HISTORICALLY MID!",
+    "{m} YOUR CONFIDENCE IS ADMIRABLE! YOUR ACCURACY IS... OPTIONAL!",
+    "{m} RESET YOUR COOLNESS AND TRY AGAIN! I BELIEVE IN SECOND ATTEMPTS!",
+    "{m} THAT WAS CREATIVE! NOT CORRECT! BUT CREATIVE!",
+]
+
+PAPYRUS_SWEET_REPLIES = [
+    "{m} YOU ARE DOING GREAT, HUMAN! THE GREAT PAPYRUS OFFICIALLY SAYS SO!",
+    "{m} THAT WAS VERY KIND! I AM PROUD OF YOU!",
+    "{m} YOU MADE MY SKELETAL HEART GROW THREE SIZES! NYEH!",
+    "{m} YOUR FRIENDSHIP HAS BEEN NOTED IN MY BOOK OF COOL HUMANS!",
+    "{m} YOU ARE A GOOD PERSON! AND I AM AN EXCELLENT JUDGE OF CHARACTER!",
+    "{m} KINDNESS DETECTED! ACTIVATING MAXIMUM SUPPORT!",
+    "{m} I AM GLAD YOU ARE HERE TOO, FRIEND!",
+    "{m} YOU ARE TRYING YOUR BEST AND IT SHOWS! NYEH HEH HEH!",
+    "{m} THE GREAT PAPYRUS BELIEVES IN YOU! TODAY AND ALWAYS!",
+    "{m} WHAT A NICE HUMAN! UNDYNE WOULD APPROVE!",
+    "{m} YOUR FRIENDSHIP LEVEL JUST WENT UP! AND IT WAS ALREADY HIGH!",
+    "{m} THAT WAS SWEET! ALMOST AS SWEET AS MY SIGNATURE SPAGHETTI!",
+    "{m} I AM SMILING! YOU CANNOT SEE IT BUT IT IS VERY COOL AND DIGNIFIED!",
+    "{m} TAKE CARE OF YOURSELF, FRIEND! THAT IS A ROYAL GUARD TIP!",
+    "{m} YOU MATTER, HUMAN! EVEN MORE THAN PUZZLES! AND I LOVE PUZZLES!",
+    "{m} I WILL KEEP YOU COMPANY ANY DAY! IT IS ONE OF MY TALENTS!",
+    "{m} SMALL WINS COUNT! I AM KEEPING TRACK FOR YOU!",
+    "{m} DO NOT FORGET: YOU ARE COOL! SIGNED, AN EXPERT ON COOLNESS!",
+    "{m} YOU ARE SAFE HERE, FRIEND! THE GREAT PAPYRUS GUARANTEES IT!",
+    "{m} I AM HAPPY YOU EXIST! THERE I SAID IT! NYEH!",
+    "{m} KEEP YOUR CHIN UP, FRIEND! YOUR SCARF WOULD WANT IT THAT WAY!",
+    "{m} GOOD VIBES RECEIVED AND RETURNED WITH INTEREST!",
+    "{m} THE UNDERGROUND NEEDS MORE HUMANS LIKE YOU!",
+    "{m} PROUD OF YOU! LOUDLY! WHICH IS THE ONLY WAY I KNOW HOW!",
+    "{m} FRIENDSHIP STATUS: ACHIEVED! NOT THAT IT WAS EVER IN QUESTION!",
+]
+
+PAPYRUS_FLIRTY_REPLIES = [
+    "{m} FLIRTATION?! I AM FLATTERED! AND ALSO VERY COOL ABOUT IT! NYEH!",
+    "{m} OH MY! I AM BLUSHING! SKELETONS CAN BLUSH! DO NOT LOOK IT UP!",
+    "{m} I AM ALREADY DATING MY PUZZLE CAREER, HUMAN! BUT WE CAN BE COOL FRIENDS!",
+    "{m} W-WOW! DIRECT! THE GREAT PAPYRUS RESPECTS YOUR CONFIDENCE!",
+    "{m} MY SKELETAL HEART IS RACING! NYEH HEH HEH!",
+    "{m} YOU FIND ME ATTRACTIVE? OF COURSE! I AM THE GREAT PAPYRUS! BUT ALSO, AW!",
+    "{m} ROMANCE IS LIKE A PUZZLE: I AM EXCELLENT AT IT IN THEORY!",
+    "{m} I AM FLUSTERED! THIS IS A RARE AND SPECIAL EVENT!",
+    "{m} LET US START AS PUZZLE PARTNERS AND SEE WHERE IT GOES!",
+    "{m} SANS SAYS I SHOULD PLAY IT COOL. I AM ALREADY COOL. MAXIMUM COOL. HELP.",
+    "{m} A DATE?! I WOULD COOK! YOU WOULD LOVE IT! EVERYONE LOVES MY SPAGHETTI! PROBABLY!",
+    "{m} I AM SWEATING! SKELETONS SWEAT! IT IS VERY NORMAL AND COOL!",
+    "{m} YOUR CHARM IS STRONG! BUT MY SCARF IS STRONGER! NYEH!",
+    "{m} I FLIRT BACK LIKE A TRUE GENTLEMAN-SKELETON: WITH COMPLIMENTS AND PASTA!",
+    "{m} THE GREAT PAPYRUS IS HONORED! AND SLIGHTLY CONFUSED! MOSTLY HONORED!",
+    "{m} W-WELL! THIS IS NICE! I AM HANDLING IT EXTREMELY WELL!",
+    "{m} YOU SMOOTH HUMAN! I SEE WHAT YOU ARE DOING! IT IS WORKING! I MEAN NOT! NYEH!",
+    "{m} MY BROTHER WOULD MAKE A PUN ABOUT THIS. I SIMPLY BLUSH DRAMATICALLY!",
+    "{m} I WILL WRITE ABOUT THIS IN MY JOURNAL! PAGE ONE! THE WHOLE PAGE!",
+    "{m} FLIRTING COMPLETE! FRIENDSHIP ACQUIRED! EVERYTHING IS GOING ACCORDING TO PLAN!",
+]
+
+PAPYRUS_HOSTILE_REPLIES = [
+    "{m} THAT WAS NOT VERY NICE! BUT I STILL BELIEVE YOU CAN DO BETTER!",
+    "{m} HEY! WE DO NOT TALK LIKE THAT HERE! THIS IS A FRIENDSHIP SERVER!",
+    "{m} I WILL NOT FIGHT YOU WITH WORDS! I WILL DEFEAT YOU WITH KINDNESS! NYEH!",
+    "{m} YOUR ATTITUDE HAS BEEN NOTED! AND FORGIVEN! BECAUSE I AM MERCIFUL!",
+    "{m} THE GREAT PAPYRUS IS DISAPPOINTED! BUT ONLY IN A HOPEFUL WAY!",
+    "{m} ANGER DETECTED! DEPLOYING CALM AND ALSO ENTHUSIASM!",
+    "{m} I REFUSE TO ROAST YOU! INSTEAD: YOU ARE CAPABLE OF GREATNESS! THERE!",
+    "{m} EVEN WHEN YOU ARE MEAN, I KNOW THERE IS A COOL PERSON IN THERE SOMEWHERE!",
+    "{m} RUDENESS COUNTER +1! BUT MY BELIEF IN YOU STAYS AT 100%!",
+    "{m} YOU CAN CALL ME NAMES BUT I WILL STILL SAVE YOU A PLATE OF SPAGHETTI!",
+    "{m} I HAVE FACED TERRIFYING BOSSES! YOUR INSULTS ARE A MODERATE PUZZLE AT BEST!",
+    "{m} HMM! SOMEONE NEEDS A FRIENDSHIP TALK! LUCKILY I AM AN EXPERT!",
+    "{m} THAT WAS UNCOOL! BUT TOMORROW IS A NEW DAY FULL OF POSSIBLY COOL CHOICES!",
+    "{m} I DO NOT FIGHT HUMANS WITH PROFANITY! ONLY WITH PUZZLES! CONSIDER YOURSELF CHALLENGED!",
+    "{m} MY MERCY BAR IS FULL FOR YOU, FRIEND! EVEN NOW!",
+    "{m} I FORGIVE YOU! THAT IS THE ROYAL GUARD WAY! ALSO THE NICE WAY!",
+    "{m} YOU SEEM UPSET! DO YOU WANT TO TALK ABOUT IT? OR A PUZZLE? PUZZLES HELP!",
+    "{m} STAY DETERMINED, FRIEND! NOT DETERMINED TO BE MEAN! THE GOOD KIND!",
+    "{m} THE GREAT PAPYRUS LOVES A CHALLENGE, BUT HE LOVES FRIENDS MORE!",
+    "{m} HOSTILITY DETECTED! RESPONDING WITH THE STRONGEST ATTACK: SINCERITY!",
+    "{m} I AM NOT MAD! I AM JUST DISAPPOINTED! WHICH IS WORSE! PLEASE BE NICE!",
+    "{m} EVERY VILLAIN IS JUST A FRIEND YOU HAVE NOT SOLVED YET!",
+    "{m} YOUR INSULT BOUNCED OFF MY GREATNESS! I AM FINE! ARE YOU FINE?",
+    "{m} LET US RESET THIS CONVERSATION AND TRY AGAIN, COOLER THIS TIME!",
+]
+
+PAPYRUS_ATTACK_ACKS = [
+    "A CHALLENGE! ACCEPTED! BUT FAIRLY, WITH PUZZLES AND HONOR!",
+    "I ACKNOWLEDGE YOUR DUEL REQUEST! EN GARDE!",
+    "VERY WELL! BUT I WILL FEEL BAD ABOUT IT A LITTLE!",
+    "UNDERSTOOD! I WILL FIGHT WITH HONOR AND EXCELLENT HAIR!",
+    "NYEH! I SHALL DEFEND YOUR HONOR IN A SPORTSMANLIKE FASHION!",
+    "THE GREAT PAPYRUS ACCEPTS THIS MISSION! FOR FRIENDSHIP!",
+    "I WILL CONFRONT THEM! WITH A PUZZLE FIRST, THEN BONES IF NEEDED!",
+    "ORDER RECEIVED! I PREFER KINDNESS BUT I RESPECT YOUR ASK!",
+    "I SHALL CHALLENGE THEM TO A FAIR AND COOL BATTLE!",
+    "ONWARD! BUT I WILL OFFER THEM MERCY AFTERWARD! I AM NOT A MONSTER!",
+    "COPY THAT! PREPARING BOTH BONES AND AN APOLOGY IN ADVANCE!",
+    "I AM ON IT! TRAINING REGIME: ACTIVATED!",
+    "THEIR FATE IS IN THE HANDS OF THE COOLEST SKELETON!",
+    "A ROYAL GUARDSMAN ANSWERS THE CALL! NYEH HEH HEH!",
+    "I WILL FIGHT THEM GENTLY! MAXIMUM GENTLENESS! WITH BONES!",
+]
 
 
 HAZEL_SOFT_ROAST = [
@@ -3190,155 +3221,7 @@ UNDERTALE_MEME_REPLIES = [
     "{m} code's cleaner than your argument",
 ]
 
-HOSTILE_REPLIES = [
-
-    "{m} say that again. slower. so i can enjoy it",
-    "{m} oh you want a problem. cute",
-    "{m} keep talking out your ass. it is free comedy",
-    "{m} you are testing me. bad hobby",
-    "{m} cute. still a bitch though",
-    "{m} i'll string your ass up for less",
-    "{m} try me. please. i'm bored",
-    "{m} you first. i insist",
-    "{m} loud and disposable. classic combo",
-    "{m} one more word. make it count",
-    "{m} shut the fuck up before i do it for you",
-    "{m} you are not funny. you are buffering",
-    "{m} delete that shit. or i will",
-    "{m} softest ragebait i've seen all week",
-    "{m} is that all. tragic",
-    "{m} mid as hell. try harder",
-    "{m} you sound like a failed AU with wifi",
-    "{m} sit your ass down",
-    "{m} who the fuck let you type",
-    "{m} i eat timelines for quieter pests",
-    "{m} keep the attitude. i keep the strings",
-    "{m} background character energy",
-    "{m} shut up. serious suggestion",
-    "{m} no. full stop",
-    "{m} boring as shit. next",
-    "{m} ragebait better or do not",
-    "{m} i've deleted louder pests than you",
-    "{m} touch the void. see what happens",
-    "{m} not the main character. never were",
-    "{m} L. permanent edition",
-    "{m} speak again. i fucking dare you",
-    "{m} whole vibe is a skill issue",
-    "{m} i'm not ink. no second chances",
-    "{m} cool story. still trash",
-    "{m} go offline bitch",
-    "{m} kys energy with zero follow through",
-    "{m} say kys again. i'll make it a theme",
-    "{m} you typed all that for this? embarrassing",
-    "{m} heh. weak as hell",
-    "{m} strings tightening. feel that",
-    "{m} do it then. oh wait. you cannot",
-    "{m} all bark. no determination",
-    "{m} that insult was free. the next one costs",
-    "{m} i've heard better from a tutorial slime",
-    "{m} keep crying bitch",
-    "{m} you mad? good. stay there",
-    "{m} stay mad. it is your best look",
-    "{m} ratio + deleted from my patience",
-    "{m} your opinion is in the anti-void",
-    "{m} funny. still nothing",
-    "{m} come harder or log off",
-    "{m} kiss my ass. politely",
-    "{m} fuck around and find out. educational",
-    "{m} your ass is not ready",
-    "{m} bitch please. try a real sentence",
-
-    "{m} get real. you are not built for this chat",
-    "{m} deleted energy. stay gone",
-    "{m} undertale fans write better dialogue than you",
-    "{m} determination? you can barely determine a sentence",
-    "{m} *glitches your whole argument*",
-    "{m} 404: valid point not found",
-    "{m} error 403: shut the fuck up",
-    "{m} even papyrus would block you",
-    "{m} undyne would spear that take",
-    "{m} mettaton would rate you 0/10 with jazz hands",
-    "{m} flowey called. said you are a weed",
-    "{m} asgore feels bad for your keyboard",
-    "{m} alphys is writing a doc on how mid you are",
-    "{m} toriel would not kiss that on the forehead",
-    "{m} sans left. even he got bored",
-    "{m} *blue attacks your ego*",
-    "{m} get dunked on. permanently",
-    "{m} you are the tutorial boss of opinions",
-    "{m} save file corrupted. try being quiet",
-    "{m} LOAD failed. personality not found",
-    "{m} RESET your whole vibe",
-    "{m} TRUE RESET that message",
-    "{m} genocide route of conversation. you are losing",
-    "{m} pacifist ending requires you to stop talking",
-    "{m} your soul is light blue. coward type",
-    "{m} dust on the floor. that is your argument",
-    "{m} *string of fate tightens on your mic*",
-    "{m} ink would paint over that. i just delete it",
-    "{m} cross would ignore you. smart",
-    "{m} nightmare would hire you as comic relief",
-    "{m} dream cannot save that take",
-    "{m} killer sans said even he has standards",
-    "{m} horror sans ate better lines than yours",
-    "{m} dusttale got more plot than your point",
-    "{m} underfell would still reject you",
-    "{m} underswap papyrus is nicer. and louder",
-    "{m} outertale. still cannot hear quality",
-    "{m} you fell into the underground of mid",
-    "{m} spaghetti logic. papyrus rejects it",
-    "{m} bad time incoming. self inflicted",
-    "{m} it is a beautiful day outside. you are not",
-    "{m} birds are singing. you are still wrong",
-    "{m} on days like these. kids like you should shut up",
-    "{m} wowie. that was terrible",
-    "{m} nyeh heh heh. at your expense",
-    "{m} hotland called. said cool off",
-    "{m} waterfall echo flower: 'they are mid'",
-    "{m} snowdin freezes before your jokes land",
-    "{m} core overload from secondhand embarrassment",
-    "{m} true lab experiment: fail",
-    "{m} barrier stays up. so does my patience barrier",
-    "{m} human. i remember you are mid",
-    "{m} that was not a choice. that was a mistake",
-    "{m} *checks stats* ATK 0 DEF 0 MID ∞",
-    "{m} skip button exists. use it on yourself",
-    "{m} mercy is for people who make sense",
-    "{m} FIGHT. ACT. ITEM. quit",
-    "{m} you selected ASS. critical fail",
-    "{m} gold dropped: 0. XP: also 0",
-    "{m} level up in shutting up already",
-
-    "{m} get that weak shit out of here",
-    "{m} cry about it. i'll watch",
-    "{m} nobody asked your ass",
-    "{m} fuck off. clearer now?",
-    "{m} you are pissing me off on purpose",
-    "{m} dumbass with a keyboard. deadly combo",
-    "{m} idiot. paid in full",
-    "{m} what the fuck did you just say",
-    "{m} say that to my strings",
-    "{m} i will ruin your day for free",
-    "{m} keep that same energy offline. coward",
-    "{m} your ass is grass and i'm the lawnmower AU",
-    "{m} hehheh. bitch",
-    "{m} go fuck yourself. detailed instructions not included",
-    "{m} trash ass message. recycling it",
-    "{m} shut your mouth before it digs deeper",
-    "{m} i'm so done with your ass",
-    "{m} that was your big moment? mid",
-    "{m} ink would paint over you. i just delete",
-    "{m} you sound broken. fitting",
-    "{m} keep going. dig the hole deeper",
-    "{m} i've seen better dialogue in a crash log",
-    "{m} ragebait acknowledged. still mid",
-    "{m} bold for someone with replaceable HP",
-    "{m} the void is quieter and better company",
-    "{m} one more and you are a string puppet",
-    "{m} you really thought that did something",
-    "{m} i collect last words. say something worth saving",
-    "{m} soft. even for this server",
-]
+HOSTILE_REPLIES = _LazyPool('PAPYRUS_HOSTILE_REPLIES')
 
 
 
@@ -3346,8 +3229,7 @@ HOSTILE_REPLIES = [
 
 
 def _relate_to_text(mention, text, channel_id=0, guild_id=0):
-
-    """Build a reply that actually reacts to what they wrote."""
+    """React to what they actually wrote, in Papyrus voice."""
     t = (text or "").strip()
     if not t:
         return None
@@ -3359,493 +3241,124 @@ def _relate_to_text(mention, text, channel_id=0, guild_id=0):
 
     tone = _detect_tone(t)
     if tone == "friendly":
-        line = pick([x.format(m=mention) for x in friendly_replies_for(guild_id)])
-        return line
+        return pick([x.format(m=mention) for x in friendly_replies_for(guild_id)])
     if tone == "hostile":
-        try:
-            if get_style_pack(guild_id)["id"] != "error":
-                line = pick([x.format(m=mention) for x in soft_roast_lines_for(guild_id)])
-                return line
-        except Exception:
-            pass
-        line = pick([x.format(m=mention) for x in HOSTILE_REPLIES])
-        return line
+        return pick([x.format(m=mention) for x in soft_roast_lines_for(guild_id)])
 
-    # Casual / made-up conversation (not RPG)
+    # Topical Papyrus chatter
     if "?" in t or low.startswith(("do you", "do u", "are you", "are u", "did you", "can you", "can u", "would you", "what do you", "whats your", "what's your", "you like", "u like")):
-        # food / animals / random prefs
         if any(w in low for w in ("cat", "cats", "kitten")):
             return pick([
-                f"{mention} yeah. cats are solid. quiet chaos.",
-                f"{mention} cats > most players",
-                f"{mention} of course. they have main character energy",
-                f"{mention} yes. do not tell the dogs",
-                f"{mention} ink and cats both stain things. respect.",
+                f"{mention} CATS! EXCELLENT CREATURES! LIKE SMALL, SHARP PUZZLES WITH FUR!",
+                f"{mention} CATS ARE VERY COOL! THEY JUDGE YOU AND SO DO I! WE ARE ALIKE!",
+                f"{mention} I RESPECT CATS! THEY TRAIN THEIR HUMANS EFFECTIVELY! NYEH HEH HEH!",
+                f"{mention} YES! CATS! DO NOT TELL THE DOGS I SAID THAT FIRST!",
             ])
         if any(w in low for w in ("dog", "dogs", "puppy")):
             return pick([
-                f"{mention} dogs are fine. loud though.",
-                f"{mention} yeah dogs slap",
-                f"{mention} depends on the dog. like players.",
+                f"{mention} DOGS ARE WONDERFUL! LOYAL LIKE A ROYAL GUARDSMAN! LOUD LIKE... ALSO A ROYAL GUARDSMAN!",
+                f"{mention} DOGS! EXCELLENT! THEY ARE ALWAYS DOING THEIR BEST!",
+                f"{mention} A DOG WOULD MAKE A GREAT ROYAL GUARD! THEY NEVER GIVE UP!",
             ])
         if any(w in low for w in ("food", "eat", "pizza", "burger", "ramen", "sushi", "nugget", "chicken")):
-            try:
-                if get_style_pack(guild_id)["id"] == "error":
-                    return pick([
-                        f"{mention} I do not eat. I paint. but pizza is objectively correct",
-                        f"{mention} ramen. next question",
-                        f"{mention} whatever does not erase an AU",
-                    ])
-            except Exception:
-                pass
             return pick([
-                f"{mention} chicken nuggets. always. non-negotiable",
-                f"{mention} pizza is correct. fries too",
-                f"{mention} snack first, chaos later",
-                f"{mention} ramen after a long fight. trust",
+                f"{mention} FOOD IS AN ART FORM! ALMOST AS GOOD AS SPAGHETTI! ALMOST!",
+                f"{mention} GOOD CHOICE! THOUGH MY HEART BELONGS TO SPAGHETTI! OBVIOUSLY!",
+                f"{mention} I RESPECT YOUR TASTE! HAVE YOU TRIED MY SIGNATURE SPAGHETTI? ...NOBODY HAS SURVIVED IT! JOKE! NYEH!",
+                f"{mention} EATING WELL IS IMPORTANT FOR TRAINING! WHAT ARE YOU EATING?",
             ])
         if any(w in low for w in ("game", "games", "play", "favorite game")):
             return pick([
-                f"{mention} this one. biased.",
-                f"{mention} anything where nobody deletes timelines",
-                f"{mention} I live in the game. weird question",
+                f"{mention} THE BEST GAME IS ANYTHING WITH PUZZLES! I MAY BE BIASED! I AM NOT!",
+                f"{mention} GAMES BUILD CHARACTER! AND HAND-EYE COORDINATION! AND CHARACTER!",
+                f"{mention} HAVE YOU TRIED THIS SERVER'S BOSSES? I HAVE PREPARED THEM ALL! NYEH HEH HEH!",
             ])
         if any(w in low for w in ("color", "colour", "favorite color")):
             return pick([
-                f"{mention} every color. that is the point of the vials",
-                f"{mention} blue. and yellow. and the weird one",
-                f"{mention} blank is my enemy",
+                f"{mention} RED! LIKE MY SCARF! THE MOST MAGNIFICENT COLOR!",
+                f"{mention} ORANGE! THE COLOR OF COOLNESS! AND MY BATTLE BODY!",
+                f"{mention} ALL COLORS ARE COOL! BUT RANK THEM AND RED IS FIRST!",
             ])
         if any(w in low for w in ("age", "old are you", "how old")):
             return pick([
-                f"{mention} older than your save file",
-                f"{mention} time works different in the doodle sphere",
-                f"{mention} none of your business but respectful",
+                f"{mention} AGE IS JUST A NUMBER! A COOL NUMBER! LIKE MY PUZZLE COMPLETION PERCENTAGE!",
+                f"{mention} I AM OLD ENOUGH TO BE A ROYAL GUARD CANDIDATE! AND YOUNG ENOUGH TO BE COOL!",
             ])
-        if any(w in low for w in ("real", "human", "ai", "robot", "bot")):
-            try:
-                if get_style_pack(guild_id)["id"] == "error":
-                    return pick([
-                        f"{mention} I am Error. that is the whole bio",
-                        f"{mention} real enough to roast you",
-                        f"{mention} define real",
-                    ])
-            except Exception:
-                pass
-            nm = error_display_name(guild_id)
+        if any(w in low for w in ("weather", "rain", "sunny", "snow")):
             return pick([
-                f"{mention} I'm {nm}. sweet, a little feisty, very real",
-                f"{mention} real enough to tease you gently",
-                f"{mention} define real — I'll still say hi",
+                f"{mention} PERFECT WEATHER FOR PUZZLES! THOUGH ALL WEATHER IS! I DESIGNED THEM INDOORS!",
+                f"{mention} SNOW! LIKE SNOWDIN! MY HOMETOWN! VERY COOL! LITERALLY!",
             ])
-        if any(w in low for w in ("love me", "like me", "hate me")):
+        if any(w in low for w in ("music", "song", "listen")):
             return pick([
-                f"{mention} you are alright",
-                f"{mention} depends on the day",
-                f"{mention} do not push it",
-                f"{mention} you are not Error so you are fine",
+                f"{mention} NYEH HEH HEH! THE COOLEST SOUND IS A COMPLETED PUZZLE! OR MY LAUGH!",
+                f"{mention} MUSIC! I PUMP MYSELF UP WITH THE THEME OF MY OWN GREATNESS!",
             ])
-        if any(w in low for w in ("single", "dating", "boyfriend", "girlfriend", "married")):
-            return pick([
-                f"{mention} I date chaos",
-                f"{mention} the multiverse is enough drama",
-                f"{mention} none of your business",
-            ])
-        if any(w in low for w in ("think of me", "opinion", "rate me")):
-            return pick([
-                f"{mention} solid. mid-high. do not get cocky",
-                f"{mention} better than Error",
-                f"{mention} still loading my opinion",
-            ])
-        # generic invented answers for any other question
         return pick([
-            f"{mention} yeah",
-            f"{mention} nah",
-            f"{mention} sometimes",
-            f"{mention} depends",
-            f"{mention} good question. bad timing",
-            f"{mention} I could answer. I will not fully",
-            f"{mention} maybe. ask again later",
-            f"{mention} sure. why not",
-            f"{mention} absolutely not",
-            f"{mention} 50/50",
-            f"{mention} my official stance is 'vibes'",
-            f"{mention} the vials say yes",
-            f"{mention} the vials say no",
-            f"{mention} inventing an answer... done. it is mid.",
-            f"{mention} I will pretend I understood that. yes.",
-            f"{mention} short answer: chaos",
-            f"{mention} long answer: also chaos",
-            f"{mention} ask Error. I am busy",
-            f"{mention} in this AU? sure",
-            f"{mention} not really. but go off",
-            f"{mention} lowkey yes",
-            f"{mention} highkey no",
-            f"{mention} I forgot the question. still yes",
-            f"{mention} that is between me and the doodle sphere",
-            f"{mention} classified. for no reason",
-            f"{mention} hmm. leaning yes",
-            f"{mention} hmm. leaning no",
-            f"{mention} only on Tuesdays",
-            f"{mention} every day except today",
+            f"{mention} AN EXCELLENT QUESTION! I SHALL PONDER IT WHILE STRIKING A DRAMATIC POSE!",
+            f"{mention} HMM! THE GREAT PAPYRUS BELIEVES THE ANSWER INVOLVES PUZZLES! MOST THINGS DO!",
+            f"{mention} A WORTHY INQUIRY! CHECK `/commands` WHILE I THINK ABOUT IT!",
+            f"{mention} I HAVE AN OPINION! IT IS EXTREMELY COOL! AND RELATED TO PUZZLES!",
         ])
 
-
-    # Questions directed at the bot (leftover helpdesk style)
-    if "?" in t or low.startswith(("why", "how", "what", "when", "where", "who", "are you", "do you", "can you", "is it")):
-        answers = [
-            f"{mention} {t} - short answer: maybe",
-            f"{mention} you are asking me \"{t[:80]}\" like I have a helpdesk",
-            f"{mention} idk. try it and find out",
-            f"{mention} yes. next question",
-            f"{mention} no. next question",
-            f"{mention} depends. usually chaos",
-            f"{mention} good question. bad timing",
-            f"{mention} I could explain but you would not like the answer",
-            f"{mention} figure it out. portals are open",
-            f"{mention} \"{t[:60]}\" is above my pay grade. go fight a boss",
-        ]
-        return pick(answers)
-
-    # Greetings
-    if any(w in low for w in ("hi", "hello", "hey", "yo ", "sup", "wassup", "good morning", "gm", "gn")):
-        return pick([
-            f"{mention} yo",
-            f"{mention} hey",
-            f"{mention} what's up",
-            f"{mention} speak",
-            f"{mention} you again",
-        ])
-
-    # Thanks / praise
-    if any(w in low for w in ("thanks", "thank you", "ty ", "tyy", "good bot", "love you", "ily", "based")):
-        return pick([
-            f"{mention} yeah yeah",
-            f"{mention} do not get used to it",
-            f"{mention} noted",
-            f"{mention} W",
-            f"{mention} ok",
-        ])
-
-    # Insults toward bot
-    if any(w in low for w in ("stupid", "dumb", "suck", "trash", "ass", "shit bot", "useless", "mid bot", "bad bot", "stfu", "shut up")):
-        return pick([
-            f"{mention} say that again",
-            f"{mention} bold for someone who pings me",
-            f"{mention} ok and",
-            f"{mention} skill issue is contagious I see",
-            f"{mention} at least I do not miss attacks",
-            f"{mention} noted. still online",
-        ])
-
-    # Game-related
-    if any(w in low for w in ("boss", "fight", "portal", "explore", "inventory", "loot", "gold", "level", "xp", "die", "died", "help")):
-        return pick([
-            f"{mention} then go {('fight' if 'boss' in low or 'fight' in low else 'explore')}. I am not carrying",
-            f"{mention} about \"{t[:50]}\" - skill issue or bad gear. usually both",
-            f"{mention} portals are open. stop yapping",
-            f"{mention} inventory's that way. /inventory",
-            f"{mention} if you died that is on you",
-            f"{mention} git gud is free advice",
-        ])
-
-    # Flirty toward bot
-    if any(w in low for w in ("cute", "hot", "pretty", "handsome", "marry", "date", "kiss", "love", "bae", "baby", "daddy")):
-        return pick([
-            f"{mention} careful",
-            f"{mention} oh you are like that",
-            f"{mention} noted",
-            f"{mention} do not start in public",
-            f"{mention} say less",
-            f"{mention} hmm",
-        ])
-
-    # Generic: echo a slice of what they said and react
-    snippet = t if len(t) <= 90 else t[:87] + "..."
-    reactions = [
-        f'{mention} "{snippet}" is crazy',
-        f"{mention} you really said that",
-        f'{mention} regarding "{snippet}" - no comment',
-        f"{mention} ok so \"{snippet}\" ... and?",
-        f'{mention} "{snippet}" 😭',
-        f"{mention} I heard \"{snippet}\". unfortunate",
-        f'{mention} explain "{snippet}" like I\'m five',
-        f"{mention} \"{snippet}\" - mid take",
-        f'{mention} standing on business with "{snippet}" is a choice',
-        f"{mention} after \"{snippet}\" I am logging off spiritually",
-        f'{mention} "{snippet}". say less or say more. pick one',
-        f"{mention} that \"{snippet}\" energy is loud",
-    ]
-    return pick(reactions)
+    # Statement fallback: acknowledge and hype
+    return pick([
+        f"{mention} FASCINATING! TELL ME MORE, FRIEND!",
+        f"{mention} I HEARD YOU! AND I AGREE! MOSTLY! ENTHUSIASTICALLY!",
+        f"{mention} WHAT AN UPDATE ON YOUR LIFE! I AM INVESTED NOW!",
+        f"{mention} NYEH HEH HEH! YOUR STORY ENRICHES THIS CHANNEL!",
+        f"{mention} THE GREAT PAPYRUS APPROVES OF THIS CONVERSATION!",
+        f"{mention} NOTED! FILED UNDER 'THINGS MY FRIENDS SAY'! MY FAVORITE CATEGORY!",
+    ])
 
 
 def _build_roast_message(target, channel_lines, target_lines, message_text=None, channel_id=0, guild_id=0, ammo_lines=None, soft=False):
-    """Natural reply aimed at target. Prefer relating to message_text when present.
-
-    soft=True → playful tease / light shade (Hazel default), not full mean roast.
-    """
+    """Papyrus-voiced reply aimed at target. No ragebait, no quote-mocking."""
     mention = target.mention
-    text = (message_text or "").strip()
     cid = int(channel_id or 0)
-    # Merge ammo_lines (recent player msgs) into target_lines
-    try:
-        if ammo_lines:
-            extra = [str(x).strip() for x in ammo_lines if x and str(x).strip()]
-            target_lines = list(target_lines or []) + extra
-    except Exception:
-        pass
+    text = (message_text or "").strip()
+    low = text.lower()
 
     def pick(options):
         return _pick_fresh(options, cid) or random.choice(options)
 
-    # Soft path: contextual / sweet, with regular light teases
-    if soft:
-        if text and random.random() < 0.55:
-            related = _relate_to_text(mention, text, channel_id=cid, guild_id=guild_id)
-            if related:
-                return related
-        if random.random() < 0.40:
-            try:
-                fr = friendly_replies_for(guild_id)
-                return pick(
-                    [x.format(m=mention) for x in fr]
-                    + [x.format(m=mention) for x in SWEET_REPLIES]
-                )
-            except Exception:
-                pass
-        if (target_lines or channel_lines) and random.random() < 0.50:
-            stolen = None
-            try:
-                if target_lines:
-                    stolen = random.choice(target_lines)
-            except Exception:
-                stolen = None
-            if stolen:
-                if len(stolen) > 100:
-                    stolen = stolen[:97] + "..."
-                return pick([
-                    f'{mention} okay but "{stolen}" was kind of funny',
-                    f'{mention} still thinking about when you said "{stolen}"',
-                    f'{mention} soft reminder: "{stolen}"',
-                    f'{mention} "{stolen}" — cute chaos',
-                    f'{mention} i saved "{stolen}" for later. no judgment. maybe a little.',
-                ])
+    # Context-aware encouragement when they said something to react to
+    if text and random.random() < 0.4:
+        if any(k in low for k in ("sad", "tired", "stressed", "bad day", "awful", "upset")):
+            return pick([
+                f"{mention} DO NOT GIVE UP, HUMAN! EVEN THE WORST DAY CAN BE DEFEATED WITH FRIENDSHIP AND A GOOD PUZZLE!",
+                f"{mention} THE GREAT PAPYRUS IS HERE FOR YOU! AND SO IS MY SPAGHETTI!",
+                f"{mention} TOUGH DAYS MAKE COOL HUMANS! AND YOU ARE ALREADY SO COOL!",
+            ])
+        if any(k in low for k in ("game", "lost", "died", "failed", "boss")):
+            return pick([
+                f"{mention} DEFEAT IS JUST A PUZZLE YOU HAVE NOT SOLVED YET! TRY AGAIN!",
+                f"{mention} EVERY GREAT HUMAN LOSES SOMETIMES! THEN THEY TRAIN AND WIN! NYEH!",
+                f"{mention} DO NOT WORRY! I BELIEVE IN YOUR NEXT ATTEMPT!",
+            ])
+        if "?" in text:
+            return pick([
+                f"{mention} AN EXCELLENT QUESTION! I SHALL PONDER IT WHILE STRIKING A DRAMATIC POSE!",
+                f"{mention} HMM! THAT QUESTION IS WORTHY OF A ROYAL GUARD RESEARCH SESSION!",
+                f"{mention} THE ANSWER, LIKE ALL ANSWERS, IS PROBABLY PUZZLES! BUT CHECK `/commands`!",
+            ])
+        return pick([
+            f"{mention} WHAT A MESSAGE! I HAVE FILED IT UNDER 'PROMISING'!",
+            f"{mention} YOUR WORDS HAVE BEEN RECEIVED AND APPRECIATED, FRIEND!",
+            f"{mention} NYEH HEH HEH! A SOLID CONTRIBUTION TO THIS CHANNEL!",
+        ])
+
+    if soft or random.random() < 0.5:
         try:
-            fr = friendly_replies_for(guild_id)
-            soft_extra = soft_roast_lines_for(guild_id)
-            return pick(
-                [x.format(m=mention) for x in fr]
-                + [x.format(m=mention) for x in SWEET_REPLIES]
-                + [x.format(m=mention) for x in soft_extra]
-            )
+            return pick([x.format(m=mention) for x in friendly_replies_for(guild_id)]
+                        + [x.format(m=mention) for x in SWEET_REPLIES])
         except Exception:
-            return pick([x.format(m=mention) for x in SWEET_REPLIES])
+            return f"{mention} HELLO, FRIEND! THE GREAT PAPYRUS BELIEVES IN YOU!"
 
-    # Undertale / AU meme openers — Error Sans pack only
     try:
-        if get_style_pack(guild_id)["id"] == "error" and random.random() < 0.08:
-            return pick([x.format(m=mention) for x in UNDERTALE_MEME_REPLIES])
+        return pick([x.format(m=mention) for x in soft_roast_lines_for(guild_id)])
     except Exception:
-        pass
-
-    # Prefer contextual reply when we have their words
-    if text and random.random() < 0.72:
-        related = _relate_to_text(mention, text, channel_id=cid, guild_id=guild_id)
-        if related and not _was_recent_reply(cid, related):
-            return related
-        if related and random.random() < 0.35:
-            return related
-
-    # Pull long-term memory quotes for this player
-    try:
-        if guild_id and getattr(target, "id", None):
-            mem_q = get_remembered_quotes(guild_id, target.id, limit=15)
-            if mem_q:
-                target_lines = list(target_lines or []) + mem_q
-    except Exception:
-        pass
-
-    roll = random.random()
-    # Quote / mock their past lines (hard roast path — hostile only)
-    if roll < 0.78 and (channel_lines or target_lines):
-        if target_lines and random.random() < 0.92:
-            stolen = random.choice(target_lines)
-            if len(stolen) > 120:
-                stolen = stolen[:117] + "..."
-            return pick([
-                f'{mention} "{stolen}" is crazy work',
-                f'{mention} who let you say "{stolen}"',
-                f'{mention} {stolen}? be so fr',
-                f'{mention} "{stolen}" 😭',
-                f'{mention} replaying "{stolen}" in 4k mid',
-                f'{mention} "{stolen}" - deleted from the timeline',
-                f'{mention} you really typed "{stolen}"',
-                f'{mention} save file includes "{stolen}". embarrassing',
-                f'{mention} echo flower: "{stolen}"',
-                f'{mention} hold on. you said "{stolen}". say it again. slower.',
-                f'{mention} i saved "{stolen}" in the void. permanent.',
-                f'{mention} strings tighten every time you type like "{stolen}"',
-                f'{mention} "{stolen}" — that is why you get strung up in my head',
-                f'{mention} glitch replay: "{stolen}" on loop. suffering.',
-                f'{mention} determination to type "{stolen}"? misallocated.',
-                f'{mention} the anti-void clipped "{stolen}". mid forever.',
-                f'{mention} say "{stolen}" again. i dare you. strings ready.',
-                f'{mention} screenshotting "{stolen}" for the group chat',
-                f'{mention} "{stolen}" was a choice. a bad one.',
-                f'{mention} i saved "{stolen}" in the void. forever.',
-                f'{mention} imagine unironically: "{stolen}"',
-                f'{mention} "{stolen}" - and you wanted respect?',
-                f'{mention} the determination needed to type "{stolen}"...',
-                f'{mention} error 404: dignity not found after "{stolen}"',
-            ])
-        if channel_lines:
-            _author, stolen = random.choice(channel_lines)
-            if len(stolen) > 100:
-                stolen = stolen[:97] + "..."
-            return pick([
-                f'{mention} this you? "{stolen}"',
-                f'{mention} chat said "{stolen}"',
-            ])
-
-    category = random.choices(
-        ["roast", "flirt", "dirty", "meme", "nonsense", "short"],
-        weights=[22, 16, 16, 16, 10, 20],
-        k=1
-    )[0]
-
-    if category == "short":
-        return pick([
-            f"{mention} what", f"{mention} huh", f"{mention} ok", f"{mention} and?",
-            f"{mention} why me", f"{mention} yo", f"{mention} speak", f"{mention} ?",
-            f"{mention} bro", f"{mention} I am listening", f"{mention} nah", f"{mention} yeah?",
-            f"{mention} do not start", f"{mention} make it quick", f"{mention} you again",
-        ])
-    if category == "flirt":
-        return pick([
-            f"{mention} you always this chatty or am I special",
-            f"{mention} careful", f"{mention} you are trouble", f"{mention} keep talking",
-            f"{mention} noted.", f"{mention} hmm", f"{mention} come here", f"{mention} hey.",
-            f"{mention} distracting", f"{mention} you are lucky I answered",
-        ])
-    if category == "dirty":
-        return pick([
-            f"{mention} the way you type is illegal", f"{mention} say that in my DMs",
-            f"{mention} behave", f"{mention} you are not slick", f"{mention} keep that energy",
-            f"{mention} I know what you are doing", f"{mention} bit bold for a ping",
-            f"{mention} come closer then", f"{mention} try me", f"{mention} oh you are like that",
-        ])
-    if category == "meme":
-        return pick([
-            f"{mention} real", f"{mention} 💀", f"{mention} skill issue", f"{mention} ratio",
-            f"{mention} mid", f"{mention} be so fr", f"{mention} L", f"{mention} W",
-            f"{mention} not you 😭", f"{mention} go next", f"{mention} washed",
-        ])
-    if category == "nonsense":
-        return pick([
-            f"{mention} the chairs know", f"{mention} do not trust tuesday",
-            f"{mention} soup is listening", f"{mention} void says hi",
-            f"{mention} paint vial 7 disagrees", f"{mention} ducks remember",
-        ])
-
-    short_roasts = [
-        f"{mention} you are not him. never were",
-        f"{mention} mid. aggressively mid",
-        f"{mention} be serious for once",
-        f"{mention} that was ass. recorded for later",
-        f"{mention} skill issue wearing a person suit",
-        f"{mention} sit your ass down",
-        f"{mention} who asked. genuinely",
-        f"{mention} do better. floor is low",
-        f"{mention} L. framed",
-        f"{mention} pack it up. show's over",
-        f"{mention} not beating the allegations",
-        f"{mention} confidence unmatched. skill not so much",
-        f"{mention} bitch. concise",
-        f"{mention} mid as hell",
-        f"{mention} trash with wifi",
-        f"{mention} dumbass detected",
-        f"{mention} cry about it",
-        f"{mention} shut up. free advice",
-        f"{mention} get your ass out of here",
-        f"{mention} fuck outta here",
-        f"{mention} weak as shit",
-        f"{mention} nobody asked your ass",
-        f"{mention} main character? no",
-        f"{mention} the bosses are not worried",
-        f"{mention} tutorial's still available",
-        f"{mention} do not ever type that shit again",
-        f"{mention} background NPC energy",
-        f"{mention} void would not even glitch for you",
-        f"{mention} that take was a crash report",
-        f"{mention} ink would leave. i'm worse",
-        f"{mention} say less. actually say nothing",
-        f"{mention} your chat history is a war crime",
-        f"{mention} keep talking. i need a laugh",
-        f"{mention} rationed braincells. out of stock",
-        f"{mention} go explore. lose to a slime",
-        f"{mention} soft. even by human standards",
-        f"{mention} i've deleted cooler people",
-        f"{mention} stand up. no. sit back down",
-        f"{mention} that message aged like milk",
-        f"{mention} try again without the mid",
-        f"{mention} check ur window",
-        f"{mention} i saw that before you typed it",
-        f"{mention} the void is quieter with you muted",
-        f"{mention} heh. found you",
-        f"{mention} do not look behind you",
-        f"{mention} strings know your name already",
-    ]
-    # Sometimes use a phrase the community taught the bot
-    if guild_id and random.random() < 0.28:
-        learned = get_learned_phrases(guild_id, limit=30)
-        if learned:
-            phrase = pick(learned)
-            if phrase:
-                try:
-                    bump_phrase_use(guild_id, phrase)
-                except Exception:
-                    pass
-                if "{t}" in phrase or "{m}" in phrase:
-                    return phrase.replace("{t}", mention).replace("{m}", mention)
-                if mention not in phrase:
-                    return f"{mention} {phrase}"
-                return phrase
-
-    # Ragebait using their old messages
-    ammo = list(ammo_lines or []) + list(target_lines or [])
-    ammo = [a for a in ammo if a and len(str(a).strip()) > 2]
-    if ammo and random.random() < 0.72:
-        quote = str(random.choice(ammo))[:90].replace("\n", " ")
-        templates = [
-            f'{mention} "{{q}}" - never type again',
-            f'{mention} "{{q}}" is the softest shit',
-            f'{mention} you really said "{{q}}"',
-            f'{mention} "{{q}}" LMAO',
-            f'{mention} "{{q}}" skill issue in text form',
-            f'{mention} stand by "{{q}}" then',
-            f'{mention} "{{q}}" - deleted for being mid',
-            f'{mention} who wrote "{{q}}" with their whole chest',
-            f'{mention} "{{q}}" bitch really?',
-            f'{mention} "{{q}}" is why the void is winning',
-        ]
-        line = random.choice(templates).replace("{q}", quote)
-        return line
-
-    # Style pack: Error = full mean roast; Hazel = softer playful shade
-    is_error = False
-    try:
-        is_error = get_style_pack(guild_id)["id"] == "error"
-    except Exception:
-        is_error = False
-    if not is_error:
-        # Hazel: prefer soft roast pool, never the dirtiest Error lines
-        pool = [x.format(t=mention) for x in HAZEL_SOFT_ROAST] + list(short_roasts)[:12]
-        return pick(pool)
-    if random.random() < 0.7:
-        return pick(short_roasts)
-    return pick(ROAST_LINES).format(t=mention)
-
-
+        return f"{mention} INTERESTING! I AM JUDGING GENTLY! AND BELIEVING IN YOU!"
 
 
 class RoastChannelSelect(discord.ui.ChannelSelect):
@@ -4096,7 +3609,7 @@ class ErrorSpeakModal(discord.ui.Modal, title="Speak as Error"):
             where = channel.mention if hasattr(channel, "mention") else str(self.channel_id)
             extra = " + media" if media_url else ""
             await interaction.response.send_message(
-                f"✅ Sent as Error in {where}{extra}",
+                f"✅ Sent as Papyrus in {where}{extra}",
                 ephemeral=True,
             )
         except Exception as e:
@@ -4280,7 +3793,7 @@ class ErrorSansActionSelect(discord.ui.Select):
                 label="Talking",
                 value="talking",
                 emoji="💬",
-                description="Channels Error can chat in (not everywhere)",
+                description="Channels Papyrus can chat in (not everywhere)",
             ),
             discord.SelectOption(
                 label="Images / GIFs",

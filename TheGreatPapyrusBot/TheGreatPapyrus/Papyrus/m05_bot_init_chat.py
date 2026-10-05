@@ -44,10 +44,10 @@ RECENT_GIF_LIMIT = 25
 # Unprompted chat ONLY (does NOT apply when someone @pings the bot)
 SPONTANEOUS_CHANNEL_COOLDOWN = {}  # channel_id -> next allowed time
 SPONTANEOUS_GLOBAL_COOLDOWN = 0.0
-SPONTANEOUS_MIN_CHANNEL_SEC = 90  # 1.5 min between unprompted msgs per channel
-SPONTANEOUS_MIN_GLOBAL_SEC = 60   # 1 min global for unprompted only
-SPONTANEOUS_REPLY_CHANCE = 0.18
-SPONTANEOUS_IDLE_CHANCE = 0.35
+SPONTANEOUS_MIN_CHANNEL_SEC = 600  # 10 min between unprompted msgs per channel
+SPONTANEOUS_MIN_GLOBAL_SEC = 240   # 4 min global for unprompted only
+SPONTANEOUS_REPLY_CHANCE = 0.05
+SPONTANEOUS_IDLE_CHANCE = 0.10
 ACTIVE_CHANNELS = {}  # channel_id -> last activity time
 ACTIVE_CHANNEL_TTL = 1800  # 30 min
 # Per-user tone memory: Error stays chill until they go rude

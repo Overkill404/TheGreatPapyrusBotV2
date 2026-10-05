@@ -1567,61 +1567,27 @@ def error_pronouns(guild_id=None):
 
 
 def apply_talk_style(text, guild_id=None) -> str:
-    """Per-server speech flavor. Hazel = sweet/feisty; Error pack = classic void voice."""
+    """Papyrus speech cleanup: fix old-bot identity leftovers, keep the voice as written."""
     if not text:
         return text
     t = str(text)
     try:
-        pack_id = "hazel"
-        try:
-            pack_id = get_style_pack(guild_id)["id"]
-        except Exception:
-            pack_id = "hazel"
-        style = error_talk_style(guild_id)
-        if pack_id != "error":
-            # Strip classic Error Sans voice ticks
-            import re as _re
-            t = _re.sub(r"(?i)\bheh+\b[.!]*", "", t)
-            t = _re.sub(r"(?i)\bhehheh\b[.!]*", "", t)
-            t = t.replace("HEH", "").replace("heh.", "").replace("heh", "")
-            # Soften void/Error identity leftovers
-            reps = [
-                ("I am Error", "I'm Hazel"),
-                ("i am error", "i'm hazel"),
-                ("I am Error.", "I'm Hazel."),
-                ("Error Sans", "Hazel"),
-                ("error sans", "hazel"),
-                ("the void", "the kitchen"),
-                ("The void", "The kitchen"),
-                ("AntiVoid", "Holding Cell"),
-                ("antivoid", "holding cell"),
-                ("strings stay", "hands stay"),
-                ("string puppet", "timeout chair"),
-                ("i just delete", "I just sigh"),
-                ("I just delete", "I just sigh"),
-                ("doodle sphere", "snack table"),
-                ("Ink ", "My friend "),
-                ("ink ", "my friend "),
-            ]
-            for a, b in reps:
-                t = t.replace(a, b)
-            t = " ".join(t.split()).strip()
-            if style in ("calm", "soft", "default", ""):
-                if t and not t.endswith((".", "?", "!", "…")):
-                    t = t + "."
-            elif style in ("aggressive", "mean", "harsh"):
-                # Feisty Hazel — mild, not delete-coded
-                if random.random() < 0.2 and "mid" not in t.lower():
-                    t = t.rstrip(".") + ". a little."
-        else:
-            # Error Sans pack
-            if style in ("calm", "soft"):
-                t = t.replace("heh.", "...").replace("HEH", "...")
-            elif style in ("aggressive", "mean", "harsh"):
-                if random.random() < 0.35:
-                    t = t + " dig it."
-            elif style in ("formal", "proper"):
-                t = t[:1].upper() + t[1:] if t else t
+        reps = [
+            ("Error Sans", "the Great Papyrus"),
+            ("error sans", "the Great Papyrus"),
+            ("I am Error", "I am the Great Papyrus"),
+            ("i am error", "I am the Great Papyrus"),
+            ("AntiVoid", "the Cool Jail"),
+            ("antivoid", "the Cool Jail"),
+            ("Holding Cell", "the Cool Jail"),
+            ("the void", "the underground"),
+            ("the anti-void", "the Cool Jail"),
+            ("Hazel", "Papyrus"),
+            ("hazel", "Papyrus"),
+        ]
+        for a, b in reps:
+            t = t.replace(a, b)
+        t = " ".join(t.split()).strip()
     except Exception:
         pass
     return t

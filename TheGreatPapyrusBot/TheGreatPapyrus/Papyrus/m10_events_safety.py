@@ -297,7 +297,7 @@ class Battle:
             color=theme,
         )
         
-        embed.set_footer(text="FIGHT · ACT · ITEM · FLEE")
+        embed.set_footer(text=f"{papyrus_corner()} · FIGHT · ACT · ITEM · FLEE")
         
         # Enhanced thumbnail
         try:
@@ -5060,7 +5060,7 @@ async def spontaneous_idle_loop():
     await bot.wait_until_ready()
     while not bot.is_closed():
         try:
-            await asyncio.sleep(random.randint(90, 180))
+            await asyncio.sleep(random.randint(300, 600))
             if random.random() > SPONTANEOUS_IDLE_CHANCE:
                 continue
             now = time.time()
@@ -6308,7 +6308,6 @@ PAPYRUS_CHAT_LINES = [
 ]
 
 PAPYRUS_SPONTANEOUS_LINES = [
-    # Core Papyrus energy
     "NYEH HEH HEH! THIS CONVERSATION COULD USE A BRILLIANT PUZZLE!",
     "REMEMBER, HUMANS: CONFIDENCE, KINDNESS, AND PROPERLY COOKED SPAGHETTI!",
     "THE GREAT PAPYRUS BELIEVES IN YOUR ABILITY TO BE VERY COOL TODAY!",
@@ -6319,45 +6318,33 @@ PAPYRUS_SPONTANEOUS_LINES = [
     "HAS ANYONE SEEN MY LATEST PUZZLE BLUEPRINTS? THEY ARE EXTREMELY COMPLEX!",
     "NYEH HEH HEH! EVEN MY IDLE THOUGHTS ARE MAGNIFICENT!",
     "DO NOT FORGET: BELIEVING IN YOURSELF IS THE FIRST STEP TO GREATNESS!",
-
-    # Spaghetti
     "SOMEONE MENTION SPAGHETTI? NO? WELL, I AM THINKING ABOUT IT ANYWAY!",
     "MY SPAGHETTI RECIPE REQUIRES PASSION, SAUCE, AND AN IMPRESSIVE AMOUNT OF CONFIDENCE!",
     "COOKING IS AN ART! AND I, THE GREAT PAPYRUS, AM A MASTER ARTIST!",
     "IF YOU NEED DINNER IDEAS: SPAGHETTI. ALWAYS SPAGHETTI.",
     "A TRULY COOL HUMAN APPRECIATES A WELL-PLATED PASTA DISH!",
     "NYEH! THE SAUCE MUST BE PERFECT. THE NOODLES MUST BE AL DENTE. THE PRESENTATION MUST BE FLAWLESS!",
-
-    # Puzzles & Royal Guard
     "A ROYAL GUARDSMAN MUST ALWAYS BE READY FOR PUZZLES, BATTLES, AND FRIENDSHIP!",
     "PRACTICE YOUR PUZZLE-SOLVING! THE UNDERGROUND NEEDS MORE CLEVER HUMANS!",
     "I AM TRAINING FOR THE ROYAL GUARD EVEN WHILE STANDING HERE LOOKING COOL!",
     "BONES, PUZZLES, AND DETERMINATION! THAT IS THE PAPYRUS WAY!",
     "WOULD ANYONE CARE TO TEST MY LATEST BONE ATTACK PATTERN? ...IN A FRIENDLY WAY!",
     "THE GREAT PAPYRUS NEVER SKIPS TRAINING DAY! EVEN ON DAYS OFF!",
-
-    # Friendship / encouragement
     "FRIENDSHIP IS THE GREATEST PUZZLE OF ALL! AND I AM EXCELLENT AT IT!",
     "YOU ARE ALL DOING GREAT! EXCEPT THE PARTS THAT NEED MORE COOLNESS!",
     "IF YOU ARE HAVING A BAD DAY, REMEMBER: THE GREAT PAPYRUS BELIEVES IN YOU!",
     "KINDNESS IS NOT WEAKNESS! IT IS THE MARK OF A TRULY COOL PERSON!",
     "NYEH HEH HEH! KEEP BEING AWESOME, HUMANS!",
     "A TRUE HERO HELPS THEIR FRIENDS... AND ALSO COMPLIMENTS THEIR OUTFITS!",
-
-    # Sans / family flavor
     "SANS IS PROBABLY NAPPING SOMEWHERE. I SHALL MOTIVATE HIM LATER!",
     "MY BROTHER COULD LEARN A THING OR TWO ABOUT ENTHUSIASM!",
     "I LOVE MY BROTHER, EVEN WHEN HE TELLS TERRIBLE PUNS!",
-
-    # Server / bot flavor
     "PORTALS, BOSSES, ECONOMY... THIS SERVER HAS EVERYTHING A COOL SKELETON NEEDS!",
     "REMEMBER TO USE `/commands` IF YOU FORGET HOW MAGNIFICENT I AM!",
     "THE UNDERNET AWAITS YOUR POSTS! MAKE THEM COOL!",
     "HAVE YOU CHECKED YOUR ROYAL GUARD RANK TODAY? AMBITION IS IMPORTANT!",
     "DO NOT FORGET YOUR DAILY WORK! SPAGHETTI MONEY DOES NOT EARN ITSELF!",
     "A WELL-ORGANIZED BACKPACK IS THE SIGN OF A STRATEGIC MIND!",
-
-    # Dramatic / silly
     "NYEH... I SENSE A LACK OF DRAMATIC FLAIR IN THIS CHANNEL!",
     "BEHOLD! THE GREAT PAPYRUS HAS NOTHING URGENT TO SAY... BUT SAID IT ANYWAY!",
     "I COULD BE DESIGNING PUZZLES RIGHT NOW. INSTEAD I AM ENRICHING YOUR LIVES!",
@@ -6366,8 +6353,6 @@ PAPYRUS_SPONTANEOUS_LINES = [
     "IF YOU NEED A HYPE MAN, I AM EXTREMELY AVAILABLE!",
     "THE FLOOR IS LAVA! ...JUST KIDDING. OR AM I? NYEH HEH HEH!",
     "I HAVE JUDGED THIS CHANNEL... AND FOUND IT ACCEPTABLE. FOR NOW.",
-
-    # More volume
     "SPAGHETTI TASTES BETTER WHEN SHARED WITH FRIENDS!",
     "NEVER UNDERESTIMATE THE POWER OF A WELL-TIMED NYEH!",
     "TODAY'S GOAL: BE 10% COOLER THAN YESTERDAY!",
@@ -6395,15 +6380,9 @@ PAPYRUS_SPONTANEOUS_LINES = [
     "DO NOT FORGET TO STRETCH YOUR IMAGINATION MUSCLES!",
     "SPAGHETTI TASTES BETTER WHEN SHARED WITH COOL FRIENDS!",
     "I DECLARE THIS MOMENT... ADEQUATELY COOL!",
-    "NYEH HEH HEH! EVEN MY IDLE THOUGHTS ARE MAGNIFICENT!",
     "A TRUE HERO ALWAYS HAS A BACKUP PLAN... AND BACKUP SPAGHETTI!",
     "THE UNDERGROUND WOULD BE PROUD OF THIS LEVEL OF ACTIVITY! ...MOSTLY!",
-    "I AM NOT LOUD. I AM ENTHUSIASTIC AT MAXIMUM VOLUME!",
-    "PUZZLES BUILD CHARACTER! AND ALSO SOMETIMES TRAP PEOPLE!",
-    "IF LIFE GIVES YOU BONES, MAKE A PUZZLE!",
-    "KEEP YOUR HEAD HIGH, YOUR SCARF FLUFFY, AND YOUR PASTA AL DENTE!",
     "NYEH! SOMEONE SHOULD COMPLIMENT ME. I WILL WAIT.",
-    "THE GREAT PAPYRUS DOES NOT WHISPER. HE PROCLAIMS!",
     "FRIENDSHIP IS THE GREATEST PUZZLE OF ALL!",
     "I SENSE A DISTURBANCE... A LACK OF DRAMATIC POSES!",
     "BONE ATTACKS ARE TEMPORARY. COOLNESS IS FOREVER!",
@@ -6981,7 +6960,7 @@ async def on_message(message: discord.Message):
                                     if get_style_pack(gid)["id"] != "error":
                                         reply = _pick_fresh(
                                             [x.format(m=target.mention) for x in soft_roast_lines_for(gid)]
-                                            + [x.format(t=target.mention) for x in HAZEL_SOFT_ROAST],
+                                            + [x.format(t=target.mention) for x in PAPYRUS_JUDGE_LINES],
                                             message.channel.id,
                                         )
                                     else:
@@ -7126,35 +7105,21 @@ async def on_message(message: discord.Message):
                 except Exception:
                     pass
                 attack_lines = [
-                    f"{target.mention} you are not him",
-                    f"{target.mention} mid",
-                    f"{target.mention} pack it up",
-                    f"{target.mention} L",
-                    f"{target.mention} it is so over",
-                    f"{target.mention} skill issue",
-                    f"{target.mention} sit your ass down",
-                    f"{target.mention} who asked",
-                    f"{target.mention} not beating the allegations",
-                    f"{target.mention} washed",
-                    f"{target.mention} touch grass",
-                    f"{target.mention} ratio",
-                    f"{target.mention} 💀",
-                    f"{target.mention} that was ass",
-                    f"{target.mention} go next",
-                    f"{target.mention} be serious",
-                    f"{target.mention} bitch",
-                    f"{target.mention} shut up",
-                    f"{target.mention} mid as hell",
-                    f"{target.mention} get your ass out of here",
-                    f"{target.mention} trash",
-                    f"{target.mention} dumbass",
-                    f"{target.mention} fuck outta here",
-                    f"{target.mention} cry about it",
-                    f"{target.mention} main character? no.",
-                    f"{target.mention} the bosses are not worried",
-                    f"{target.mention} stick stays winning",
-                    f"{target.mention} tutorial's still available",
-                    f"{target.mention} do not ever type that shit again",
+                    f"{target.mention} I HAVE BEEN ASKED TO DEFEAT YOU! PREPARE FOR A VERY FAIR BATTLE!",
+                    f"{target.mention} A DUEL! I ACCEPT ON BEHALF OF YOUR OPPONENT! NYEH HEH HEH!",
+                    f"{target.mention} YOUR PUZZLE SKILLS ARE ABOUT TO BE TESTED! THOROUGHLY!",
+                    f"{target.mention} I WILL FIGHT YOU WITH HONOR! AND BONES! MOSTLY BONES!",
+                    f"{target.mention} THE GREAT PAPYRUS HAS CHOSEN TO CHALLENGE YOU! FEEL HONORED!",
+                    f"{target.mention} EN GARDE! THAT IS FRENCH FOR 'HERE COMES A COOL SKELETON'!",
+                    f"{target.mention} I SHALL CONFRONT YOU! AFTER A QUICK STRETCH! ROYAL GUARD PROTOCOL!",
+                    f"{target.mention} YOUR BATTLE SKILLS WILL BE JUDGED... STARTING NOW!",
+                    f"{target.mention} DO NOT WORRY! I OFFER MERCY TO EVERYONE I DEFEAT! NYEH!",
+                    f"{target.mention} A CHALLENGE HAS BEEN ISSUED! TRAIN WELL, HUMAN!",
+                    f"{target.mention} PREPARE YOURSELF! THIS IS THE COOLEST FIGHT YOU WILL EVER HAVE!",
+                    f"{target.mention} I HAVE BEEN SENT TO BATTLE YOU! I WILL BE GENTLE! PROBABLY!",
+                    f"{target.mention} THE ROYAL GUARD (ME) FORMALLY ACCEPTS THIS BATTLE!",
+                    f"{target.mention} FIGHT REQUEST LOGGED! SPAGHETTI AFTERWARDS FOR THE WINNER!",
+                    f"{target.mention} YOUR OPPONENT HAS REQUESTED COMBAT! I WILL SUPERVISE... AND PARTICIPATE!",
                 ]
                 if random.random() < 0.45:
                     reply = _pick_fresh(attack_lines, message.channel.id)
