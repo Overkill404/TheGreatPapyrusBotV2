@@ -2401,10 +2401,26 @@ async def _run_feature(self, fid, interaction):
 # THE PANEL
 # ============================================================
 
-class CreatorPanelView(CooldownView):
-    """The maker's console: HUMANS · BANHAMMER · ACTIONS · SERVERS · VOICE."""
+CREATOR_PAGES = [
+    ("Home", "🏠", "Overview and quick start", 0x7B2CBF),
+    ("Humans", "👥", "Browse humans and pick a target", 0x2C8A5F),
+    ("Banhammer", "🔨", "Global bans", 0xB02020),
+    ("Actions", "⚡", f"{FEATURE_COUNT} actions in {len(FEATURE_CATS)} categories", 0x8A2BE2),
+    ("Servers", "🗺️", "Inspect, disable or leave servers", 0x2C5F8A),
+    ("Voice", "📢", "Broadcast to every server", 0xC79A2A),
+]
+CREATOR_PAGE_SIZE = 25
 
-    PAGES = ["Home", "Humans", "Banhammer", "Actions", "Servers", "Voice"]
+
+class CreatorPanelView(CooldownView):
+    """The maker's console: Home · Humans · Banhammer · Actions · Servers · Voice.
+
+    Layout on every page: row 0 = page picker, rows 1-3 = page controls,
+    row 4 = ◀ Home ▶ (+ Clear target).
+    """
+
+    PAGES = [p[0] for p in CREATOR_PAGES]
+    HOME, HUMANS, BANS, ACTIONS, SERVERS, VOICE = range(6)
 
     def __init__(self, owner, page: int = 0):
         super().__init__(timeout=1800)
@@ -2413,6 +2429,9 @@ class CreatorPanelView(CooldownView):
         self.target_id = None
         self.server_id = None
         self.cat = "gold"
+        self.humans_offset = 0
+        self.servers_offset = 0
+        self._leave_armed = None
         self._build()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -2427,279 +2446,332 @@ class CreatorPanelView(CooldownView):
     def _build(self):
         self.clear_items()
         builders = {
-            0: self._home_page,
-            1: self._humans_page,
-            2: self._banhammer_page,
-            3: self._actions_page,
-            4: self._servers_page,
-            5: self._voice_page,
+            self.HOME: self._home_page,
+            self.HUMANS: self._humans_page,
+            self.BANS: self._banhammer_page,
+            self.ACTIONS: self._actions_page,
+            self.SERVERS: self._servers_page,
+            self.VOICE: self._voice_page,
         }
         self.emb = builders[self.page]()
-        self._add_controls(page_sel_row=2 if self.page == 3 else 0)
+        self._add_controls()
 
     def _add_controls(self, page_sel_row=0):
         opts = [
-            discord.SelectOption(label=p, value=str(i), emoji=e)
-            for i, (p, e) in enumerate([
-                ("Home", "🏠"), ("Humans", "👥"), ("Banhammer", "🔨"),
-                ("Actions", "⚡"), ("Servers", "🗺️"), ("Voice", "📢"),
-            ])
+            discord.SelectOption(label=name, value=str(i), emoji=emoji,
+                                 description=desc[:100], default=(i == self.page))
+            for i, (name, emoji, desc, _c) in enumerate(CREATOR_PAGES)
         ]
-        sel = discord.ui.Select(placeholder="Creator console…", options=opts, row=page_sel_row)
-        sel.callback = self._page_jump
+        sel = discord.ui.Select(placeholder="Go to page…", options=opts, row=0)
+        sel.callback = lambda i, s=sel: self._jump_to(i, int(s.values[0]))
         self.add_item(sel)
+
         prev_b = discord.ui.Button(emoji="◀", style=discord.ButtonStyle.secondary, row=4)
         prev_b.callback = self._prev_page
         self.add_item(prev_b)
+        home_b = discord.ui.Button(label="Home", emoji="🏠", style=discord.ButtonStyle.secondary,
+                                   row=4, disabled=self.page == self.HOME)
+        home_b.callback = lambda i: self._jump_to(i, self.HOME)
+        self.add_item(home_b)
         next_b = discord.ui.Button(emoji="▶", style=discord.ButtonStyle.secondary, row=4)
         next_b.callback = self._next_page
         self.add_item(next_b)
+        if self.target_id or self.server_id:
+            clr = discord.ui.Button(label="Clear target", emoji="✖️", style=discord.ButtonStyle.secondary, row=4)
+            clr.callback = self._clear_target
+            self.add_item(clr)
+
+    def _nav_button(self, label, emoji, page, row=1, style=discord.ButtonStyle.secondary):
+        b = discord.ui.Button(label=label, emoji=emoji, style=style, row=row)
+        b.callback = lambda i, p=page: self._jump_to(i, p)
+        self.add_item(b)
+        return b
+
+    def _pager(self, offset, total, flip, row=2):
+        size = CREATOR_PAGE_SIZE
+        pages = max(1, (total + size - 1) // size)
+        if pages <= 1:
+            return
+        prev_b = discord.ui.Button(label="Prev", emoji="⬅️", style=discord.ButtonStyle.secondary,
+                                   row=row, disabled=offset <= 0)
+        prev_b.callback = lambda i: flip(i, max(0, offset - size))
+        self.add_item(prev_b)
+        self.add_item(discord.ui.Button(label=f"{offset // size + 1}/{pages}",
+                                        style=discord.ButtonStyle.secondary, row=row, disabled=True))
+        next_b = discord.ui.Button(label="Next", emoji="➡️", style=discord.ButtonStyle.secondary,
+                                   row=row, disabled=offset + size >= total)
+        next_b.callback = lambda i: flip(i, offset + size)
+        self.add_item(next_b)
+
+    def _target_name(self):
+        if not self.target_id:
+            return None
+        try:
+            row = db.execute("SELECT last_name FROM creator_seen WHERE user_id = ?", (self.target_id,)).fetchone()
+            if row and row["last_name"]:
+                return ui_plain(row["last_name"])[:32] or str(self.target_id)
+        except Exception:
+            pass
+        return str(self.target_id)
+
+    def _server_name(self):
+        if not self.server_id:
+            return None
+        g = bot.get_guild(int(self.server_id))
+        return ui_plain(g.name)[:32] if g else str(self.server_id)
 
     def _target_line(self):
-        t = f"`{self.target_id}`" if self.target_id else "none (pick one on **Humans**)"
-        s = f"`{self.server_id}`" if self.server_id else "auto"
-        return f"👤 target: {t} · 🗺️ server: {s}"
+        return f"🎯 Target: {self._target_name() or 'none'}  •  🗺️ Server: {self._server_name() or 'auto'}"
 
-    async def _page_jump(self, interaction: discord.Interaction):
-        for child in self.children:
-            if isinstance(child, discord.ui.Select) and child.values:
-                try:
-                    self.page = int(child.values[0])
-                    break
-                except Exception:
-                    continue
-        self._build()
+    def _embed(self, title=None, description=None, color=None):
+        name, emoji, _desc, c = CREATOR_PAGES[self.page]
+        emb = discord.Embed(title=title or f"{emoji}  {name}", description=description or None,
+                            color=c if color is None else color)
+        av = getattr(getattr(self.owner, "display_avatar", None), "url", None)
+        emb.set_author(name="Creator Console", icon_url=av)
+        emb.set_footer(text=f"Page {self.page + 1}/{len(self.PAGES)}  •  {self._target_line()}")
+        return emb
+
+    @staticmethod
+    def _block(lines, empty="(nothing here)"):
+        body = "\n".join(lines) if lines else empty
+        return f"```\n{body[:3800]}\n```"
+
+    async def _show(self, interaction):
         await interaction.response.edit_message(embed=self.emb, view=self)
+
+    async def _jump_to(self, interaction, page):
+        self.page = max(0, min(int(page), len(self.PAGES) - 1))
+        self._leave_armed = None
+        self._build()
+        await self._show(interaction)
 
     async def _prev_page(self, interaction: discord.Interaction):
-        self.page = (self.page - 1) % len(self.PAGES)
-        self._build()
-        await interaction.response.edit_message(embed=self.emb, view=self)
+        await self._jump_to(interaction, (self.page - 1) % len(self.PAGES))
 
     async def _next_page(self, interaction: discord.Interaction):
-        self.page = (self.page + 1) % len(self.PAGES)
-        self._build()
-        await interaction.response.edit_message(embed=self.emb, view=self)
+        await self._jump_to(interaction, (self.page + 1) % len(self.PAGES))
+
+    async def _clear_target(self, interaction):
+        self.target_id = None
+        self.server_id = None
+        await self._jump_to(interaction, self.page)
 
     # ---------- HOME ----------
 
     def _home_page(self):
         guilds, players, gold = _creator_server_stats()
         seen_users, seen_ints = creator_seen_stats()
-        emb = discord.Embed(
-            title="✦ CREATOR CONSOLE ✦",
-            description=(
-                f"{ui_rule('thick')}\n"
-                f"🦴 **{_creator_greeting()}**\n"
-                f"{ui_rule()}\n"
-                f"```{ui_frame([
-                    f'ACTIONS {FEATURE_COUNT:>9,}',
-                    f'SERVERS {guilds:>10,}',
-                    f'HUMANS {seen_users:>11,}',
-                    f'TOUCH {seen_ints:>12,}',
-                    f'PLAYERS {players:>11,}',
-                    f'GOLD {gold:>13,}',
-                    f'BANS {_creator_ban_count():>13,}',
-                ], width=30)}```\n"
-                f"{ui_chip(f'⚡ {FEATURE_COUNT} actions', '🔨 global bans', '👥 every human')}\n"
-                f"{ui_chip('🗺️ kill-switch', '📢 broadcast', '🔒 creator only')}"
-            ),
-            color=0x7B2CBF,
+        emb = self._embed(title="🏠  Creator Console", description=f"🦴 *{_creator_greeting()}*")
+        emb.set_author(name=f"Welcome back, {self.owner.display_name}",
+                       icon_url=getattr(getattr(self.owner, "display_avatar", None), "url", None))
+        for label, val in (
+            ("🗺️ Servers", guilds), ("🎮 Players", players), ("👥 Humans", seen_users),
+            ("👆 Interactions", seen_ints), ("💰 Gold", gold), ("🔨 Global bans", _creator_ban_count()),
+        ):
+            emb.add_field(name=label, value=f"**{int(val or 0):,}**", inline=True)
+        emb.add_field(
+            name="Quick start",
+            value=("1. **Humans** - pick a target\n"
+                   "2. **Actions** - pick a category, then an action\n"
+                   "3. Results come back as a private message"),
+            inline=False,
         )
-        emb.set_author(name=f"✦ {self.owner.display_name} · THE MAKER ✦")
-        emb.set_footer(text=f"{ui_pulse(self.page)} page {self.page + 1}/{len(self.PAGES)} · creator eyes only")
+        self._nav_button("Pick target", "👥", self.HUMANS, style=discord.ButtonStyle.primary)
+        self._nav_button("Actions", "⚡", self.ACTIONS, style=discord.ButtonStyle.primary)
+        self._nav_button("Servers", "🗺️", self.SERVERS)
+        self._nav_button("Broadcast", "📢", self.VOICE)
         return emb
 
     # ---------- HUMANS ----------
 
-    def _humans_page(self, offset=0):
-        self.clear_items()
-        rows = creator_seen_page(offset=offset, limit=25)
+    def _humans_page(self, offset=None):
+        if offset is not None:
+            self.humans_offset = max(0, int(offset))
+        offset = self.humans_offset
+        rows = creator_seen_page(offset=offset, limit=CREATOR_PAGE_SIZE)
         total, ints = creator_seen_stats()
         lines = [
-            f"`{r['user_id']}` {ui_plain(r['last_name'] or 'unknown')[:20]:<20} x{r['interactions']:,}"
-            for r in rows[:20]
+            f"{ui_plain(r['last_name'] or 'unknown')[:18]:<18} {r['user_id']:<20} x{int(r['interactions'] or 0):,}"
+            for r in rows
         ]
-        top_rows = db.execute("SELECT user_id, last_name, interactions FROM creator_seen ORDER BY interactions DESC LIMIT 3").fetchall()
-        act_box = ui_frame([f"{i + 1}. {ui_plain(r['last_name'] or 'human')[:12]:<12} x{r['interactions']:,}" for i, r in enumerate(top_rows)], width=26) if top_rows else "(no activity yet)"
-        emb = discord.Embed(
-            title="👥 HUMAN REGISTRY",
-            description=(
-                f"{ui_rule('thick')}\n"
-                f"**{total:,}** humans tracked · **{ints:,}** total interactions\n"
-                f"{ui_rule()}\n"
-                f"👁️ **MOST TOUCHY HUMANS**\n```\n{act_box}\n```\n"
-                f"📋 **FULL LIST (paged 25/pg)**\n"
-                f"```\n" + ("\n".join(lines) if lines else "nobody yet") + "\n```\n"
-                f"{ui_chip('pick = target', 'every touch tracked', 'dossier in Security')}"
-            ),
-            color=0x2C8A5F,
-        )
-        emb.set_author(name="👥 THE REGISTRY OF HUMANS")
-        emb.set_footer(text=f"{ui_pulse(self.page)} humans page {offset // 25 + 1} · dossier: Security → x_fingerprint")
-        self.emb = emb
+        emb = self._embed(description="Pick a human below to make them your target.\n" + self._block(lines, "nobody yet"))
+        emb.add_field(name="Tracked", value=f"**{int(total or 0):,}**", inline=True)
+        emb.add_field(name="Interactions", value=f"**{int(ints or 0):,}**", inline=True)
+        top_rows = db.execute(
+            "SELECT user_id, last_name, interactions FROM creator_seen ORDER BY interactions DESC LIMIT 3").fetchall()
+        top = "\n".join(
+            f"{i + 1}. {ui_plain(r['last_name'] or 'human')[:16]} · x{int(r['interactions'] or 0):,}"
+            for i, r in enumerate(top_rows))
+        emb.add_field(name="Most active", value=top or "-", inline=True)
 
         opts = [
-            discord.SelectOption(label=(r["last_name"] or "unknown")[:90], value=str(r["user_id"]),
-                                 description=f"id {r['user_id']} · x{r['interactions']:,}")
+            discord.SelectOption(label=(ui_plain(r["last_name"] or "") or "unknown")[:90], value=str(r["user_id"]),
+                                 description=f"id {r['user_id']} · x{int(r['interactions'] or 0):,}",
+                                 default=(self.target_id == int(r["user_id"])))
             for r in rows
         ]
         if opts:
-            sel = discord.ui.Select(placeholder="Pick your target…", options=opts, row=1)
-            sel.callback = self._pick_human
+            sel = discord.ui.Select(placeholder="Pick a target…", options=opts, row=1)
+            sel.callback = lambda i, s=sel: self._pick_human(i, int(s.values[0]))
             self.add_item(sel)
-        if offset > 0:
-            b = discord.ui.Button(emoji="⬆️", label="Newer", style=discord.ButtonStyle.secondary, row=3)
-            b.callback = lambda i: self._humans_flip(i, offset - 25)
-            self.add_item(b)
-        if offset + 25 < total:
-            b = discord.ui.Button(emoji="⬇️", label="Older", style=discord.ButtonStyle.secondary, row=3)
-            b.callback = lambda i: self._humans_flip(i, offset + 25)
-            self.add_item(b)
+        self._pager(offset, int(total or 0), self._humans_flip, row=2)
         return emb
 
     async def _humans_flip(self, interaction, offset):
-        self._humans_page(offset=offset)
-        await interaction.response.edit_message(embed=self.emb, view=self)
+        self.humans_offset = max(0, int(offset))
+        await self._jump_to(interaction, self.HUMANS)
 
-    async def _pick_human(self, interaction):
-        for child in self.children:
-            if isinstance(child, discord.ui.Select) and child.values:
-                self.target_id = int(child.values[0])
-                break
-        row = db.execute("SELECT * FROM creator_seen WHERE user_id = ?", (self.target_id,)).fetchone()
+    async def _pick_human(self, interaction, uid=None):
+        if uid is None:
+            for child in self.children:
+                if isinstance(child, discord.ui.Select) and child.values:
+                    uid = int(child.values[0])
+                    break
+        if uid is None:
+            await interaction.response.defer()
+            return
+        self.target_id = int(uid)
+        self.page = self.HUMANS
+        self._render_human()
+        await self._show(interaction)
+
+    def _render_human(self):
+        import time as _t
+        uid = self.target_id
+        row = db.execute("SELECT * FROM creator_seen WHERE user_id = ?", (uid,)).fetchone()
         guild_rows = db.execute(
             "SELECT guild_id, level, gold, hp, max_hp FROM players WHERE user_id = ? LIMIT 10",
-            (self.target_id,)).fetchall()
-        bans = "🚫 GLOBALLY BANNED" if is_creator_banned(self.target_id) else "✅ not banned"
-        chars = "\n".join(
-            f"guild `{r['guild_id']}` — lv {r['level']} · {r['gold']:,}g · {r['hp']}/{r['max_hp']} hp"
-            for r in guild_rows) or "no player rows"
-        import time as _t
-        seen = _t.strftime("%Y-%m-%d %H:%M", _t.localtime(row["last_seen"])) if row else "?"
-        emb = discord.Embed(
-            title=f"👤 TARGET LOCKED: {(row['last_name'] or 'unknown') if row else 'unknown'}",
-            description=(
-                f"{ui_rule()}\n"
-                f"ID `{self.target_id}` · {bans}\n"
-                f"interactions **{row['interactions']:,}** · last seen {seen}\n"
-                f"{ui_rule()}\n"
-                f"```\n{chars}\n```\n"
-                f"_Go to **Actions** to do 100 things to this human._"
-            ),
-            color=0x7B2CBF,
-        )
-        self.emb = emb
-        self.clear_items()
-        self._add_controls()
-        back = discord.ui.Button(label="Back to Humans", emoji="↩️", style=discord.ButtonStyle.secondary, row=4)
-        back.callback = lambda i: self._jump_to(i, 1)
-        self.add_item(back)
-        await interaction.response.edit_message(embed=self.emb, view=self)
+            (uid,)).fetchall()
+        banned = is_creator_banned(uid)
+        chars = []
+        for r in guild_rows:
+            g = bot.get_guild(int(r["guild_id"]))
+            gname = ui_plain(g.name)[:18] if g else str(r["guild_id"])
+            chars.append(f"{gname:<18} Lv {int(r['level'] or 0):<4} {int(r['gold'] or 0):>10,}g "
+                         f"{int(r['hp'] or 0)}/{int(r['max_hp'] or 0)}hp")
+        name = (ui_plain(row["last_name"]) if row and row["last_name"] else "") or "unknown"
+        seen = "?"
+        if row and row["last_seen"]:
+            try:
+                seen = _t.strftime("%Y-%m-%d %H:%M", _t.localtime(row["last_seen"]))
+            except Exception:
+                pass
 
-    async def _jump_to(self, interaction, page):
-        self.page = page
-        self._build()
-        await interaction.response.edit_message(embed=self.emb, view=self)
+        self.clear_items()
+        emb = self._embed(
+            title=f"🎯  {name}",
+            description="Target locked. Open **Actions** to use it.\n"
+                        + self._block(chars, "no characters in any server"),
+        )
+        emb.add_field(name="ID", value=f"`{uid}`", inline=True)
+        emb.add_field(name="Status", value="🚫 Globally banned" if banned else "✅ Not banned", inline=True)
+        emb.add_field(name="Interactions", value=f"**{int(row['interactions'] or 0):,}**" if row else "0", inline=True)
+        emb.add_field(name="Last seen", value=seen, inline=True)
+        self.emb = emb
+
+        self._nav_button("Open Actions", "⚡", self.ACTIONS, style=discord.ButtonStyle.primary)
+        if banned:
+            b = discord.ui.Button(label="Unban", emoji="🕊️", style=discord.ButtonStyle.success, row=1)
+            b.callback = lambda i: i.response.send_modal(self._prefilled(CreatorUnbanModal(self), uid))
+        else:
+            b = discord.ui.Button(label="Ban", emoji="🔨", style=discord.ButtonStyle.danger, row=1)
+            b.callback = lambda i: i.response.send_modal(self._prefilled(CreatorBanModal(self), uid))
+        self.add_item(b)
+        back = discord.ui.Button(label="Back to Humans", emoji="↩️", style=discord.ButtonStyle.secondary, row=1)
+        back.callback = lambda i: self._humans_flip(i, self.humans_offset)
+        self.add_item(back)
+        self._add_controls()
+
+    @staticmethod
+    def _prefilled(modal, uid):
+        try:
+            modal.user_id_in.default = str(uid)
+        except Exception:
+            pass
+        return modal
 
     # ---------- BANHAMMER ----------
 
     def _banhammer_page(self):
-        self.clear_items()
-        rows = list_creator_bans(15)
         import time as _t
+        rows = list_creator_bans(15)
         lines = []
         for r in rows:
             when = _t.strftime("%m-%d", _t.localtime(r["banned_at"])) if r["banned_at"] else "?"
-            lines.append(f"`{r['user_id']}` {ui_plain(r['reason'] or 'no reason')[:28]:<28} {when}")
-        listing = "\n".join(lines) if lines else "(the hammer rests)"
+            lines.append(f"{r['user_id']:<20} {when:<5} {ui_plain(r['reason'] or 'no reason')[:30]}")
         try:
-            dis_n = len(db.execute("SELECT guild_id FROM creator_guild_disabled").fetchall())
+            dis_n = int(db.execute("SELECT COUNT(*) FROM creator_guild_disabled").fetchone()[0] or 0)
         except Exception:
             dis_n = 0
-        emb = discord.Embed(
-            title="🔨 THE BANHAMMER",
-            description=(
-                f"{ui_rule('thick')}\n"
-                f"🦴 **{_creator_ban_count()}** global ban(s) · 🚫 **{dis_n}** locked server(s)\n"
-                f"{ui_rule()}\n"
-                f"📜 **THE SEALED LIST** (paged)\n"
-                f"```\n{listing}\n```\n"
-                f"{ui_chip('bans are GLOBAL', 'works in every server', 'creator is immune')}"
-            ),
-            color=0xB02020,
-        )
-        emb.set_author(name="🔨 ENFORCEMENT DESK")
-        emb.set_footer(text=f"{ui_pulse(self.page)} mass tools: Defense (d_exile/d_pardon/d_amnesty)")
-        self.emb = emb
+        emb = self._embed(description=(
+            "Bans are global and apply in every server. The creator is immune.\n"
+            "**Recent bans**\n" + self._block(lines, "the hammer rests")
+        ))
+        emb.add_field(name="Global bans", value=f"**{_creator_ban_count():,}**", inline=True)
+        emb.add_field(name="Disabled servers", value=f"**{dis_n:,}**", inline=True)
+        emb.add_field(name="Mass tools", value="Actions → 🚨 Defense", inline=True)
 
-        ban_btn = discord.ui.Button(label="Ban by ID", emoji="🔨", style=discord.ButtonStyle.danger, row=2)
+        ban_btn = discord.ui.Button(label="Ban by ID", emoji="🔨", style=discord.ButtonStyle.danger, row=1)
         ban_btn.callback = lambda i: i.response.send_modal(CreatorBanModal(self))
         self.add_item(ban_btn)
-        unban_btn = discord.ui.Button(label="Unban by ID", emoji="🕊️", style=discord.ButtonStyle.success, row=2)
+        unban_btn = discord.ui.Button(label="Unban by ID", emoji="🕊️", style=discord.ButtonStyle.success, row=1)
         unban_btn.callback = lambda i: i.response.send_modal(CreatorUnbanModal(self))
         self.add_item(unban_btn)
         return emb
 
-    # ---------- ACTIONS (the 100) ----------
+    # ---------- ACTIONS ----------
 
     def _actions_page(self):
-        self.clear_items()
         cat_items = FEATURES.get(self.cat, [])
         cat_name = dict(FEATURE_CATS).get(self.cat, self.cat)
-        lines = [f"{e} {l}" for (_f, l, e) in cat_items[:25]]
-        cat_map = " · ".join(f"{dict(FEATURE_CATS).get(v, v).split()[-1]}{len(FEATURES[v])}" for v, _n in FEATURE_CATS)
-        emb = discord.Embed(
-            title=f"⚡ ACTIONS — {cat_name.upper()}",
-            description=(
-                f"{ui_rule('thick')}\n"
-                f"**{FEATURE_COUNT} total actions** across {len(FEATURE_CATS)} categories.\n"
-                f"{self._target_line()}\n"
-                f"{ui_rule()}\n"
-                f"🗺️ **CATEGORY MAP**\n{cat_map}\n"
-                f"{ui_rule()}\n"
-                f"```\n" + "\n".join(lines) + f"\n```\n"
-                f"_Pick a category, then an action. Results come back as a secret message._"
-            ),
+        hint = "" if self.target_id else "⚠️ No target yet - pick one on **Humans** for player actions.\n"
+        lines = "\n".join(f"{e} {l}" for (_f, l, e) in cat_items) or "(empty)"
+        emb = self._embed(
+            title=f"⚡  Actions · {cat_name}",
+            description=f"{hint}Choose an action below. Results come back privately.\n\n{lines}",
             color=CAT_COLORS.get(self.cat, 0x8A2BE2),
         )
-        emb.set_author(name=f"⚡ THE ACTION ENGINE · {len(cat_items)} IN THIS DRAWER")
-        emb.set_footer(text=f"{ui_pulse(self.page)} {len(cat_items)} actions in this category")
-        self.emb = emb
 
-        cat_sel = discord.ui.Select(
-            placeholder="Category…", row=0,
-            options=[discord.SelectOption(label=n, value=v, default=(v == self.cat)) for v, n in FEATURE_CATS])
-        cat_sel.callback = self._cat_jump
+        cat_opts = []
+        for v, n in FEATURE_CATS:
+            parts = n.split(" ", 1)
+            label, emo = (parts[1], parts[0]) if len(parts) == 2 else (n, "⚡")
+            cat_opts.append(discord.SelectOption(
+                label=label[:100], value=v, emoji=safe_select_emoji(emo, "⚡"),
+                description=f"{len(FEATURES.get(v, []))} actions", default=(v == self.cat)))
+        cat_sel = discord.ui.Select(placeholder="Category…", row=1, options=cat_opts[:25])
+        cat_sel.callback = lambda i, s=cat_sel: self._cat_jump(i, s.values[0])
         self.add_item(cat_sel)
 
-        act_sel = discord.ui.Select(
-            placeholder="Choose an action…", row=1,
-            options=[discord.SelectOption(label=l[:95], value=fid, emoji=e) for fid, l, e in cat_items])
-        act_sel.callback = self._run_action
-        self.add_item(act_sel)
+        if cat_items:
+            act_sel = discord.ui.Select(
+                placeholder="Run an action…", row=2,
+                options=[discord.SelectOption(label=l[:100], value=fid, emoji=e) for fid, l, e in cat_items[:25]])
+            act_sel.callback = lambda i, s=act_sel: self._run_action(i, s.values[0])
+            self.add_item(act_sel)
 
-        back = discord.ui.Button(label="Back to Humans", emoji="↩️", style=discord.ButtonStyle.secondary, row=4)
-        back.callback = lambda i: self._jump_to(i, 1)
-        self.add_item(back)
+        self._nav_button("Change target" if self.target_id else "Pick target", "👥", self.HUMANS, row=3)
         return emb
 
-    async def _cat_jump(self, interaction):
-        for child in self.children:
-            if isinstance(child, discord.ui.Select) and child.values and child.values[0] in FEATURES:
-                self.cat = child.values[0]
-                break
-        self._build()
-        await interaction.response.edit_message(embed=self.emb, view=self)
+    async def _cat_jump(self, interaction, cat=None):
+        if cat is None:
+            for child in self.children:
+                if isinstance(child, discord.ui.Select) and child.values and child.values[0] in FEATURES:
+                    cat = child.values[0]
+                    break
+        if cat in FEATURES:
+            self.cat = cat
+        await self._jump_to(interaction, self.ACTIONS)
 
-    async def _run_action(self, interaction):
-        all_ids = {f[0] for cat in FEATURES.values() for f in cat}
-        fid = None
-        for child in self.children:
-            if isinstance(child, discord.ui.Select) and child.values and child.values[0] in all_ids:
-                fid = child.values[0]
-                break
-        if not fid:
+    async def _run_action(self, interaction, fid=None):
+        labels = {f[0]: f[1] for cat in FEATURES.values() for f in cat}
+        if fid is None:
+            for child in self.children:
+                if isinstance(child, discord.ui.Select) and child.values and child.values[0] in labels:
+                    fid = child.values[0]
+                    break
+        if fid not in labels:
             await interaction.response.defer()
             return
         # default server = the target's guild or this guild
@@ -2721,163 +2793,155 @@ class CreatorPanelView(CooldownView):
         try:
             line = random.choice(CREATOR_CHAOS_LINES)
             await interaction.followup.send(
-                f"⚡ **{fid.upper()}** → {result}\n🦴 *{line}*", ephemeral=True)
+                f"⚡ **{labels[fid]}**\n{result}\n🦴 *{line}*", ephemeral=True)
         except Exception:
             pass
 
     # ---------- SERVERS ----------
 
-    def _servers_page(self, offset=0):
-        self.clear_items()
-        self.servers_offset = max(0, offset)
+    def _servers_page(self, offset=None):
+        if offset is not None:
+            self.servers_offset = max(0, int(offset))
         guilds_sorted = sorted(bot.guilds, key=lambda x: x.member_count or 0, reverse=True)
-        chunk = guilds_sorted[self.servers_offset:self.servers_offset + 25]
-        lines = [f"{g.name[:28]:<28} {g.member_count or '?':>6} humans" for g in chunk]
-        disabled_n = 0
+        if self.servers_offset >= len(guilds_sorted):
+            self.servers_offset = 0
+        chunk = guilds_sorted[self.servers_offset:self.servers_offset + CREATOR_PAGE_SIZE]
+        lines = [
+            f"{ui_plain(g.name)[:26]:<26} {g.member_count or 0:>8,}" + ("  [off]" if creator_guild_is_disabled(g.id) else "")
+            for g in chunk
+        ]
         try:
             disabled_n = int(db.execute("SELECT COUNT(*) FROM creator_guild_disabled").fetchone()[0] or 0)
         except Exception:
-            pass
-        top3 = guilds_sorted[:3]
-        max_mc = max((g.member_count or 1) for g in top3) if top3 else 1
-        bars = [f"{ui_plain(g.name)[:14]:<14} {ui_bar(g.member_count or 0, max_mc, width=10)}" for g in top3]
-        size_box = "\n".join(bars) if bars else "(no servers)"
-        emb = discord.Embed(
-            title="🗺️ THE TERRITORIES",
-            description=(
-                f"{ui_rule('thick')}\n"
-                f"**{len(bot.guilds)}** servers host my puzzles · 🚫 **{disabled_n}** disabled\n"
-                f"{self._target_line()}\n"
-                f"{ui_rule()}\n"
-                f"📏 **LARGEST TERRITORIES**\n```\n{size_box}\n```\n"
-                f"📋 **ALL SERVERS (paged 25/pg)**\n"
-                f"```\n" + ("\n".join(lines) if lines else "(none)") + "\n```\n"
-                f"{ui_chip('inspect', 'kill-switch', 'leave')}"
-            ),
-            color=0x2C5F8A,
-        )
-        emb.set_author(name="🗺️ TERRITORIAL OVERVIEW")
-        page_n = self.servers_offset // 25 + 1
-        total_pages = max(1, (len(guilds_sorted) + 24) // 25)
-        emb.set_footer(text=f"{ui_pulse(self.page)} servers page {page_n}/{total_pages}")
-        self.emb = emb
+            disabled_n = 0
+        emb = self._embed(description="Pick a server to inspect it.\n" + self._block(lines, "(no servers)"))
+        emb.add_field(name="Servers", value=f"**{len(guilds_sorted):,}**", inline=True)
+        emb.add_field(name="Disabled", value=f"**{disabled_n:,}**", inline=True)
+        emb.add_field(name="Members", value=f"**{sum(g.member_count or 0 for g in guilds_sorted):,}**", inline=True)
 
         opts = [
             discord.SelectOption(
-                label=("🚫 " if creator_guild_is_disabled(g.id) else "") + g.name[:90],
+                label=(("🚫 " if creator_guild_is_disabled(g.id) else "") + g.name)[:100],
                 value=str(g.id),
                 description=f"{g.member_count or '?'} members",
+                default=(self.server_id == g.id),
             )
             for g in chunk
         ]
         if opts:
             sel = discord.ui.Select(placeholder="Inspect a server…", options=opts, row=1)
-            sel.callback = self._inspect_server
+            sel.callback = lambda i, s=sel: self._inspect_server(i, int(s.values[0]))
             self.add_item(sel)
-        if self.servers_offset > 0:
-            b = discord.ui.Button(emoji="⬆️", label="Newer", style=discord.ButtonStyle.secondary, row=3)
-            b.callback = lambda i: self._servers_flip(i, self.servers_offset - 25)
-            self.add_item(b)
-        if self.servers_offset + 25 < len(guilds_sorted):
-            b = discord.ui.Button(emoji="⬇️", label="Older", style=discord.ButtonStyle.secondary, row=3)
-            b.callback = lambda i: self._servers_flip(i, self.servers_offset + 25)
-            self.add_item(b)
+        self._pager(self.servers_offset, len(guilds_sorted), self._servers_flip, row=2)
         return emb
 
     async def _servers_flip(self, interaction, offset):
-        self._servers_page(offset=offset)
-        await interaction.response.edit_message(embed=self.emb, view=self)
+        self.servers_offset = max(0, int(offset))
+        await self._jump_to(interaction, self.SERVERS)
 
-    async def _inspect_server(self, interaction):
-        gid = None
-        for child in self.children:
-            if isinstance(child, discord.ui.Select) and child.values:
-                gid = child.values[0]
-                break
+    async def _inspect_server(self, interaction, gid=None):
+        if gid is None:
+            for child in self.children:
+                if isinstance(child, discord.ui.Select) and child.values:
+                    gid = child.values[0]
+                    break
         if not gid:
             await interaction.response.defer()
             return
-        gid = int(gid)
-        self.server_id = gid
+        self.server_id = int(gid)
+        self.page = self.SERVERS
+        self._leave_armed = None
+        self._render_server(int(gid))
+        await self._show(interaction)
+
+    def _render_server(self, gid):
         g = bot.get_guild(gid)
         players = db.execute("SELECT COUNT(*), COALESCE(SUM(gold),0) FROM players WHERE guild_id = ?", (gid,)).fetchone()
         bosses = db.execute("SELECT COUNT(*) FROM bosses WHERE guild_id = ?", (gid,)).fetchone()
         is_disabled = creator_guild_is_disabled(gid)
-        emb = discord.Embed(
-            title=f"🗺️ {g.name if g else gid}",
-            description=(
-                f"{ui_rule()}\n"
-                f"status {'🚫 **DISABLED**' if is_disabled else '✅ **ENABLED**'}\n"
-                f"humans `{g.member_count or '?'}` · players **{players[0]:,}** · gold **{players[1]:,}**\n"
-                f"bosses **{bosses[0]:,}**\n"
-                f"{ui_rule()}\n"
-                f"_this server is now the Actions target too._"
-            ),
-            color=0xB02020 if is_disabled else 0x2C5F8A,
-        )
-        self.emb = emb
+
         self.clear_items()
+        desc = "This server is now the default server for **Actions**."
+        if not g:
+            desc += "\n⚠️ The bot is no longer in this server."
+        emb = self._embed(title=f"🗺️  {ui_plain(g.name) if g else gid}", description=desc,
+                          color=0xB02020 if is_disabled else None)
+        icon = getattr(getattr(g, "icon", None), "url", None) if g else None
+        if icon:
+            emb.set_thumbnail(url=icon)
+        emb.add_field(name="Status", value="🚫 Disabled" if is_disabled else "✅ Enabled", inline=True)
+        emb.add_field(name="Members", value=f"**{(g.member_count or 0) if g else 0:,}**", inline=True)
+        emb.add_field(name="Players", value=f"**{int(players[0] or 0):,}**", inline=True)
+        emb.add_field(name="Gold", value=f"**{int(players[1] or 0):,}**", inline=True)
+        emb.add_field(name="Bosses", value=f"**{int(bosses[0] or 0):,}**", inline=True)
+        emb.add_field(name="ID", value=f"`{gid}`", inline=True)
+        self.emb = emb
+
         if is_disabled:
-            enable = discord.ui.Button(label="Enable bot here", emoji="✅", style=discord.ButtonStyle.success, row=4)
-            enable.callback = self._make_guild_toggle_cb(gid, True)
-            self.add_item(enable)
+            t = discord.ui.Button(label="Enable bot here", emoji="✅", style=discord.ButtonStyle.success, row=1)
         else:
-            disable = discord.ui.Button(label="Disable bot here", emoji="🚫", style=discord.ButtonStyle.danger, row=4)
-            disable.callback = self._make_guild_toggle_cb(gid, False)
-            self.add_item(disable)
-        leave = discord.ui.Button(label="Leave server", emoji="🚪", style=discord.ButtonStyle.danger, row=4)
-        leave.callback = self._make_leave_cb(gid)
-        self.add_item(leave)
-        back = discord.ui.Button(label="Back", emoji="↩️", style=discord.ButtonStyle.secondary, row=4)
-        back.callback = lambda i: self._jump_to(i, 4)
+            t = discord.ui.Button(label="Disable bot here", emoji="🚫", style=discord.ButtonStyle.danger, row=1)
+        t.callback = self._make_guild_toggle_cb(gid, is_disabled)
+        self.add_item(t)
+        if g:
+            armed = self._leave_armed == gid
+            leave = discord.ui.Button(label="Confirm leave?" if armed else "Leave server", emoji="🚪",
+                                      style=discord.ButtonStyle.danger, row=1)
+            leave.callback = self._make_leave_cb(gid)
+            self.add_item(leave)
+        self._nav_button("Open Actions", "⚡", self.ACTIONS, row=2, style=discord.ButtonStyle.primary)
+        back = discord.ui.Button(label="Back to Servers", emoji="↩️", style=discord.ButtonStyle.secondary, row=2)
+        back.callback = lambda i: self._servers_flip(i, self.servers_offset)
         self.add_item(back)
         self._add_controls()
-        await interaction.response.edit_message(embed=self.emb, view=self)
 
     def _make_guild_toggle_cb(self, gid, enable):
         async def cb(interaction: discord.Interaction):
             if enable:
                 creator_enable_guild(gid)
-                msg = f"✅ bot re-enabled in `{gid}`"
             else:
                 creator_disable_guild(gid)
-                msg = f"🚫 bot disabled in `{gid}` — I ignore that whole server now"
-            await interaction.response.send_message(msg, ephemeral=True)
+            self._leave_armed = None
+            self._render_server(gid)
+            await self._show(interaction)
         return cb
 
     def _make_leave_cb(self, gid):
         async def cb(interaction: discord.Interaction):
+            if self._leave_armed != gid:
+                self._leave_armed = gid
+                self._render_server(gid)
+                await self._show(interaction)
+                return
+            self._leave_armed = None
             g = bot.get_guild(gid)
-            if g:
-                await g.leave()
-            await interaction.response.send_message(f"🚪 left `{g.name if g else gid}`", ephemeral=True)
+            name = g.name if g else str(gid)
+            try:
+                if g:
+                    await g.leave()
+            except Exception as e:
+                await interaction.response.send_message(f"❌ couldn't leave `{name}`: {type(e).__name__}", ephemeral=True)
+                return
+            if self.server_id == gid:
+                self.server_id = None
+            await self._jump_to(interaction, self.SERVERS)
+            try:
+                await interaction.followup.send(f"🚪 left `{name}`", ephemeral=True)
+            except Exception:
+                pass
         return cb
 
     # ---------- VOICE ----------
 
     def _voice_page(self):
         seen_n, _ints = creator_seen_stats()
-        reach_box = ui_frame([
-            f'REACH   {len(bot.guilds):>10,} srv',
-            f'HUMANS  {seen_n:>10,}',
-        ], width=26)
-        emb = discord.Embed(
-            title="📢 THE ROYAL VOICE",
-            description=(
-                f"{ui_rule('thick')}\n"
-                f"🦴 **SPEAK, CREATOR, AND EVERY SERVER SHALL HEAR!**\n"
-                f"{ui_rule()}\n"
-                f"📡 **BROADCAST REACH**\n```\n{reach_box}\n```\n"
-                f"The broadcast posts a Papyrus-styled announcement to every\n"
-                f"server's system channel (or first writable channel).\n"
-                f"{ui_chip('one modal', 'every server', 'Papyrus voice')}"
-            ),
-            color=0xC79A2A,
-        )
-        emb.set_author(name="📢 HERALD'S DESK")
-        emb.set_footer(text=f"{ui_pulse(self.page)} {len(bot.guilds)} servers will hear it")
-        self.emb = emb
-        b = discord.ui.Button(label="Broadcast", emoji="📢", style=discord.ButtonStyle.primary, row=2)
+        emb = self._embed(description=(
+            "Send a Papyrus-styled announcement to every server.\n"
+            "It goes to each server's system channel, or the first channel I can write in."
+        ))
+        emb.add_field(name="Servers reached", value=f"**{len(bot.guilds):,}**", inline=True)
+        emb.add_field(name="Humans tracked", value=f"**{int(seen_n or 0):,}**", inline=True)
+        b = discord.ui.Button(label="Write broadcast", emoji="📢", style=discord.ButtonStyle.primary, row=1)
         b.callback = lambda i: i.response.send_modal(CreatorBroadcastModal(self))
         self.add_item(b)
         return emb
@@ -2934,6 +2998,7 @@ class CreatorBroadcastModal(discord.ui.Modal, title="📢 Broadcast to all serve
 
     async def on_submit(self, interaction):
         text = str(self.text_in.value).strip()[:500]
+        await interaction.response.defer(ephemeral=True, thinking=True)
         sent = 0
         for g in bot.guilds:
             ch = g.system_channel
@@ -2951,7 +3016,7 @@ class CreatorBroadcastModal(discord.ui.Modal, title="📢 Broadcast to all serve
                 sent += 1
             except Exception:
                 pass
-        await interaction.response.send_message(f"📢 shouted into **{sent}** servers.", ephemeral=True)
+        await interaction.followup.send(f"📢 shouted into **{sent}** servers.", ephemeral=True)
 
 
 # ============================================================
