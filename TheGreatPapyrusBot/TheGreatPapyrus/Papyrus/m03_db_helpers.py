@@ -3960,6 +3960,10 @@ try:
     except Exception:
         pass
     try:
+        execute("ALTER TABLE universes ADD COLUMN image_url TEXT NOT NULL DEFAULT ''")
+    except Exception:
+        pass
+    try:
         execute("ALTER TABLE levels ADD COLUMN universe_id INTEGER NOT NULL DEFAULT 0")
     except Exception:
         pass

@@ -3281,6 +3281,25 @@ def _check_require_specific_boss(guild_id, user_id, boss_id) -> tuple:
 
 
 
+def universe_image_url(uni) -> str:
+    """Universe thumbnail URL ('' when unset/invalid)."""
+    try:
+        if uni and "image_url" in uni.keys():
+            url = str(uni["image_url"] or "").strip()
+            return url if is_http_url(url) else ""
+    except Exception:
+        pass
+    return ""
+
+
+def universe_image_for_level(guild_id, level) -> str:
+    try:
+        uid = int(level["universe_id"] or 0) if level and "universe_id" in level.keys() else 0
+        return universe_image_url(get_universe(guild_id, uid)) if uid else ""
+    except Exception:
+        return ""
+
+
 def universe_label_for_level(guild_id, level) -> str:
     """Pretty universe name for embeds (portal / hub / boss)."""
     if not level:
@@ -3322,6 +3341,11 @@ def build_portal_embed(guild, level, boss, player=None):
     level_img = ""
     if level and "image_url" in level.keys() and level["image_url"]:
         level_img = level["image_url"]
+    if not level_img and level:
+        try:
+            level_img = universe_image_for_level(guild.id if guild else level["guild_id"], level)
+        except Exception:
+            pass
     boss_img = boss["image_url"] if boss and boss["image_url"] else ""
 
     # Enhanced stats display with visual bars
@@ -3539,9 +3563,11 @@ def build_level_hub_embed(guild_id, user_id, level, player_name=None):
         color=discord.Color.from_str("#0E6655")
     )
     embed.set_author(name=f"{player_name}'s area hub" if player_name else "AREA HUB")
-    if "image_url" in level.keys() and level["image_url"]:
+    hub_img = level["image_url"] if "image_url" in level.keys() and level["image_url"] else ""
+    hub_img = hub_img or universe_image_for_level(guild_id, level)
+    if hub_img:
         try:
-            embed.set_thumbnail(url=level["image_url"])
+            embed.set_thumbnail(url=hub_img)
         except Exception:
             pass
     embed.set_footer(text="You remain in this area until Main Menu")
@@ -3795,11 +3821,21 @@ class LevelSelectView(CooldownView):
             view = PagedOptionsView(lopts, placeholder="Select level...", title="Levels", on_select=on_lv)
             uni = get_universe(_g, uid) if uid else None
             title = uni["name"] if uni else "Default Areas"
+            uemoji = (uni["emoji"] if uni and uni["emoji"] else "🌌")
+            udesc = (str(uni["description"] or "") if uni else "") or "Levels not in a universe"
+            emb = discord.Embed(
+                title=f"{uemoji} {title}",
+                description=f"{udesc}\n\n🗺️ **{len(lvls)}** area(s) - pick a level below.",
+                color=discord.Color.from_str("#5B2C6F"),
+            )
+            uimg = universe_image_url(uni)
+            if uimg:
+                emb.set_thumbnail(url=uimg)
             try:
-                await inter.edit_original_response(content=f"**{title}** - pick a level:", embed=None, view=view)
+                await inter.edit_original_response(content=None, embed=emb, view=view)
             except Exception:
                 try:
-                    await inter.followup.send(f"**{title}** - pick a level:", view=view, ephemeral=True)
+                    await inter.followup.send(embed=emb, view=view, ephemeral=True)
                 except Exception:
                     pass
 
