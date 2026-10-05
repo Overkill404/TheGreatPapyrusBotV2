@@ -211,11 +211,20 @@ class GatherView(CooldownView):
             JOIN materials m ON m.id=gr.material_id
             WHERE gr.node_id=? AND gr.guild_id=? AND m.enabled=1""", (node_id, self.gid)).fetchall()
         got = []
+        rich = False
+        try:
+            rich = int(time.time()) < int(figet(self.gid, "rich_nodes_until", 0) or 0)
+        except Exception:
+            rich = False
         for gr in rolls:
             if random.randint(1, 100) <= int(gr["chance_pct"] or 0):
                 qty = random.randint(int(gr["min_qty"] or 1), max(int(gr["min_qty"] or 1), int(gr["max_qty"] or 1)))
+                if rich:
+                    qty = max(qty + 2, int(qty * 2))  # rich nodes: double yield (min +2)
                 mat_add(self.gid, self.uid, gr["material_id"], qty)
                 got.append(f"{gr['emoji']} **{gr['name']}** x{qty}")
+        if rich and got:
+            got.append("💎 **RICH NODES!** Rare weather doubled the yield!")
         drop_mult = rpg_bonus_mult(self.gid, self.uid, "drop")
         if random.random() < 0.08 * drop_mult:
             got.append("👻 Your spirit found a snack!")
@@ -274,9 +283,16 @@ async def _weather_roll(gid):
             picked = t
             break
     hours = figet(gid, "weather_hours", 2)
+    until = int(time.time()) + max(1, hours) * 3600
     execute("""INSERT INTO weather_state (guild_id, weather_id, until_ts) VALUES (?,?,?)
         ON CONFLICT(guild_id) DO UPDATE SET weather_id=excluded.weather_id, until_ts=excluded.until_ts""",
-        (gid, picked["id"], int(time.time()) + max(1, hours) * 3600))
+        (gid, picked["id"], until))
+    # Rare weather spawns RICH NODES for its whole duration
+    try:
+        if int(picked["rare_pct"] or 0) >= 25:
+            fset(gid, "rich_nodes_until", until)
+    except Exception:
+        pass
     return picked
 
 async def _weather_announce(bot, gid, w):
@@ -294,9 +310,15 @@ async def _weather_announce(bot, gid, w):
             ch = None
     if ch is None:
         return
+    rich_note = ""
+    try:
+        if int(w["rare_pct"] or 0) >= 25:
+            rich_note = "\n💎 **RICH NODES SPAWNED!** Gathering yields are DOUBLED until the weather changes!"
+    except Exception:
+        rich_note = ""
     emb = discord.Embed(
         title=f"{w['emoji']} The weather shifted: {w['name']}!",
-        description=(f"Gold {'+' if w['gold_pct'] >= 0 else ''}{w['gold_pct']}% • XP {'+' if w['xp_pct'] >= 0 else ''}{w['xp_pct']}% • Rare finds {'+' if w['rare_pct'] >= 0 else ''}{w['rare_pct']}%"),
+        description=(f"Gold {'+' if w['gold_pct'] >= 0 else ''}{w['gold_pct']}% • XP {'+' if w['xp_pct'] >= 0 else ''}{w['xp_pct']}% • Rare finds {'+' if w['rare_pct'] >= 0 else ''}{w['rare_pct']}%" + rich_note),
         color=style_color(gid))
     emb.set_footer(text="Affects battles, quests, and gathering until it changes.")
     try:

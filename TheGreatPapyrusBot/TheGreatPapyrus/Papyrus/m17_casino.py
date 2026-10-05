@@ -17,6 +17,23 @@ def _setup_tables():
                 spent_total INTEGER NOT NULL DEFAULT 0
             )
         """)
+        execute("""
+            CREATE TABLE IF NOT EXISTS casino_tourney (
+                guild_id INTEGER PRIMARY KEY,
+                status TEXT NOT NULL DEFAULT 'idle',
+                started_at REAL NOT NULL DEFAULT 0,
+                entry_fee INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        execute("""
+            CREATE TABLE IF NOT EXISTS casino_tourney_scores (
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                net INTEGER NOT NULL DEFAULT 0,
+                hands INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (guild_id, user_id)
+            )
+        """)
     except Exception as e:
         print("server_treasury:", e)
 
@@ -176,6 +193,11 @@ class BlackjackView(ui.LayoutView if CV2 else CooldownView):
         if self.bet > payout:
             rake = int((self.bet - payout) * figet(self.guild_id, "bj_rake_pct", 5) / 100.0)
             treasury_add(self.guild_id, rake)
+        # Casino tournament: track net per hand while one is running
+        try:
+            tourney_record_hand(self.guild_id, self.user_id, int(payout) - int(self.bet))
+        except Exception:
+            pass
         self._rebuild(result=result)
         self.stop()
         try:
@@ -234,9 +256,154 @@ class BlackjackView(ui.LayoutView if CV2 else CooldownView):
             await self._dealer_finish(inter)
 
 
-async def blackjack_cmd(interaction: discord.Interaction, bet: int):
+def tourney_status(gid):
+    try:
+        row = db.execute("SELECT status FROM casino_tourney WHERE guild_id = ?", (int(gid),)).fetchone()
+        return str(row["status"] or "idle") if row else "idle"
+    except Exception:
+        return "idle"
+
+
+def tourney_record_hand(gid, uid, net):
+    """No-op unless a tournament is running for this guild."""
+    try:
+        row = db.execute("SELECT status FROM casino_tourney WHERE guild_id = ?", (int(gid),)).fetchone()
+        if not row or str(row["status"] or "idle") != "running":
+            return
+        execute(
+            """INSERT INTO casino_tourney_scores (guild_id, user_id, net, hands)
+               VALUES (?, ?, ?, 1)
+               ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                 net = net + excluded.net,
+                 hands = hands + 1""",
+            (int(gid), int(uid), int(net)),
+        )
+    except Exception as e:
+        print("tourney_record_hand:", e)
+
+
+async def casino_tourney_cmd(interaction: discord.Interaction, action: str = "view"):
+    """/casino_tourney: join · standings · start (admin) · end (admin)."""
     if not interaction.guild:
         await interaction.response.send_message("Server only.", ephemeral=True)
+        return
+    gid = interaction.guild.id
+    if not figet(gid, "casino_enabled", 1):
+        await interaction.response.send_message("The casino is turned off here.", ephemeral=True)
+        return
+    action = action.lower().strip()
+
+    if action == "start":
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message("Admins only — manage server permission.", ephemeral=True)
+            return
+        execute(
+            """INSERT INTO casino_tourney (guild_id, status, started_at, entry_fee)
+               VALUES (?, 'running', ?, 0)
+               ON CONFLICT(guild_id) DO UPDATE SET status = 'running', started_at = excluded.started_at""",
+            (gid, time.time()),
+        )
+        execute("DELETE FROM casino_tourney_scores WHERE guild_id = ?", (gid,))
+        await interaction.response.send_message(
+            "🎲 **CASINO TOURNAMENT STARTED!** Every blackjack hand played while it runs counts. "
+            "Best NET wins when an admin ends it. I HAVE ALREADY LOST MY ROYAL GUARD PENSION TWICE!"
+        )
+        return
+
+    if action == "end":
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message("Admins only — manage server permission.", ephemeral=True)
+            return
+        if tourney_status(gid) != "running":
+            await interaction.response.send_message("No tournament is running. Start one with `/casino_tourney action:start`.", ephemeral=True)
+            return
+        rows = db.execute(
+            "SELECT user_id, net, hands FROM casino_tourney_scores WHERE guild_id = ? ORDER BY net DESC LIMIT 10",
+            (gid,),
+        ).fetchall()
+        execute("UPDATE casino_tourney SET status = 'idle' WHERE guild_id = ?", (gid,))
+        pot = int(treasury_get(gid) or 0)
+        share = pot // 3 if pot > 0 else 0
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        paid = 0
+        for i, r in enumerate(rows[:10]):
+            name = "unknown"
+            try:
+                m = interaction.guild.get_member(int(r["user_id"]))
+                name = m.display_name if m else f"<@{r['user_id']}>"
+            except Exception:
+                name = f"<@{r['user_id']}>"
+            line = f"{medals[i] if i < 3 else '`%d.`' % (i + 1)} **{name}** — net **{int(r['net']):,}** ({int(r['hands'] or 0)} hands)"
+            if i < 3 and share > 0:
+                try:
+                    eco_add_cash(gid, int(r["user_id"]), share, earned=True)
+                    line += f" — wins **{share:,}** from the treasury! 💰"
+                    paid += share
+                except Exception:
+                    pass
+            lines.append(line)
+        if paid > 0:
+            treasury_add(gid, -paid)
+        if lines:
+            emb = discord.Embed(
+                title="🏆 Casino Tournament — FINAL RESULTS",
+                description="\n".join(lines) + (f"\n\n💰 Prize pool: **{paid:,}** split from the server treasury!" if paid else ""),
+                color=discord.Color.gold(),
+            )
+            emb.set_footer(text="NYEH HEH HEH! THE HOUSE LOSES! Wait. NO! THE HOUSE NEVER LOSES!")
+            await interaction.response.send_message(embed=emb)
+        else:
+            await interaction.response.send_message("Tournament ended. Nobody played a hand?! I AM NOT EVEN MAD, JUST DISAPPOINTED.")
+        return
+
+    if action == "standings" or action == "view":
+        running = tourney_status(gid) == "running"
+        rows = db.execute(
+            "SELECT user_id, net, hands FROM casino_tourney_scores WHERE guild_id = ? ORDER BY net DESC LIMIT 10",
+            (gid,),
+        ).fetchall()
+        if not rows:
+            await interaction.response.send_message(
+                "🎲 No hands recorded yet." + (" Play `/blackjack` to enter the standings!" if running else " Start a tournament with `/casino_tourney action:start` (admin)."),
+                ephemeral=True,
+            )
+            return
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        for i, r in enumerate(rows[:10]):
+            name = f"<@{r['user_id']}>"
+            try:
+                m = interaction.guild.get_member(int(r["user_id"]))
+                if m:
+                    name = m.display_name
+            except Exception:
+                pass
+            lines.append(f"{medals[i] if i < 3 else '`%d.`' % (i + 1)} **{name}** — net **{int(r['net']):,}** ({int(r['hands'] or 0)} hands)")
+        emb = discord.Embed(
+            title=("🎲 Casino Tournament — LIVE STANDINGS" if running else "🎲 Casino Tournament — Last Standings"),
+            description="\n".join(lines),
+            color=style_color(gid),
+        )
+        if running:
+            emb.set_footer(text="Every blackjack hand counts by NET win. Admin ends it with /casino_tourney action:end.")
+        await interaction.response.send_message(embed=emb, ephemeral=(not running))
+        return
+
+    await interaction.response.send_message("Actions: `view` · `standings` · `start` (admin) · `end` (admin).", ephemeral=True)
+
+
+async def _casino_tourney_wrap(interaction, action: str = "view"):
+    await casino_tourney_cmd(interaction, action)
+
+
+async def blackjack_cmd(interaction: discord.Interaction, bet: int, action: str = "play"):
+    if not interaction.guild:
+        await interaction.response.send_message("Server only.", ephemeral=True)
+        return
+    # Tournament actions ride on /blackjack (Discord caps global slash commands at 100)
+    if action in ("start", "end", "view", "standings"):
+        await casino_tourney_cmd(interaction, action)
         return
     gid, uid = interaction.guild.id, interaction.user.id
     if not figet(gid, "casino_enabled", 1):
@@ -281,8 +448,16 @@ async def blackjack_cmd(interaction: discord.Interaction, bet: int):
 
 
 bot.tree.command(name="blackjack", description="Play blackjack at the Papyrus casino (bets economy cash).")(
-    app_commands.describe(bet="How much cash to bet (min 10)")(
-        app_commands.checks.cooldown(1, 5)(blackjack_cmd)
+    app_commands.describe(
+        bet="How much cash to bet (min 10)",
+        action="play a hand · tourney standings · start/end tournament (admin)",
+    )(
+        app_commands.choices(action=[
+            app_commands.Choice(name="play", value="play"),
+            app_commands.Choice(name="tourney: view standings", value="view"),
+            app_commands.Choice(name="tourney: start (admin)", value="start"),
+            app_commands.Choice(name="tourney: end + pay winners (admin)", value="end"),
+        ])(app_commands.checks.cooldown(1, 5)(blackjack_cmd))
     )
 )
 

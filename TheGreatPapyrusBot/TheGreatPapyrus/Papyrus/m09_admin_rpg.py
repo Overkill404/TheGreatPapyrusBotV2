@@ -931,10 +931,10 @@ class TeamBattleView(CooldownView):
         user_id = interaction.user.id
         attack = get_weapon_attack(guild_id, user_id)
         raw_damage = random.randint(max(1, attack - 2), attack + 3)
-        damage = damage_after_boss_defense(raw_damage, battle.boss["defense"])
-        battle.boss_hp -= damage
+        team_combo_bump(battle)
+        damage, _hit_tag = player_hit_boss(battle, raw_damage)
 
-        battle.add_log(f"⚔️ **{interaction.user.display_name}** FIGHT! 💥 **{damage}** damage")
+        battle.add_log(f"⚔️ **{interaction.user.display_name}** FIGHT! 💥 **{damage}** damage{hit_tag_suffix(_hit_tag)}")
         apply_weapon_dot_to_boss(battle, guild_id, user_id, interaction.user.display_name)
         tick_boss_dots(battle)
 
@@ -1653,8 +1653,9 @@ class TeamAbilitySelect(discord.ui.Select):
                 raw = max(0, int(raw * combined_mults_for_player(guild_id, user_id)["damage_mult"]))
             except Exception:
                 pass
-            damage = 0 if raw <= 0 else damage_after_boss_defense(raw, battle.boss["defense"])
-            battle.boss_hp -= damage
+            if raw > 0:
+                team_combo_bump(battle)
+            damage, _hit_tag = (0, "") if raw <= 0 else player_hit_boss(battle, raw)
 
             heal = max(0, int(ability["heal"] or 0))
             if heal:
@@ -1769,6 +1770,16 @@ async def team_boss_turn(battle: TeamBattle):
         return
 
     base_atk = max(1, int(battle.boss["attack"] or 1))
+    try:
+        base_atk = max(1, int(base_atk * float(getattr(battle, "boss_phase_atk_mult", 1.0) or 1.0)))
+    except Exception:
+        pass
+    # New round: the combo meter resets
+    try:
+        battle.combo_count = 0
+        battle.combo_mult = 1.0
+    except Exception:
+        pass
     key, info = get_boss_pattern(battle.boss)
     guild_id = battle.boss["guild_id"] if "guild_id" in battle.boss.keys() else (
         battle.host.guild.id if getattr(battle, "host", None) else 0

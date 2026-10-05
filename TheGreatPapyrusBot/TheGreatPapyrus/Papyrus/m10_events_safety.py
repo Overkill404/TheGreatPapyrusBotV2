@@ -158,6 +158,13 @@ class Battle:
         self.player_dots = []
         self.player_weaken_turns = 0
         self.player_weaken_pct = 0
+        # Crits/dodges, boss phase enrage, last-turn recap, battle report
+        self.total_player_damage = 0
+        self.crit_count = 0
+        self.last_player_hit = None
+        self.last_boss_hit = None
+        self.boss_phase_done = False
+        self.boss_phase_atk_mult = 1.0
 
     async def prepare(self):
 
@@ -280,6 +287,25 @@ class Battle:
         
         status_text = f"{nl}✨ " + " | ".join(status_effects) if status_effects else ""
 
+        last_line = ""
+        try:
+            _lph = getattr(self, "last_player_hit", None)
+            _lbh = getattr(self, "last_boss_hit", None)
+            _bits = []
+            if _lph:
+                _bits.append(
+                    "you hit **{:,}**{}".format(
+                        int(_lph.get("damage") or 0),
+                        hit_tag_suffix(_lph.get("tag") or "")
+                    )
+                )
+            if _lbh is not None:
+                _bits.append("took **{:,}**".format(int(_lbh)))
+            if _bits:
+                last_line = "⏮️ **LAST TURN:** " + " · ".join(_bits) + nl + nl
+        except Exception:
+            last_line = ""
+
         desc = (
             f"{threat_emoji} **{self.boss['name']}** · {threat_text}{nl}"
             f"❤️ `{boss_bar_visual}` **{boss_hp:,}/{boss_max:,}** · {boss_pct}%{nl}"
@@ -287,7 +313,7 @@ class Battle:
             f"⚔️ {int(self.boss['attack']):,}  🛡️ {int(self.boss['defense']):,}{nl}{nl}"
             f"🧡 **{you}**{nl}"
             f"❤️ `{player_bar_visual}` **{player_hp:,}/{player_max:,}** · {player_pct}%{nl}"
-            f"⚔️ {atk:,}  🛡️ {deff:,}{status_text}{nl}{nl}"
+            f"⚔️ {atk:,}  🛡️ {deff:,}{status_text}{nl}{nl}{last_line}"
             f"📜 **Recent actions**{nl}{log_text}"
         )
 
@@ -544,16 +570,16 @@ async def auto_apply_solo_action(battle, action, guild_id, user_id):
     if action == "fight":
         attack = max(1, int(getattr(battle, "fight_attack", None) or get_weapon_attack(guild_id, user_id)))
         raw = random.randint(max(1, attack - 2), attack + 3)
-        damage = damage_after_boss_defense(raw, battle.boss["defense"])
+        _bm = 1.0
         try:
             boosts = getattr(battle, "player_boosts", None) or {}
             b = boosts.get(user_id) or boosts.get(battle.player.id)
             if b and float(b.get("damage_mult") or 1) > 1:
-                damage = max(1, int(damage * float(b["damage_mult"])))
+                _bm = float(b["damage_mult"])
         except Exception:
             pass
-        battle.boss_hp -= damage
-        battle.add_log(f"🤖⚔️ Auto FIGHT — **{damage}** damage")
+        damage, _hit_tag = player_hit_boss(battle, raw, boost_mult=_bm)
+        battle.add_log(f"🤖⚔️ Auto FIGHT — **{damage}** damage{hit_tag_suffix(_hit_tag)}")
         try:
             apply_weapon_dot_to_boss(battle, guild_id, user_id, getattr(battle.player, "display_name", "Player"))
         except Exception:
@@ -634,9 +660,8 @@ async def auto_apply_team_action(battle, action, guild_id, user_id):
     if action == "fight":
         attack = get_weapon_attack(guild_id, user_id)
         raw = random.randint(max(1, attack - 2), attack + 3)
-        damage = damage_after_boss_defense(raw, battle.boss["defense"])
-        battle.boss_hp -= damage
-        battle.add_log(f"🤖⚔️ Auto FIGHT ({label_for_member(f.get('member'))}) **{damage}**")
+        damage, _hit_tag = player_hit_boss(battle, raw)
+        battle.add_log(f"🤖⚔️ Auto FIGHT ({label_for_member(f.get('member'))}) **{damage}**{hit_tag_suffix(_hit_tag)}")
         try:
             apply_weapon_dot_to_boss(battle, guild_id, user_id, getattr(f.get("member"), "display_name", "?"))
         except Exception:
@@ -1261,6 +1286,30 @@ async def end_turn(
     # DoT tick after the player action (before boss acts)
     tick_boss_dots(battle)
 
+    # Active spirit companion strikes every 3rd turn
+    try:
+        battle.turn_count = int(getattr(battle, "turn_count", 0) or 0) + 1
+        if battle.turn_count % 3 == 0 and battle.boss_hp > 0:
+            _gid2 = battle.player.guild.id
+            _uid2 = battle.player.id
+            _s_atk = 0
+            _s_line = ""
+            try:
+                _s_atk = int(spirit_atk_bonus(_gid2, _uid2) or 0)
+            except Exception:
+                _s_atk = 0
+            if _s_atk > 0:
+                try:
+                    _s_line = str(spirit_line(_gid2, _uid2) or "")
+                except Exception:
+                    _s_line = ""
+                _s_dmg = max(1, int(_s_atk * 0.5))
+                battle.boss_hp -= _s_dmg
+                battle.total_player_damage = int(getattr(battle, "total_player_damage", 0) or 0) + _s_dmg
+                battle.add_log(f"👻 Your spirit companion flanks the boss for **{_s_dmg}** damage!")
+    except Exception:
+        pass
+
     if battle.boss_hp <= 0:
 
         await victory(
@@ -1471,20 +1520,20 @@ class FightButton(discord.ui.Button):
             attack + 3
         )
 
-        damage = damage_after_boss_defense(raw_damage, battle.boss["defense"])
         # Active boost item damage mult
+        _bm = 1.0
         try:
             boosts = getattr(battle, "player_boosts", None) or {}
             b = boosts.get(interaction.user.id) or boosts.get(battle.player.id)
             if b and float(b.get("damage_mult") or 1) > 1:
-                damage = max(1, int(damage * float(b["damage_mult"])))
+                _bm = float(b["damage_mult"])
         except Exception:
             pass
 
-        battle.boss_hp -= damage
+        damage, _hit_tag = player_hit_boss(battle, raw_damage, boost_mult=_bm)
 
         battle.add_log(f"⚔️ {label_for_member(interaction.user)} used FIGHT!")
-        battle.add_log(f"💥 {battle.boss['name']} took {damage} damage!")
+        battle.add_log(f"💥 {battle.boss['name']} took {damage} damage!{hit_tag_suffix(_hit_tag)}")
 
         apply_weapon_dot_to_boss(
             battle,
@@ -1625,13 +1674,10 @@ class AbilityButton(discord.ui.Button):
             pass
         # Negative boss defense increases ability damage
         if raw <= 0:
-            damage = 0
+            damage, _hit_tag = 0, ""
         else:
-            damage = damage_after_boss_defense(raw, battle.boss["defense"])
+            damage, _hit_tag = player_hit_boss(battle, raw)
 
-        battle.boss_hp -= damage
-
-        old_hp = battle.player_hp
 
         battle.player_hp = min(
             battle.player_max_hp,
@@ -2670,6 +2716,10 @@ async def boss_turn(
     key, info = get_boss_pattern(battle.boss)
 
     base_atk = max(1, int(battle.boss["attack"] or 1))
+    try:
+        base_atk = max(1, int(base_atk * float(getattr(battle, "boss_phase_atk_mult", 1.0) or 1.0)))
+    except Exception:
+        pass
     custom = pick_boss_move(guild_id, battle.boss["id"])
     used_custom = False
     missed = False
@@ -2757,6 +2807,11 @@ async def boss_turn(
             battle.player_hp -= dmg
             if len(hits) > 1:
                 battle.add_log(f"  ↳ Hit {i}: **{dmg}** damage")
+
+        try:
+            battle.last_boss_hit = int(total)
+        except Exception:
+            pass
 
         if total > 0:
             if len([h for h in hits if h > 0]) <= 1:
@@ -2997,6 +3052,10 @@ async def victory(
             papyrus_on_battle_win(guild_id, user_id)
         except Exception:
             pass
+        try:
+            season_point(guild_id, user_id, 2)  # season pass: +2 per boss kill
+        except Exception:
+            pass
     try:
         update_route_on_boss(guild_id, user_id, boss["id"], killed=not spared)
     except Exception:
@@ -3108,6 +3167,30 @@ async def victory(
             diff = str(getattr(battle, "boss_rush_difficulty", "") or "rush").upper()
             reward_text += ("\n🏃 **Boss Rush %s** - 💰 `%gx` gold - ⭐ `%gx` XP") % (diff, rg, rx)
 
+
+    # --------------------------------------------------------
+    # BATTLE REPORT (damage dealt + Papyrus grade)
+    # --------------------------------------------------------
+    try:
+        _dmg = int(getattr(battle, "total_player_damage", 0) or 0)
+        _crits = int(getattr(battle, "crit_count", 0) or 0)
+        _bmax = int(getattr(battle, "boss_max_hp", 0) or 0)
+        _eff = (_dmg / _bmax) if _bmax > 0 else 0.0
+        if _eff <= 1.05:
+            _grade, _grade_line = "S", "NYEH HEH HEH! FLAWLESS PUZZLE-SOLVING!"
+        elif _eff <= 1.35:
+            _grade, _grade_line = "A", "A DECENT EFFORT! I AM ONLY SLIGHTLY IMPRESSED!"
+        elif _eff <= 1.9:
+            _grade, _grade_line = "B", "HMM! THERE IS ROOM TO GROW, HUMAN!"
+        else:
+            _grade, _grade_line = "C", "I WILL PREPARE A TRAINING REGIMEN IMMEDIATELY!"
+        _report = f"\n\n📊 **BATTLE REPORT**\n🏆 Papyrus Grade: **{_grade}** — {_grade_line}"
+        _report += f"\n⚔️ Damage dealt: **{_dmg:,}**"
+        if _crits:
+            _report += f"\n💥 Critical hits: **{_crits}**"
+        reward_text += _report
+    except Exception:
+        pass
 
     # --------------------------------------------------------
     # ABILITY DROPS (skipped in Boss Rush)
@@ -6255,6 +6338,50 @@ async def on_ready():
         asyncio.create_task(string_expiry_loop())
     asyncio.create_task(_bg_repair_compact())
     print("  Repair    : running in background...")
+
+    # Rolling DB backups: sqlite3 online-backup API every 6h, keep last 7.
+    # The live save is the only copy of all world content — never lose it again.
+    async def _db_backup_loop():
+        await bot.wait_until_ready()
+        while not bot.is_closed():
+            try:
+                await asyncio.sleep(20)  # first backup shortly after boot
+
+                def _do_backup():
+                    db_dir = os.path.abspath(os.path.dirname(DATABASE) or ".")
+                    backup_dir = os.path.join(db_dir, "backups")
+                    os.makedirs(backup_dir, exist_ok=True)
+                    stamp = time.strftime("%Y%m%d_%H%M")
+                    dest = os.path.join(backup_dir, f"undertale_au_rpg_{stamp}.db")
+                    src_conn = sqlite3.connect(DATABASE)
+                    dst_conn = sqlite3.connect(dest)
+                    try:
+                        src_conn.backup(dst_conn)
+                    finally:
+                        dst_conn.close()
+                        src_conn.close()
+                    files = sorted(
+                        f for f in os.listdir(backup_dir)
+                        if f.startswith("undertale_au_rpg_") and f.endswith(".db")
+                    )
+                    while len(files) > 7:
+                        try:
+                            os.remove(os.path.join(backup_dir, files.pop(0)))
+                        except Exception:
+                            break
+                    return dest
+
+                dest = await asyncio.to_thread(_do_backup)
+                if dest:
+                    print(f"  Backup    : {os.path.basename(dest)}")
+            except Exception as e:
+                print(f"  Backup    : failed ({e})")
+            await asyncio.sleep(6 * 3600)
+
+    if not getattr(bot, "_db_backup_started", False):
+        bot._db_backup_started = True
+        asyncio.create_task(_db_backup_loop())
+        print("  Backup    : rolling DB backups every 6h (keeping 7)")
 
     print()
     print("  Status    : ✅ READY · Ctrl+C for safe shutdown")

@@ -30,6 +30,15 @@ def _setup_tables():
             )
         """)
         execute("""
+            CREATE TABLE IF NOT EXISTS stock_history (
+                guild_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                price REAL NOT NULL,
+                ts INTEGER NOT NULL,
+                PRIMARY KEY (guild_id, symbol, ts)
+            )
+        """)
+        execute("""
             CREATE TABLE IF NOT EXISTS stock_activity (
                 guild_id INTEGER PRIMARY KEY,
                 counter INTEGER NOT NULL DEFAULT 0
@@ -70,11 +79,78 @@ def _market_tick(guild_id):
     """Random-walk every stock a little. Called on activity + loop."""
     _ensure_stocks(guild_id)
     rows = db.execute("SELECT symbol, price FROM stocks WHERE guild_id = ?", (int(guild_id),)).fetchall()
+    now = int(time.time())
     for r in rows:
         drift = random.uniform(-0.06, 0.065)
         newp = max(1.0, round(float(r["price"]) * (1 + drift), 2))
         execute("UPDATE stocks SET price = ? WHERE guild_id = ? AND symbol = ?",
                 (newp, int(guild_id), r["symbol"]))
+        # record tick for sparklines (keep last 24 per ticker)
+        try:
+            execute(
+                "INSERT OR REPLACE INTO stock_history (guild_id, symbol, price, ts) VALUES (?, ?, ?, ?)",
+                (int(guild_id), r["symbol"], newp, now),
+            )
+            execute(
+                """DELETE FROM stock_history
+                   WHERE guild_id = ? AND symbol = ? AND ts NOT IN (
+                       SELECT ts FROM stock_history
+                       WHERE guild_id = ? AND symbol = ?
+                       ORDER BY ts DESC LIMIT 24
+                   )""",
+                (int(guild_id), r["symbol"], int(guild_id), r["symbol"]),
+            )
+        except Exception:
+            pass
+
+
+SPARK_CHARS = "▁▂▃▄▅▆▇█"
+
+
+def stock_sparkline(gid, symbol, current_price=None):
+    """Tiny trend sparkline from the last recorded ticks."""
+    try:
+        rows = db.execute(
+            "SELECT price FROM stock_history WHERE guild_id = ? AND symbol = ? ORDER BY ts ASC LIMIT 24",
+            (int(gid), str(symbol)),
+        ).fetchall()
+        prices = [float(r["price"]) for r in rows]
+        if current_price is not None:
+            prices.append(float(current_price))
+        if len(prices) < 2:
+            return ""
+        lo, hi = min(prices), max(prices)
+        if hi - lo < 0.0001:
+            return SPARK_CHARS[3] * len(prices)
+        out = []
+        for p in prices:
+            idx = int((p - lo) / (hi - lo) * (len(SPARK_CHARS) - 1) + 0.5)
+            out.append(SPARK_CHARS[max(0, min(len(SPARK_CHARS) - 1, idx))])
+        return "".join(out)
+    except Exception:
+        return ""
+
+
+def stock_trend(gid, symbol, current_price=None):
+    """Trend emoji for a ticker: up / down / flat vs the oldest recorded tick."""
+    try:
+        rows = db.execute(
+            "SELECT price FROM stock_history WHERE guild_id = ? AND symbol = ? ORDER BY ts ASC LIMIT 24",
+            (int(gid), str(symbol)),
+        ).fetchall()
+        prices = [float(r["price"]) for r in rows]
+        if current_price is not None:
+            prices.append(float(current_price))
+        if len(prices) < 2:
+            return ""
+        first, last = prices[0], prices[-1]
+        if last > first * 1.005:
+            return "📈"
+        if last < first * 0.995:
+            return "📉"
+        return "➖"
+    except Exception:
+        return ""
 
 
 def market_activity(guild_id, amount=1):
@@ -129,8 +205,11 @@ async def stocks_cmd(interaction: discord.Interaction, action: str = "view", sym
                     c.add_item(ui.TextDisplay("## 📈 Underground Stock Exchange"))
                     c.add_item(ui.Separator())
                     for r in rows:
+                        _sp = stock_sparkline(gid, r["symbol"], r["price"])
+                        _tr = stock_trend(gid, r["symbol"], r["price"])
+                        _tail = f"  {_sp} {_tr}" if _sp else ""
                         c.add_item(ui.TextDisplay(
-                            f"**{r['symbol']}** — *{r['name']}*\n-# Price: **{r['price']:,.2f}**"
+                            f"**{r['symbol']}** — *{r['name']}*\n-# Price: **{r['price']:,.2f}**{_tail}"
                         ))
                     c.add_item(ui.Separator())
                     c.add_item(ui.TextDisplay(
@@ -141,7 +220,10 @@ async def stocks_cmd(interaction: discord.Interaction, action: str = "view", sym
             return
         lines = []
         for r in rows:
-            lines.append(f"`{r['symbol']:>7}` {r['name'][:28]:<28} — **{r['price']:,.2f}**")
+            _sp = stock_sparkline(gid, r["symbol"], r["price"])
+            _tr = stock_trend(gid, r["symbol"], r["price"])
+            _tail = f"  {_sp} {_tr}" if _sp else ""
+            lines.append(f"`{r['symbol']:>7}` {r['name'][:28]:<28} — **{r['price']:,.2f}**{_tail}")
         emb = discord.Embed(
             title="📈 Underground Stock Exchange",
             description="\n".join(lines),

@@ -737,7 +737,7 @@ async def econ_cmd(
             await interaction.response.send_message(f"Work cooldown: **{left // 60}m**.", ephemeral=True)
             return
         lo, hi = int(cfg["work_min"] or 20), int(cfg["work_max"] or 80)
-        gain = int(random.randint(lo, hi) * mult)
+        base_gain = int(random.randint(lo, hi) * mult)
         jobs = [
             "cooked a mountain of spaghetti",
             "built an extremely complex puzzle",
@@ -747,13 +747,100 @@ async def econ_cmd(
             "trained with bones",
             "judged humans on the internet",
         ]
+
+        # Pick-a-door work minigame: 3 doors hide payout multipliers
+        class WorkDoorView(discord.ui.View):
+            def __init__(self, base, cname_, em_, gid_, uid_):
+                super().__init__(timeout=60)
+                self.base = base
+                self.cname = cname_
+                self.em = em_
+                self.gid = gid_
+                self.uid = uid_
+                self.done = False
+                self.message = None
+                mults = [0.5, 1.0, 2.0]
+                random.shuffle(mults)
+                doors = [
+                    ("Cool Door", "Totally normal door. Probably."),
+                    ("Spooky Door", "OoOOooh. Spooky work inside."),
+                    ("Papyrus Door", "I DUSTED IT MYSELF! NYEH HEH HEH!"),
+                ]
+                for (label, desc), m in zip(doors, mults):
+                    btn = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary)
+                    btn.callback = self._make_cb(m, label, desc)
+                    self.add_item(btn)
+
+            def _pay(self, m):
+                return max(1, int(self.base * m))
+
+            async def on_timeout(self):
+                if self.done:
+                    return
+                self.done = True
+                gain = self.base
+                _econ_add_cash(self.gid, self.uid, gain, note="work")
+                try:
+                    if self.message:
+                        await self.message.edit(
+                            content=(
+                                f"{self.em} You stood in front of the doors too long and just worked anyway. "
+                                f"**+{gain:,}** {self.cname}"
+                            ),
+                            view=None,
+                        )
+                except Exception:
+                    pass
+
+            def _make_cb(self, m, label, desc):
+                async def cb(inter: discord.Interaction):
+                    if self.done:
+                        await inter.response.send_message("The doors already chose a fate!", ephemeral=True)
+                        return
+                    if inter.user.id != self.uid:
+                        await inter.response.send_message("Not your shift!", ephemeral=True)
+                        return
+                    self.done = True
+                    gain = self._pay(m)
+                    _econ_add_cash(self.gid, self.uid, gain, note="work")
+                    try:
+                        papyrus_on_work(self.gid, self.uid)
+                    except Exception:
+                        pass
+                    flavor = {
+                        0.5: f"Half pay?! The {label} had a small boss inside. A very small, mean boss.",
+                        1.0: "Solid, honest door work. I RESPECT IT!",
+                        2.0: "BEHIND THAT DOOR? A SECOND, RICHER JOB! MAGNIFICENT!",
+                    }.get(m, "")
+                    txt = (
+                        f"{self.em} You {random.choice(jobs)} behind the {label} and earned "
+                        f"**+{gain:,}** {self.cname}!"
+                        + (f" ({m:g}x door!)" if m != 1.0 else "")
+                    )
+                    if flavor:
+                        txt += f"\n> {flavor}"
+                    try:
+                        await inter.response.edit_message(content=txt, view=None)
+                    except Exception:
+                        await inter.response.send_message(txt, ephemeral=True)
+                return cb
+
+        doors_view = WorkDoorView(base_gain, cname, em, gid, uid)
         execute("UPDATE economy_wallets SET last_work = ? WHERE guild_id = ? AND user_id = ?", (now, gid, uid))
-        _econ_add_cash(gid, uid, gain, note="work")
         try:
             papyrus_on_work(gid, uid)
         except Exception:
             pass
-        await interaction.response.send_message(f"{em} You {random.choice(jobs)} and earned **+{gain:,}** {cname}")
+        await interaction.response.send_message(
+            "🛠️ **TIME FOR WORK!** One door pays **2x**, one pays **half**, one is honest. CHOOSE WISELY!\n"
+            f"-# Base shift pay: **{base_gain:,}** {cname} · doors close in 60s (base pay)",
+            view=doors_view,
+            ephemeral=True,
+        )
+        try:
+            doors_view.message = await interaction.original_response()
+        except Exception:
+            pass
         return
 
     if act == "crime":

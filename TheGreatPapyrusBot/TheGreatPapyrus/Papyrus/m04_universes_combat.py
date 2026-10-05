@@ -1273,6 +1273,155 @@ def damage_after_boss_defense(raw_damage, boss_defense):
     return max(1, raw - deff)
 
 
+CRIT_CHANCE = 0.10   # 10% of player hits crit for 1.5x
+CRIT_MULT = 1.5
+BOSS_DODGE_CHANCE = 0.04  # boss rarely evades a player hit
+BOSS_PHASE_HP = 0.5       # auto-enrage once at 50% boss HP
+BOSS_PHASE_ATK_MULT = 1.25
+
+
+def hit_tag_suffix(tag):
+    """Log suffix for a player hit: crit or boss dodge."""
+    t = str(tag or "")
+    if t == "CRIT":
+        return " 💥 CRITICAL!"
+    if t == "DODGED":
+        return " 🛡️ ...the boss DODGED?!"
+    return ""
+
+
+ELEMENT_KEYWORDS = [
+    ("FIRE", ("fire", "flame", "blaze", "burn", "magma", "ember", "hot")),
+    ("FROST", ("frost", "ice", "snow", "freeze", "chill", "glacier")),
+    ("STAR", ("star", "cosmic", "void", "galaxy", "soul", "astral", "comet")),
+]
+ELEMENT_EMOJI = {"FIRE": "🔥", "FROST": "❄️", "STAR": "🌟", "BLUNT": "💥"}
+ELEMENT_STRONG_VS = {"FIRE": "FROST", "FROST": "BLUNT", "BLUNT": "STAR", "STAR": "FIRE"}
+ELEMENT_BONUS = 1.2  # +20% when your element is strong vs the boss element
+
+
+def element_of_text(text):
+    """Guess a damage element from a name (weapon or boss)."""
+    t = str(text or "").lower()
+    for name, kws in ELEMENT_KEYWORDS:
+        for kw in kws:
+            if kw in t:
+                return name
+    return "BLUNT"
+
+
+def team_combo_bump(battle):
+    """Team battles: consecutive member hits in one round build a combo meter.
+    +10% damage per extra member (cap +50%). Reset when the boss turn starts."""
+    try:
+        cc = int(getattr(battle, "combo_count", 0) or 0) + 1
+        battle.combo_count = cc
+        if cc >= 2:
+            battle.combo_mult = min(1.5, 1.0 + 0.1 * (cc - 1))
+            battle.add_log(
+                f"🔥 **TEAM COMBO x{cc}!** +{int((battle.combo_mult - 1) * 100)}% damage!"
+            )
+        else:
+            battle.combo_mult = 1.0
+    except Exception:
+        try:
+            battle.combo_mult = 1.0
+        except Exception:
+            pass
+    try:
+        return float(getattr(battle, "combo_mult", 1.0) or 1.0)
+    except Exception:
+        return 1.0
+
+
+def player_hit_boss(battle, raw_damage, boost_mult=1.0):
+    """Player hits the boss: dodge roll, crit roll, boss defense, boost mult,
+    HP deduction, last-turn tracking, and the one-time 50% phase enrage.
+    Returns (damage, tag) where tag is '' | 'CRIT' | 'DODGED'."""
+    try:
+        boss_def = int(battle.boss["defense"] or 0)
+    except Exception:
+        boss_def = 0
+    boss_name = ""
+    try:
+        boss_name = str(battle.boss["name"] or "")
+    except Exception:
+        boss_name = ""
+
+    # Rare boss dodge
+    if random.random() < BOSS_DODGE_CHANCE:
+        try:
+            battle.last_player_hit = {"damage": 0, "tag": "DODGED"}
+        except Exception:
+            pass
+        return 0, "DODGED"
+
+    damage = damage_after_boss_defense(raw_damage, boss_def)
+    tag = ""
+    if damage > 0 and random.random() < CRIT_CHANCE:
+        damage = max(1, int(damage * CRIT_MULT))
+        tag = "CRIT"
+    # Damage-type chart: your weapon element vs the boss element
+    try:
+        pe = getattr(battle, "player_element", None)
+        if pe is None:
+            _wname = ""
+            try:
+                _pl = get_player(battle.player.guild.id, battle.player.id)
+                if _pl and _pl["weapon_id"]:
+                    _wep = get_equipment(battle.player.guild.id, _pl["weapon_id"])
+                    if _wep:
+                        _wname = _wep["name"]
+            except Exception:
+                _wname = ""
+            pe = element_of_text(_wname)
+            battle.player_element = pe
+        be = getattr(battle, "boss_element", None)
+        if be is None:
+            be = element_of_text(boss_name)
+            battle.boss_element = be
+        if damage > 0 and ELEMENT_STRONG_VS.get(pe) == be:
+            damage = max(1, int(damage * ELEMENT_BONUS))
+            battle.add_log(
+                f"{ELEMENT_EMOJI.get(pe, '')} **{pe} hits {be} WEAKNESS!** +20%!"
+            )
+    except Exception:
+        pass
+    # Team combo meter
+    try:
+        cm = float(getattr(battle, "combo_mult", 1.0) or 1.0)
+        if cm > 1.0:
+            damage = max(1, int(damage * cm))
+    except Exception:
+        pass
+    try:
+        bm = float(boost_mult or 1.0)
+        if bm > 1.0:
+            damage = max(1, int(damage * bm))
+    except Exception:
+        pass
+
+    try:
+        battle.boss_hp -= damage
+        battle.total_player_damage = int(getattr(battle, "total_player_damage", 0) or 0) + damage
+        if tag == "CRIT":
+            battle.crit_count = int(getattr(battle, "crit_count", 0) or 0) + 1
+        battle.last_player_hit = {"damage": damage, "tag": tag}
+        # One-time boss phase: at 50% HP the boss gets furious (+25% attack)
+        _bmax = int(getattr(battle, "boss_max_hp", 0) or 0)
+        if (damage > 0
+                and not getattr(battle, "boss_phase_done", False)
+                and _bmax > 0
+                and battle.boss_hp > 0
+                and battle.boss_hp <= _bmax * BOSS_PHASE_HP):
+            battle.boss_phase_done = True
+            battle.boss_phase_atk_mult = BOSS_PHASE_ATK_MULT
+            battle.add_log(f"🔥 **PHASE 2!** {boss_name} is FURIOUS! Its attack surged +25%!")
+    except Exception:
+        pass
+    return damage, tag
+
+
 def get_weapon_attack(guild_id, user_id):
 
     """Weapon flat attack + soul boosts, lightly scaled by player level."""

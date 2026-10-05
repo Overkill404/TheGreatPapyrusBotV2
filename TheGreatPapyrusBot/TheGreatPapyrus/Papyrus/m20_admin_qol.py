@@ -444,6 +444,14 @@ async def export_profile_cmd(interaction: discord.Interaction, member: discord.M
             continue
         lines.append(f"• {k}: **{v}**")
     text = "\n".join(str(l) for l in lines)
+    try:
+        badges = _badges_for(gid, target.id)
+        earned = [b for b in badges if b[2]]
+        badge_line = " ".join(f"{b[0]}" for b in earned) if earned else "none yet — get out there!"
+        badge_detail = "\n".join(f"{b[0]} **{b[1]}**" + ("" if b[2] else f" — {b[3]}") for b in badges)
+        text += f"\n\n🏅 **Badges ({len(earned)}/{len(badges)})** {badge_line}\n{badge_detail}"
+    except Exception:
+        pass
     panel = build_profile_panel(interaction, target, p)
     if panel is not None:
         await interaction.response.send_message(view=panel, ephemeral=True)
@@ -454,6 +462,108 @@ async def export_profile_cmd(interaction: discord.Interaction, member: discord.M
         color=style_color(gid),
     )
     await interaction.response.send_message(embed=emb, ephemeral=True)
+
+
+# ============================================================
+# BADGES / ACHIEVEMENTS (computed from real stats)
+# ============================================================
+
+def _badges_for(gid, uid):
+    """Return [(emoji, name, earned_bool, progress_str), ...] — always all badges."""
+    badges = []
+    p = get_player(gid, uid)
+    level = int(p["level"] or 1) if p else 0
+    gold = int(p["gold"] or 0) if p else 0
+    try:
+        kills, _top, _tk = get_player_boss_kill_stats(gid, uid)
+    except Exception:
+        kills = 0
+    try:
+        row = db.execute(
+            "SELECT streak, best_streak FROM daily_quests WHERE guild_id = ? AND user_id = ?",
+            (gid, uid),
+        ).fetchone()
+        best_streak = int(row["best_streak"] or 0) if row else 0
+    except Exception:
+        best_streak = 0
+    try:
+        dailies = len(db.execute(
+            "SELECT day FROM daily_history WHERE guild_id = ? AND user_id = ?",
+            (gid, uid),
+        ).fetchall())
+    except Exception:
+        dailies = 0
+
+    def tier(value, thresholds):
+        # thresholds ascending; returns tier index earned
+        t = 0
+        for i, th in enumerate(thresholds):
+            if value >= th:
+                t = i + 1
+        return t
+
+    kill_t = tier(kills, (1, 10, 25, 50))
+    badges += [
+        ("🗡️", "First Blood", kill_t >= 1, f"{kills} boss kill(s)"),
+        ("💀", "Exterminator", kill_t >= 2, f"{kills}/10 kills"),
+        ("👑", "Boss Slayer", kill_t >= 3, f"{kills}/25 kills"),
+        ("🗺️", "Void Legend", kill_t >= 4, f"{kills}/50 kills"),
+    ]
+    streak_t = tier(best_streak, (3, 7, 14, 30))
+    badges += [
+        ("🔥", "Warm Streak", streak_t >= 1, f"best {best_streak}/3"),
+        ("🧲", "Red Hot Streak", streak_t >= 2, f"best {best_streak}/7"),
+        ("🐈‍⌥️", "Unbreakable Streak", streak_t >= 3, f"best {best_streak}/14"),
+        ("🧗", "Streak Immortal", streak_t >= 4, f"best {best_streak}/30"),
+    ]
+    lvl_t = tier(level, (10, 25, 50, 100))
+    badges += [
+        ("🌟", "Double Digits", lvl_t >= 1, f"level {level}/10"),
+        ("🥇", "Royal Material", lvl_t >= 2, f"level {level}/25"),
+        ("👚", "Papyrus's Equal", lvl_t >= 3, f"level {level}/50"),
+        ("🅭", "Beyond Human", lvl_t >= 4, f"level {level}/100"),
+    ]
+    gold_t = tier(gold, (10_000, 100_000, 1_000_000, 10_000_000))
+    badges += [
+        ("🪙", "Pocket Change", gold_t >= 1, f"{gold:,}/10k gold"),
+        ("💰", "Vault Worthy", gold_t >= 2, f"{gold:,}/100k gold"),
+        ("💸", "Spaghetti Tycoon", gold_t >= 3, f"{gold:,}/1M gold"),
+        ("🏦", "Gold Sovereign", gold_t >= 4, f"{gold:,}/10M gold"),
+    ]
+    daily_t = tier(dailies, (5, 20, 50, 100))
+    badges += [
+        ("📅", "Routine Builder", daily_t >= 1, f"{dailies}/5 dailies"),
+        ("📝", "Quest Devotee", daily_t >= 2, f"{dailies}/20 dailies"),
+        ("🎖️", "Quest Veteran", daily_t >= 3, f"{dailies}/50 dailies"),
+        ("👑", "Royal Guard Legend", daily_t >= 4, f"{dailies}/100 dailies"),
+    ]
+    return badges
+
+
+async def badges_cmd(interaction: discord.Interaction, member: discord.Member = None):
+    if not interaction.guild:
+        await interaction.response.send_message("Server only.", ephemeral=True)
+        return
+    gid = interaction.guild.id
+    target = member or interaction.user
+    if not get_player(gid, target.id):
+        await interaction.response.send_message("That person hasn't started their character.", ephemeral=True)
+        return
+    badges = _badges_for(gid, target.id)
+    earned = [b for b in badges if b[2]]
+    lines = []
+    for emoji, name, ok, prog in badges:
+        lines.append(f"{emoji} **{name}** — {'✅ EARNED' if ok else prog}")
+    emb = discord.Embed(
+        title=f"🏅 {target.display_name} — Badges",
+        description="\n".join(lines)[:4000],
+        color=style_color(gid),
+    )
+    emb.set_footer(text=f"{len(earned)}/{len(badges)} earned · I HAVE THE MOST BADGES. MINE ARE JUST INVISIBLE.")
+    await interaction.response.send_message(embed=emb, ephemeral=True)
+
+
+# Badges are shown on /profile (Discord caps global slash commands at 100 — no separate /badges)
 
 
 export_profile_cmd = app_commands.describe(member="Whose profile (default: yours)")(export_profile_cmd)
