@@ -121,6 +121,16 @@ FEATURE_CATS = [
     ("msgs", "🍝 Message Chaos"),
     ("dms", "💌 DM Powers"),
     ("server", "🗺️ Server Powers"),
+    ("mega", "⚔️ Mega Battles"),
+    ("games", "🎲 Games & Duels"),
+    ("party", "🎉 Parties"),
+    ("gift", "🎁 Gift Boxes"),
+    ("scenes", "🎭 Scenes"),
+    ("titles", "🏆 Titles & Contests"),
+    ("worldev", "💥 World Events"),
+    ("pedit", "👤 Player Editor"),
+    ("admins", "🛡️ Admin Powers"),
+    ("announce", "📣 Announcements & Events"),
 ]
 
 FEATURES = {
@@ -242,7 +252,218 @@ FEATURES = {
         ("u_botstats", "Show bot stats card", "📊"),
         ("u_fate", "🎲 Roll the DICE OF FATE", "🎲"),
     ],
+    "mega": [
+        ("mega_t1", "MEGA BOSS TIER I (warm-up)", "⚔️"),
+        ("mega_t3", "MEGA BOSS TIER III", "⚔️"),
+        ("mega_t5", "MEGA BOSS TIER V", "⚔️"),
+        ("mega_t10", "MEGA BOSS TIER X", "⚔️"),
+        ("mega_t25", "MEGA BOSS TIER XXV", "⚔️"),
+        ("mega_t50", "MEGA BOSS TIER L (VERY hard)", "⚔️"),
+        ("mega_dummy", "TRAINING DUMMY 9000 (no attacking)", "🥊"),
+        ("mega_bone", "THE GIANT BONE", "🦴"),
+        ("mega_duke", "THE DUKE OF SPAGHETTI", "🍝"),
+        ("mega_papyrus", "THE GREAT PAPYRUS (MEGA)", "🦴"),
+        ("mega_sans", "SANS (MEGA)", "💀"),
+        ("mega_undyne", "THE SPEAR MASTER", "🔱"),
+        ("mega_deathbot", "DEATHBOT PRIME", "🤖"),
+        ("mega_hyper", "GOD OF HYPERDEATH (unfair)", "🌈"),
+        ("mega_frost", "FROST GUARDIAN", "❄️"),
+        ("mega_flame", "FLAME WYRM", "🔥"),
+        ("mega_star", "STAR SENTINEL", "🌟"),
+        ("mega_glitch", "THE GLITCHED ERROR", "📺"),
+        ("mega_gold", "THE GOLDEN BONE (rich loot)", "🥇"),
+        ("mega_cursed", "THE CURSED DUMMY", "🕯️"),
+    ],
+    "games": [
+        ("g_dice", "Dice duel: beat Papyrus's d20", "🎲"),
+        ("g_coin", "Coin flip: +100 or -100 gold", "🪙"),
+        ("g_rps", "Rock, paper, scissors vs Papyrus", "✂️"),
+        ("g_guess", "Guess Papyrus's number 1-10", "🔟"),
+        ("g_cards", "High card draw duel", "🃏"),
+        ("g_wheel", "Spin the lucky wheel", "🎡"),
+        ("g_slots", "Pull the slot machine", "🎰"),
+        ("g_trivia", "Papyrus trivia challenge", "❓"),
+        ("g_math", "Sudden math quiz", "➗"),
+        ("g_love", "Love match: them x PAPYRUS", "💞"),
+        ("g_friend", "Friendship meter reading", "📏"),
+        ("g_fortune", "Read their fortune", "🔮"),
+        ("g_horoscope", "Undertale horoscope: today", "♈"),
+        ("g_crystal", "Consult the crystal ball", "🔮"),
+        ("g_arm", "Arm wrestling match", "💪"),
+        ("g_stare", "Staring contest", "👀"),
+        ("g_eat", "Spaghetti eating contest", "🍝"),
+        ("g_hide", "Hide and seek", "🙈"),
+        ("g_lottery", "Buy them a lottery ticket", "🎟️"),
+        ("g_door", "Mystery door: pick a room", "🚪"),
+    ],
+    "party": [
+        ("p_birthday", "Throw them a birthday party", "🎂"),
+        ("p_grad", "Graduation ceremony", "🎓"),
+        ("p_crown", "Coronation (crown them)", "👑"),
+        ("p_wedding", "Marry them to spaghetti", "💍"),
+        ("p_dance", "Dance party", "🕺"),
+        ("p_applause", "Standing ovation", "👏"),
+        ("p_confetti", "Confetti cannon", "🎊"),
+        ("p_compliments", "Compliment parade (3 lines)", "🌟"),
+        ("p_roasts", "Polite roast parade (3 lines)", "🔥"),
+        ("p_lasers", "Laser light show", "🪩"),
+        ("p_parade", "Bone parade through the channel", "🦴"),
+        ("p_chorus", "NYEH HEH HEH chorus", "🎶"),
+    ],
+    "gift": [
+        ("box_mystery", "Mystery box (random prize)", "📦"),
+        ("box_cursed", "Cursed box (random misfortune)", "🕯️"),
+        ("box_gold", "Gold chest: 1,000 gold", "🪙"),
+        ("box_jackpot", "JACKPOT chest: 25,000 gold", "🏅"),
+        ("box_trash", "Trash chest (it is trash)", "🗑️"),
+        ("box_xp", "XP potion: 5,000 XP", "✨"),
+        ("box_maxhp", "Max HP potion: +50", "💪"),
+        ("box_double", "Double or nothing on ALL gold", "🎯"),
+        ("box_wheel", "Wheel of boxes (random box)", "🎡"),
+        ("box_bones", "Gift: 10 Fancy Bones", "🦴"),
+        ("box_spag", "Gift: 3 plates of spaghetti", "🍝"),
+        ("box_empty", "Box of nothing (a joke)", "⬛"),
+    ],
+    "scenes": [
+        ("sc_dump", "Drag them to the garbage dump", "🗑️"),
+        ("sc_feed", "Force-feed them spaghetti", "🍝"),
+        ("sc_puzzle", "Trap them in a puzzle", "🧩"),
+        ("sc_trial", "Trial at Papyrus Court", "⚖️"),
+        ("sc_intern", "Hire them as Puzzle Intern", "🔩"),
+        ("sc_knight", "Royal Guard initiation", "🛡️"),
+        ("sc_cook", "Cook-off vs Papyrus", "👨‍🍳"),
+        ("sc_shadow", "Send them to the shadow realm", "🌀"),
+        ("sc_atoms", "Split them into atoms (put back)", "⚛️"),
+        ("sc_news", "Feature them in the newsletter", "📰"),
+        ("sc_nap", "Sans-style forced nap time", "😴"),
+        ("sc_mirror", "Show them the mirror of truth", "🪞"),
+    ],
+    "titles": [
+        ("ti_champion", "Rename: OFFICIAL CHAMPION", "🏆"),
+        ("ti_prodigy", "Rename: PUZZLE PRODIGY", "🧩"),
+        ("ti_taster", "Rename: OFFICIAL TASTE TESTER", "🍝"),
+        ("ti_fan", "Rename: NUMBER ONE FAN", "🥇"),
+        ("ti_guard", "Rename: HONORARY ROYAL GUARD", "🛡️"),
+        ("ti_smile", "Rename: MOST BEAUTIFUL SMILE", "😁"),
+        ("ti_legend", "Rename: LIVING LEGEND", "🌟"),
+        ("ti_skeleton", "Rename: HONORARY SKELETON", "🦴"),
+        ("ti_chef", "Rename: SPAGHETTI CHEF 2ND CLASS", "👨‍🍳"),
+        ("ti_detective", "Rename: THE GREAT DETECTIVE", "🔍"),
+        ("ti_magnet", "Rename: PUZZLE MAGNET", "🧲"),
+        ("ti_mayor", "Rename: MAYOR OF PUZZLETOWN", "🏙️"),
+    ],
+    "pedit": [
+        ("pe_wipe_items", "Wipe their ENTIRE inventory", "🗑️"),
+        ("pe_fresh", "Fresh start: delete player here", "🐣"),
+        ("pe_full_wipe", "Delete player from EVERY server", "☄️"),
+        ("pe_trophy", "Gift: Golden Trophy", "🏆"),
+        ("pe_donut", "Gift: Papyrus Donut", "🍩"),
+        ("pe_pie", "Gift: Butterscotch Pie", "🥧"),
+        ("pe_def0", "Set defense to 0", "📉"),
+        ("pe_def100", "Set defense to 100", "📈"),
+        ("pe_slots", "Clear all ability slots", "🧹"),
+        ("pe_shuffle", "SHUFFLE their level (1-100)", "🎰"),
+    ],
+    "admins": [
+        ("ad_role_show", "Show this server's admin role", "🛡️"),
+        ("ad_give_role", "Give target the admin role", "🛡️"),
+        ("ad_strip_role", "Strip target's admin role", "🧾"),
+        ("ad_ban", "Ban target from this server's bot", "🔨"),
+        ("ad_unban", "Unban target in this server", "🕊️"),
+        ("ad_bans_list", "List this server's bot bans", "📋"),
+        ("ad_bans_clear", "Clear ALL bot bans here", "🧹"),
+        ("ad_slow_on", "Slow mode: 60s in this channel", "🐢"),
+        ("ad_slow_off", "Slow mode: off", "🐇"),
+        ("ad_purge", "Purge last 10 messages", "🧽"),
+    ],
+    "announce": [
+        ("an_official", "OFFICIAL ANNOUNCEMENT", "📢"),
+        ("an_patch", "Fake patch notes", "🩹"),
+        ("an_festival", "SPAGHETTI FESTIVAL banner", "🍝"),
+        ("an_holiday", "Surprise holiday announcement", "🎄"),
+        ("an_weather", "Papyrus weather report", "🌤️"),
+        ("an_news", "BREAKING NEWS", "📰"),
+        ("an_apology", "Formal apology letter", "🙏"),
+        ("an_recruit", "Royal Guard recruitment poster", "🛡️"),
+        ("an_quiz", "TRIVIA NIGHT event banner", "❓"),
+        ("an_bosshour", "BOSS HOUR event banner", "⚔️"),
+        ("an_maintenance", "Fake maintenance notice", "🔧"),
+        ("an_sale", "EVERYTHING MUST GO sale banner", "🏷️"),
+    ],
+    "worldev": [
+        ("wv_heal", "Heal EVERY player in a server", "🩹"),
+        ("wv_1up", "+1 level to EVERY player", "⬆️"),
+        ("wv_rain500", "Gold rain: +500 to EVERY player", "🌧️"),
+        ("wv_bless", "Blessing: +200 gold EVERY player", "🕊️"),
+        ("wv_apocalypse", "APOCALYPSE: everyone to 1 HP", "☄️"),
+        ("wv_peace", "Peace treaty: full heal everyone", "🕊️"),
+        ("wv_meteor", "Meteor: everyone to half HP", "🪨"),
+        ("wv_timeskip", "Time skip: day passes, full heal", "⏩"),
+        ("wv_giveaway", "REAL giveaway: random player 5,000g", "🎁"),
+        ("wv_hunt", "Hunt: random player gets haunted", "👻"),
+        ("wv_curse", "Curse a RANDOM player (reverse 3)", "↩️"),
+        ("wv_invasion", "BOSS INVASION on a random player", "⚔️"),
+    ],
 }
+
+# name, hp, attack, defense, xp, gold, mercy_required, intro line
+MEGA_BOSSES = {
+    "mega_t1": ("MEGA BOSS TIER I", 500, 15, 2, 500, 500, 4, "NYEH! A WORTHY WARM-UP!"),
+    "mega_t3": ("MEGA BOSS TIER III", 2000, 25, 5, 1500, 1500, 5, "NOW IT GETS INTERESTING!"),
+    "mega_t5": ("MEGA BOSS TIER V", 5000, 40, 10, 3000, 3000, 6, "I HOPE THEY BROUGHT SNACKS!"),
+    "mega_t10": ("MEGA BOSS TIER X", 25000, 90, 25, 10000, 10000, 8, "THIS ONE HAS A GYM MEMBERSHIP!"),
+    "mega_t25": ("MEGA BOSS TIER XXV", 100000, 200, 60, 30000, 30000, 10, "I AM NOT LIABLE FOR THIS ONE!"),
+    "mega_t50": ("MEGA BOSS TIER L", 500000, 450, 150, 100000, 100000, 12, "GOOD LUCK. SINCERELY. -PAPYRUS"),
+    "mega_dummy": ("TRAINING DUMMY 9000", 10000, 0, 0, 1000, 1000, 3, "IT DOES NOT FIGHT BACK. IT IS PERFECT."),
+    "mega_bone": ("THE GIANT BONE", 15000, 60, 30, 8000, 8000, 5, "IT IS A VERY LARGE BONE!"),
+    "mega_duke": ("THE DUKE OF SPAGHETTI", 60000, 120, 40, 25000, 25000, 8, "HE SEASONED HIMSELF! OUTRAGEOUS!"),
+    "mega_papyrus": ("THE GREAT PAPYRUS (MEGA MODE)", 88888, 150, 50, 40000, 40000, 10, "DO NOT LOSE BEFORE MY BIG ENTRANCE!"),
+    "mega_sans": ("SANS (MEGA MODE)", 1, 500, 999, 77777, 77777, 20, "ONE HP. INFINITE SASS. GOOD LUCK, KID."),
+    "mega_undyne": ("THE SPEAR MASTER", 70000, 180, 60, 35000, 35000, 10, "SPEARS! SO MANY SPEARS!"),
+    "mega_deathbot": ("DEATHBOT PRIME", 95000, 220, 80, 40000, 40000, 10, "IT CALCULATED YOUR DEFEAT. RUDE!"),
+    "mega_hyper": ("GOD OF HYPERDEATH", 999999, 999, 300, 200000, 200000, 15, "THIS IS EXTREMELY UNFAIR. NYEH HEH HEH!"),
+    "mega_frost": ("FROST GUARDIAN", 40000, 100, 45, 18000, 18000, 8, "COLD-HEARTED! LITERALLY!"),
+    "mega_flame": ("FLAME WYRM", 45000, 110, 40, 20000, 20000, 8, "IT GRILLS THE SPAGHETTI PERFECTLY!"),
+    "mega_star": ("STAR SENTINEL", 55000, 130, 55, 24000, 24000, 9, "IT IS VERY SHINY! AND VERY ANGRY!"),
+    "mega_glitch": ("THE GLITCHED ERROR", 65000, 140, 35, 28000, 28000, 9, "IT SHOULD NOT EXIST! FIGHT IT ANYWAY!"),
+    "mega_gold": ("THE GOLDEN BONE", 30000, 70, 30, 1000, 150000, 6, "IT PAYS INCREDIBLY WELL! NYEH HEH HEH!"),
+    "mega_cursed": ("THE CURSED DUMMY", 35000, 95, 20, 12000, 12000, 7, "IT IS A REGULAR DUMMY. BUT CURSED!"),
+}
+
+
+async def _spawn_mega_battle(interaction, member, fid):
+    """Create an event-only mega boss in this guild and start a REAL battle for member."""
+    spec = MEGA_BOSSES[fid]
+    bname, bhp, batk, bdef, bxp, bgold, bmerc, bline = spec
+    guild = interaction.guild
+    if get_player(guild.id, member.id) is None:
+        return "they have never used /start in this server"
+    if is_in_fight(member.id):
+        return "they are ALREADY in a fight!"
+    cur = db.execute(
+        "INSERT INTO bosses (guild_id, name, hp, attack, defense, xp, gold, spawn_rate, enabled, is_event, mercy_required) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?)",
+        (guild.id, bname, bhp, batk, bdef, bxp, bgold, bmerc),
+    )
+    boss_row = db.execute("SELECT * FROM bosses WHERE id = ?", (cur.lastrowid,)).fetchone()
+    db.commit()
+    battle = Battle(member, boss_row)
+    await battle.prepare()
+    register_fighters(member.id, kind="battle")
+    embed = battle.make_embed()
+    view = BattleView(battle)
+    try:
+        msg = await interaction.followup.send(
+            content=f"⚔️ <@{member.id}> — A MEGA BATTLE HAS BEEN DECLARED! {bline}",
+            embed=embed,
+            view=view,
+        )
+    except Exception:
+        unregister_fighters(member.id)
+        return "could not open the fight UI in this channel"
+    pin_battle_message(battle, msg)
+    return f"MEGA BATTLE STARTED vs {bname} - {member.display_name} fights NOW"
+
 
 FEATURE_COUNT = sum(len(v) for v in FEATURES.values())
 
@@ -512,6 +733,711 @@ async def _run_feature(self, fid, interaction):
         ok = await _say("🚪 SANS, GET OUT OF MY PANEL. I AM DOING ADMINISTRATION.")
         return "sans has been evicted" if ok else "no channel"
 
+    # ---------- ⚔️ MEGA BATTLES ----------
+    if fid in MEGA_BOSSES:
+        if not uid:
+            return "pick a human on the Humans page first"
+        if interaction.guild is None:
+            return "no arena - use this inside a server"
+        member = interaction.guild.get_member(uid)
+        if member is None:
+            return "that human is not in THIS server (the arena is here)"
+        if member.bot:
+            return "bots cannot fight. they just write reports."
+        return await _spawn_mega_battle(interaction, member, fid)
+
+    # ---------- 🎲 GAMES & DUELS ----------
+    if fid == "g_dice":
+        if not uid:
+            return "pick a human first"
+        me, them = random.randint(1, 20), random.randint(1, 20)
+        if me > them:
+            db.execute("UPDATE players SET gold = gold - 100 WHERE user_id = ?", (uid,))
+            db.commit()
+            return f"my d20 rolled {me}, theirs {them}. I WIN - 100 gold owed to the skeleton"
+        if them > me:
+            db.execute("UPDATE players SET gold = gold + 100 WHERE user_id = ?", (uid,))
+            db.commit()
+            return f"my d20 rolled {me}, theirs {them}. THEY win 100 gold. LUCKY HUMANS!"
+        return f"BOTH rolled {me}. statistically fascinating. no gold moved"
+    if fid == "g_coin":
+        if not uid:
+            return "pick a human first"
+        if random.random() < 0.5:
+            db.execute("UPDATE players SET gold = gold + 100 WHERE user_id = ?", (uid,))
+            db.commit()
+            return "HEADS! +100 gold"
+        db.execute("UPDATE players SET gold = MAX(0, gold - 100) WHERE user_id = ?", (uid,))
+        db.commit()
+        return "TAILS! -100 gold (the coin is a liar)"
+    if fid == "g_rps":
+        if not uid:
+            return "pick a human first"
+        throw = random.choice([("ROCK", "IT ONLY KNOWS ROCK"), ("PAPER", "PAPER! AS IN SPAGHETTI WRAPPER"), ("SCISSORS", "SCISSORS! FOR CUTTING SPAGHETTI!")])
+        win = random.random() < 0.5
+        return f"I threw {throw[0]}. {throw[1]}. {'I WIN! NYEH HEH HEH!' if win else 'they win! REMATCH IMMEDIATELY!'}"
+    if fid == "g_guess":
+        if not uid:
+            return "pick a human first"
+        n, guess = random.randint(1, 10), random.randint(1, 10)
+        if n == guess:
+            db.execute("UPDATE players SET gold = gold + 250 WHERE user_id = ?", (uid,))
+            db.commit()
+            return f"my number was {n} and they guessed {guess}! +250 gold. IMPOSSIBLE!"
+        return f"my number was {n}, they guessed {guess}. SO CLOSE. (they were not close)"
+    if fid == "g_cards":
+        if not uid:
+            return "pick a human first"
+        cards = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+        me, them = random.choice(cards), random.choice(cards)
+        if cards.index(me) > cards.index(them):
+            db.execute("UPDATE players SET gold = gold - 200 WHERE user_id = ?", (uid,))
+            db.commit()
+            return f"my {me} beats their {them}. 200 gold, please"
+        if cards.index(them) > cards.index(me):
+            db.execute("UPDATE players SET gold = gold + 200 WHERE user_id = ?", (uid,))
+            db.commit()
+            return f"their {them} beats my {me}. take 200 gold (I demand a rematch)"
+        return f"BOTH drew {me}. the deck is rigged and I blame sans"
+    if fid == "g_wheel":
+        if not uid:
+            return "pick a human first"
+        prize = random.choice([
+            ("+500 gold", "UPDATE players SET gold = gold + 500 WHERE user_id = ?"),
+            ("+2,000 gold", "UPDATE players SET gold = gold + 2000 WHERE user_id = ?"),
+            ("+2,000 XP", "UPDATE players SET xp = xp + 2000 WHERE user_id = ?"),
+            ("nothing! the wheel giveth not", None),
+            ("-300 gold", "UPDATE players SET gold = MAX(0, gold - 300) WHERE user_id = ?"),
+            ("a full heal", "UPDATE players SET hp = max_hp WHERE user_id = ?"),
+        ])
+        if prize[1]:
+            db.execute(prize[1], (uid,))
+            db.commit()
+        return f"the wheel lands on... {prize[0]}"
+    if fid == "g_slots":
+        if not uid:
+            return "pick a human first"
+        reel = ["🍝", "🦴", "💎", "⭐", "💀"]
+        a, b, c = (random.choice(reel) for _ in range(3))
+        if a == b == c:
+            db.execute("UPDATE players SET gold = gold + 1000 WHERE user_id = ?", (uid,))
+            db.commit()
+            result = f"JACKPOT {a}{b}{c}! +1,000 gold"
+        elif a == b or b == c or a == c:
+            db.execute("UPDATE players SET gold = gold + 100 WHERE user_id = ?", (uid,))
+            db.commit()
+            result = f"{a}{b}{c} two of a kind! +100 gold"
+        else:
+            result = f"{a}{b}{c} nothing. the machine remains undefeated"
+        return result
+    if fid == "g_trivia":
+        if not uid:
+            return "pick a human first"
+        q = random.choice([
+            ("WHAT IS MY FAVORITE FOOD?", "spaghetti"),
+            ("WHO IS MY BROTHER?", "sans"),
+            ("WHAT DO I CAPTURE HUMANS WITH?", "puzzles"),
+            ("WHAT IS THE TALLEST BUILDING IN MY TOWN?", "my house"),
+            ("HOW MANY HP DOES A LEVEL 1 HUMAN START WITH?", "20"),
+        ])
+        return f"TRIVIA: {q[0]} ||answer: {q[1]}|| (+500 gold if they say it in chat)"
+    if fid == "g_math":
+        if not uid:
+            return "pick a human first"
+        a, b = random.randint(2, 30), random.randint(2, 30)
+        return f"SPEED MATH: what is {a} x {b}? ||answer: {a * b}|| (+300 gold if correct in chat)"
+    if fid == "g_love":
+        if not uid:
+            return "pick a human first"
+        pct = random.randint(0, 100)
+        if pct > 90:
+            verdict = "A PERFECT MATCH! THE WEDDING IS TUESDAY!"
+        elif pct > 60:
+            verdict = "SOMETHING IS COOKING! (it is spaghetti)"
+        elif pct > 30:
+            verdict = "PROMISING! AS A PUZZLE PARTNER!"
+        else:
+            verdict = "THE CHEMISTRY IS... PLAINTASTIC. JUST FRIENDS."
+        return f"love match <@{uid}> x PAPYRUS: {pct}% - {verdict}"
+    if fid == "g_friend":
+        if not uid:
+            return "pick a human first"
+        pct = random.randint(0, 100)
+        ranks = [(80, "ROYAL FRIEND MATERIAL"), (60, "COOL FRIEND ZONE"), (40, "ACQUAINTANCE... FOR NOW"), (20, "STRANGER WITH POTENTIAL"), (0, "MY CALENDAR IS FULL, SORRY")]
+        verdict = next(v for t, v in ranks if pct >= t)
+        return f"friendship meter: {pct}% - {verdict}"
+    if fid == "g_fortune":
+        f = random.choice([
+            "A GREAT PUZZLE STANDS BETWEEN THEM AND GLORY.",
+            "THEY WILL FIND GOLD IN AN UNLIKELY PLACE. PROBABLY A SHOP.",
+            "BEWARE THE NEXT SPAGHETTI. IT IS UNDERCOOKED.",
+            "SOMEONE IN THIS SERVER IS THINKING ABOUT THEM. IT IS ME.",
+            "A DOOR WILL OPEN. IT WILL BE A PUZZLE DOOR. SORRY.",
+            "THEIR LUCK CHANGES AT THE NEXT PORTAL.",
+        ])
+        return f"fortune: {f}"
+    if fid == "g_horoscope":
+        h = random.choice([
+            "TODAY: YOUR PUZZLE-SOLVING HANDS ARE ESPECIALLY POWERFUL.",
+            "TODAY: A SKELETON WILL BE NICE TO YOU. YOU ARE WELCOME.",
+            "TODAY: DO NOT TRUST ANYONE NAMED JERRY.",
+            "TODAY: EAT PASTA. IT IS SCIENCE.",
+            "TODAY: YOUR SOCKS HAVE GREAT FORTUNE. ALL OF THEM.",
+        ])
+        return f"horoscope: {h}"
+    if fid == "g_crystal":
+        c = random.choice([
+            "I SEE... A LEVEL UP IN THEIR FUTURE.",
+            "I SEE... A BOSS. AND A VERY BRAVE HUMAN. AND A PHARMACY BILL.",
+            "I SEE... SPAGHETTI. SO MUCH SPAGHETTI.",
+            "I SEE... THE INSIDE OF A PUZZLE. THEY PUT THE PIECE IN RIGHT THIS TIME.",
+            "THE CRYSTAL BALL SAYS: ASK AGAIN WHEN I AM LESS BUSY.",
+        ])
+        return f"crystal ball: {c}"
+    if fid == "g_arm":
+        if not uid:
+            return "pick a human first"
+        if random.random() < 0.5:
+            return "arm wrestling: MY BONE ARM WINS! UNFAIR ADVANTAGE: BEING PERFECT"
+        return f"arm wrestling: <@{uid}> WINS?! MY ARM IS STILL NUMB FROM TRAINING"
+    if fid == "g_stare":
+        if not uid:
+            return "pick a human first"
+        if random.random() < 0.5:
+            return "staring contest: they blinked first. EYES OF A WARRIOR... NOT"
+        return "staring contest: I won by not having eyelids. TECHNICALLY CHEATING?"
+    if fid == "g_eat":
+        if not uid:
+            return "pick a human first"
+        plates = random.randint(1, 50)
+        return f"spaghetti eating contest: <@{uid}> ate {plates} plates! {'A NEW RECORD!' if plates > 40 else 'NOT BAD FOR A HUMAN!'}"
+    if fid == "g_hide":
+        if not uid:
+            return "pick a human first"
+        spot = random.choice(["BEHIND THE WATERFALL", "INSIDE A DOGHOUSE", "UNDER MY SCARF", "IN THE GARBAGE DUMP (CLASSIC)", "BEHIND A CLOSET DOOR"])
+        if random.random() < 0.5:
+            return f"hide and seek: FOUND THEM in {spot}! I AM THE GREATEST DETECTIVE!"
+        return f"hide and seek: I could not find them... (they were in {spot})"
+    if fid == "g_lottery":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET gold = MAX(0, gold - 50) WHERE user_id = ?", (uid,))
+        db.commit()
+        if random.random() < 0.01:
+            db.execute("UPDATE players SET gold = gold + 10000 WHERE user_id = ?", (uid,))
+            db.commit()
+            return "THE LOTTERY TICKET WON! 10,000 GOLD! THIS HAS A 1% CHANCE AND IT HAPPENED!"
+        return f"ticket #{random.randint(100000, 999999)}: not a winner. the 50 gold went to a good cause (me)"
+    if fid == "g_door":
+        if not uid:
+            return "pick a human first"
+        room = random.choice([
+            ("A ROOM FULL OF GOLD", "UPDATE players SET gold = gold + 750 WHERE user_id = ?"),
+            ("A ROOM FULL OF SKELETS", None),
+            ("A ROOM THAT IS JUST MORE DOORS", None),
+            ("A ROOM WITH A NICE NAP", "UPDATE players SET hp = max_hp WHERE user_id = ?"),
+            ("A ROOM WITH ANGRY BEES", "UPDATE players SET hp = MAX(1, hp - 5) WHERE user_id = ?"),
+        ])
+        if room[1]:
+            db.execute(room[1], (uid,))
+            db.commit()
+        return f"mystery door opens onto... {room[0]}"
+
+    # ---------- 🎉 PARTIES ----------
+    if fid == "p_birthday":
+        ok = await _say(f"🎂 ATTENTION EVERYONE! IT IS <@{uid}>'s BIRTHDAY! (approximately) (I did not check) 🎂\n🦴 NYEH HEH HEH! HAPPY BIRTHDAY!")
+        return "birthday thrown" if ok else "no channel"
+    if fid == "p_grad":
+        ok = await _say(f"🎓 <@{uid}> GRADUATED! FROM WHAT? UNCLEAR! WITH HONORS? ABSOLUTELY!")
+        return "graduation held" if ok else "no channel"
+    if fid == "p_crown":
+        ok = await _say(f"👑 <@{uid}> IS NOW CROWNED ROYALTY OF THIS SERVER! LONG MAY THEY PUZZLE!")
+        return "coronation done" if ok else "no channel"
+    if fid == "p_wedding":
+        ok = await _say(f"💍 WE ARE GATHERED HERE TODAY TO UNITE <@{uid}> AND A PLATE OF SPAGHETTI IN HOLY MATRIMONY. 🍝 YOU MAY KISS THE PASTA.")
+        return "married to spaghetti" if ok else "no channel"
+    if fid == "p_dance":
+        ok = await _say("🕺💃\n\n   🕺💃🕺\n\nDANCE PARTY! I CALLED THE MOVES! THEY ARE ALL 'THE PAPYRUS'!")
+        return "dance party started" if ok else "no channel"
+    if fid == "p_applause":
+        ok = await _say(f"👏👏👏 A STANDING OVATION FOR <@{uid}>! 👏👏👏")
+        return "ovation delivered" if ok else "no channel"
+    if fid == "p_confetti":
+        ok = await _say("🎊 🎊 🎊\nCONFETTI CANNON! FIRED WITH PRECISION! (at the ceiling) 🎊 🎊 🎊")
+        return "cannon fired" if ok else "no channel"
+    if fid == "p_compliments":
+        for c in (f"🌟 <@{uid}> HAS EXCELLENT TASTE IN SKELETONS!", f"🌟 <@{uid}>'s HAIR (if present) IS MAGNIFICENT!", "🌟 THEY SOLVED A PUZZLE ONCE. PROBABLY."):
+            await _say(c)
+        return "parade of compliments deployed"
+    if fid == "p_roasts":
+        for r in (f"🔥 <@{uid}> IS LIKE A PUZZLE... UNSOLVED. BY ANYONE. EVER.", "🔥 THEIR SPAGHETTI TASTE IS QUESTIONABLE. ALMOST AS BAD AS SANS'S JOKES.", f"🔥 <@{uid}> TYPES LIKE SOMEONE WHO HAS NEVER WON A COOK-OFF."):
+            await _say(r)
+        return "polite roast parade complete"
+    if fid == "p_lasers":
+        ok = await _say("🪩 🪩 🪩\nLASER LIGHT SHOW! (the lasers are imaginary but the ATTITUDE is real)")
+        return "light show on" if ok else "no channel"
+    if fid == "p_parade":
+        ok = await _say("🦴 🦴 🦴\nTHE ROYAL BONE PARADE MARCHES THROUGH THIS CHANNEL. ALL RISE.")
+        return "parade marched" if ok else "no channel"
+    if fid == "p_chorus":
+        ok = await _say("🎶 NYEH HEH HEH! 🎶\n🎶 NYEH HEH HEH! 🎶\n🎶 NYEEEEH HEEEEEH HEEEEH! 🎶 (encore in 3-5 business days)")
+        return "chorus performed" if ok else "no channel"
+
+    # ---------- 🎁 GIFT BOXES ----------
+    if fid == "box_mystery":
+        if not uid:
+            return "pick a human first"
+        prize = random.choice([
+            ("+1,000 gold", "UPDATE players SET gold = gold + 1000 WHERE user_id = ?"),
+            ("+250 gold", "UPDATE players SET gold = gold + 250 WHERE user_id = ?"),
+            ("+3,000 XP", "UPDATE players SET xp = xp + 3000 WHERE user_id = ?"),
+            ("full heal", "UPDATE players SET hp = max_hp WHERE user_id = ?"),
+            ("+50 max HP", "UPDATE players SET max_hp = max_hp + 50, hp = hp + 50 WHERE user_id = ?"),
+            ("-200 gold", "UPDATE players SET gold = MAX(0, gold - 200) WHERE user_id = ?"),
+        ])
+        db.execute(prize[1], (uid,))
+        db.commit()
+        return f"mystery box: {prize[0]}!"
+    if fid == "box_cursed":
+        if not uid:
+            return "pick a human first"
+        bad = random.choice([
+            ("-500 gold", "UPDATE players SET gold = MAX(0, gold - 500) WHERE user_id = ?"),
+            ("half HP", "UPDATE players SET hp = CAST(MAX(1, max_hp / 2) AS INTEGER) WHERE user_id = ?"),
+            ("-100 max HP", "UPDATE players SET max_hp = MAX(20, max_hp - 100), hp = MIN(hp, MAX(20, max_hp - 100)) WHERE user_id = ?"),
+        ])
+        db.execute(bad[1], (uid,))
+        db.commit()
+        if random.random() < 0.5:
+            _creator_curses[uid] = {**_creator_curses.get(uid, {}), "ghost": 5}
+            return f"cursed box: {bad[0]} AND a ghost. sorry."
+        return f"cursed box: {bad[0]}"
+    if fid == "box_gold":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET gold = gold + 1000 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "gold chest: +1,000 gold"
+    if fid == "box_jackpot":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET gold = gold + 25000 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "JACKPOT chest: +25,000 gold. they will not know what to do with it"
+    if fid == "box_trash":
+        if not uid:
+            return "pick a human first"
+        db.execute(
+            "INSERT INTO items (guild_id, user_id, name, quantity) VALUES (0, ?, 'Piece of Trash', 1) "
+            "ON CONFLICT(guild_id, user_id, name) DO UPDATE SET quantity = quantity + 1",
+            (uid,),
+        )
+        db.commit()
+        return "trash chest: 1 Piece of Trash. as promised"
+    if fid == "box_xp":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET xp = xp + 5000 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "XP potion: +5,000 XP"
+    if fid == "box_maxhp":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET max_hp = max_hp + 50, hp = hp + 50 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "max HP potion: +50 max HP (permanent, do not tell the economy)"
+    if fid == "box_double":
+        if not uid:
+            return "pick a human first"
+        if random.random() < 0.5:
+            db.execute("UPDATE players SET gold = gold * 2 WHERE user_id = ?", (uid,))
+            db.commit()
+            return "DOUBLE OR NOTHING: DOUBLED! congratulations on the gamble"
+        db.execute("UPDATE players SET gold = 0 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "DOUBLE OR NOTHING: nothing. the house always wins. I AM the house"
+    if fid == "box_wheel":
+        if not uid:
+            return "pick a human first"
+        pick = random.choice(["box_mystery", "box_cursed", "box_gold", "box_jackpot", "box_trash", "box_xp", "box_maxhp", "box_empty"])
+        return await _run_feature(self, pick, interaction)
+    if fid == "box_bones":
+        if not uid:
+            return "pick a human first"
+        db.execute(
+            "INSERT INTO items (guild_id, user_id, name, quantity) VALUES (0, ?, 'Fancy Bone', 10) "
+            "ON CONFLICT(guild_id, user_id, name) DO UPDATE SET quantity = quantity + 10",
+            (uid,),
+        )
+        db.commit()
+        return "gift: 10 Fancy Bones (collector grade)"
+    if fid == "box_spag":
+        if not uid:
+            return "pick a human first"
+        db.execute(
+            "INSERT INTO items (guild_id, user_id, name, quantity) VALUES (0, ?, 'Spaghetti Plate', 3) "
+            "ON CONFLICT(guild_id, user_id, name) DO UPDATE SET quantity = quantity + 3",
+            (uid,),
+        )
+        db.commit()
+        return "gift: 3 plates of spaghetti (still warm!)"
+    if fid == "box_empty":
+        if not uid:
+            return "pick a human first"
+        return "the box is empty. IT WAS ALWAYS EMPTY. (the real gift was the experience)"
+
+    # ---------- 🎭 SCENES ----------
+    if fid == "sc_dump":
+        ok = await _say(f"🗑️ I DRAG <@{uid}> TO THE GARBAGE DUMP... 'DO NOT WORRY! THIS IS WHERE THE GOOD PUZZLES ARE!'")
+        return "dumped (with love)" if ok else "no channel"
+    if fid == "sc_feed":
+        ok = await _say(f"🍝 I FORCE-FEED <@{uid}> A PLATE OF MY FAMOUS SPAGHETTI. THEY SURVIVE. BARELY. WITH JOY.")
+        return "fed" if ok else "no channel"
+    if fid == "sc_puzzle":
+        ok = await _say(f"🧩 <@{uid}> IS TRAPPED IN A PUZZLE! IT IS A JAR. THE LID IS ON. GOOD LUCK, HUMAN.")
+        return "puzzle trap sprung" if ok else "no channel"
+    if fid == "sc_trial":
+        verdict = random.choice(["NOT GUILTY! (bribery with spaghetti is legal)", "GUILTY OF BEING TOO COOL", "CASE DISMISSED! EVERYONE GO HOME", "SENTENCED TO 100 HOURS OF PUZZLE SOLVING"])
+        ok = await _say(f"⚖️ TRIAL AT PAPYRUS COURT! <@{uid}> STANDS ACCUSED OF... SOMETHING. THE VERDICT: **{verdict}**")
+        return "court adjourned" if ok else "no channel"
+    if fid == "sc_intern":
+        ok = await _say(f"🔩 <@{uid}> IS HIRED AS PUZZLE INTERN! PAY: EXPOSURE. EXPOSURE TO MORE PUZZLES.")
+        return "intern hired" if ok else "no channel"
+    if fid == "sc_knight":
+        ok = await _say(f"🛡️ <@{uid}> IS KNIGHTED INTO THE ROYAL GUARD... PROBATIONARY RANK. DO NOT TELL UNDYNE.")
+        return "knighthood granted" if ok else "no channel"
+    if fid == "sc_cook":
+        grade = random.choice(["S: PERFECT! IMPRESSIBLE!", "A: ALMOST AS GOOD AS MINE (no)", "B: THE SMOKE ALARM LIKED IT", "F: THE KITCHEN HAS BEEN CONDEMNED"])
+        ok = await _say(f"👨‍🍳 COOK-OFF! <@{uid}> vs ME. THE JUDGES (me) SCORE THEIR DISH: **{grade}**")
+        return "cook-off judged" if ok else "no channel"
+    if fid == "sc_shadow":
+        ok = await _say(f"🌀 <@{uid}> HAS BEEN SENT TO THE SHADOW REALM... (it is right here. they are still here. it is very dramatic though)")
+        return "shadow realm visited" if ok else "no channel"
+    if fid == "sc_atoms":
+        ok = await _say(f"⚛️ I SPLIT <@{uid}> INTO ATOMS... AND PUT THEM BACK IN THE WRONG ORDER. THEY LOOK GREAT!")
+        return "atomized and restored" if ok else "no channel"
+    if fid == "sc_news":
+        ok = await _say(f"📰 THE PUZZLE GAZETTE: LOCAL HUMAN <@{uid}> IS THIS WEEK'S FEATURE STORY. SUBSCRIPTIONS ARE FREE AND MANDATORY.")
+        return "newsletter sent" if ok else "no channel"
+    if fid == "sc_nap":
+        ok = await _say(f"😴 <@{uid}> IS FORCED INTO A SANS-STYLE NAP. zzz... (I watched them the entire time. for safety. not because it was funny)")
+        return "nap enforced" if ok else "no channel"
+    if fid == "sc_mirror":
+        ok = await _say(f"🪞 THE MIRROR OF TRUTH SHOWS <@{uid}>... A SKELETON. OF COURSE. EVERYONE BEAUTIFUL IS A SKELETON.")
+        return "mirror consulted" if ok else "no channel"
+
+    # ---------- 🏆 TITLES & CONTESTS ----------
+    TITLE_NAMES = {
+        "ti_champion": "OFFICIAL CHAMPION", "ti_prodigy": "PUZZLE PRODIGY",
+        "ti_taster": "OFFICIAL TASTE TESTER", "ti_fan": "NUMBER ONE FAN",
+        "ti_guard": "HONORARY ROYAL GUARD", "ti_smile": "MOST BEAUTIFUL SMILE",
+        "ti_legend": "LIVING LEGEND", "ti_skeleton": "HONORARY SKELETON",
+        "ti_chef": "SPAGHETTI CHEF 2ND CLASS", "ti_detective": "THE GREAT DETECTIVE",
+        "ti_magnet": "PUZZLE MAGNET", "ti_mayor": "MAYOR OF PUZZLETOWN",
+    }
+    if fid in TITLE_NAMES:
+        if not uid:
+            return "pick a human first"
+        tname = TITLE_NAMES[fid]
+        g, member = _mutual_member(uid)
+        out = "title awarded (no rename perms here)"
+        if member and g and g.me.guild_permissions.manage_nicknames:
+            try:
+                await member.edit(nick=tname, reason="creator honors")
+                out = f"renamed to '{tname}'"
+            except Exception:
+                out = "could not rename (role hierarchy), title awarded in spirit"
+        await _say(f"🏆 BY ROYAL DECREE OF MY CREATOR: <@{uid}> IS NOW **{tname}**! 🦴")
+        return out
+
+    # ---------- 💥 WORLD EVENTS ----------
+    if fid.startswith("wv_"):
+        if not gid:
+            return "pick a server on the Servers page first"
+        g2 = bot.get_guild(gid)
+        if g2 is None:
+            return "that server could not be found"
+        if fid == "wv_heal":
+            db.execute("UPDATE players SET hp = max_hp WHERE guild_id = ?", (gid,))
+            db.commit()
+            return f"every player in {g2.name} is at full HP"
+        if fid == "wv_1up":
+            db.execute("UPDATE players SET level = level + 1 WHERE guild_id = ?", (gid,))
+            db.commit()
+            return f"+1 level for EVERY player in {g2.name}"
+        if fid == "wv_rain500":
+            db.execute("UPDATE players SET gold = gold + 500 WHERE guild_id = ?", (gid,))
+            db.commit()
+            return f"gold rain! +500 for everyone in {g2.name}"
+        if fid == "wv_bless":
+            db.execute("UPDATE players SET gold = gold + 200 WHERE guild_id = ?", (gid,))
+            db.commit()
+            return f"blessing bestowed: +200 gold for all of {g2.name}"
+        if fid == "wv_apocalypse":
+            db.execute("UPDATE players SET hp = 1 WHERE guild_id = ?", (gid,))
+            db.commit()
+            ok = await _say(f"☄️ THE APOCALYPSE HAS ARRIVED IN {g2.name.upper()}! EVERY PLAYER IS NOW AT 1 HP. (the apocalypse is cancellable by a full heal)")
+            return "apocalypse delivered" if ok else "apocalypse delivered (silently)"
+        if fid == "wv_peace":
+            db.execute("UPDATE players SET hp = max_hp WHERE guild_id = ?", (gid,))
+            db.commit()
+            ok = await _say(f"🕊️ A PEACE TREATY HAS BEEN SIGNED IN {g2.name}! EVERYONE IS HEALED. NO FIGHTING (for 5 minutes)")
+            return "peace declared" if ok else "peace declared (silently)"
+        if fid == "wv_meteor":
+            db.execute("UPDATE players SET hp = CAST(MAX(1, max_hp / 2) AS INTEGER) WHERE guild_id = ?", (gid,))
+            db.commit()
+            return f"meteor grazed {g2.name}. everyone at half HP"
+        if fid == "wv_timeskip":
+            db.execute("UPDATE players SET hp = max_hp WHERE guild_id = ?", (gid,))
+            db.commit()
+            ok = await _say(f"⏩ A DAY HAS PASSED IN {g2.name}! EVERYONE SLEPT GREAT. (nobody aged) (probably)")
+            return "time skipped" if ok else "time skipped (silently)"
+        if fid == "wv_giveaway":
+            row = db.execute("SELECT user_id FROM players WHERE guild_id = ? ORDER BY RANDOM() LIMIT 1", (gid,)).fetchone()
+            if not row:
+                return "no players in that server"
+            db.execute("UPDATE players SET gold = gold + 5000 WHERE guild_id = ? AND user_id = ?", (gid, row["user_id"]))
+            db.commit()
+            ok = await _say(f"🎁 A REAL GIVEAWAY IN {g2.name}! <@{row['user_id']}> WINS 5,000 GOLD! CONGRATULATIONS!")
+            return f"giveaway paid to user {row['user_id']}"
+        if fid == "wv_hunt":
+            row = db.execute("SELECT user_id FROM players WHERE guild_id = ? ORDER BY RANDOM() LIMIT 1", (gid,)).fetchone()
+            if not row:
+                return "no players in that server"
+            _creator_curses[row["user_id"]] = {**_creator_curses.get(row["user_id"], {}), "ghost": 5}
+            ok = await _say(f"👻 THE HUNT BEGINS IN {g2.name}! SOMEONE IN THIS SERVER IS HAUNTED. THEY KNOW WHO THEY ARE. (they do not)")
+            return f"player {row['user_id']} is haunted"
+        if fid == "wv_curse":
+            row = db.execute("SELECT user_id FROM players WHERE guild_id = ? ORDER BY RANDOM() LIMIT 1", (gid,)).fetchone()
+            if not row:
+                return "no players in that server"
+            _creator_curses[row["user_id"]] = {**_creator_curses.get(row["user_id"], {}), "reverse": 3}
+            return f"player {row['user_id']} cursed (reverse 3)"
+        if fid == "wv_invasion":
+            row = db.execute("SELECT user_id FROM players WHERE guild_id = ? ORDER BY RANDOM() LIMIT 1", (gid,)).fetchone()
+            if not row:
+                return "no players in that server"
+            m2 = g2.get_member(row["user_id"])
+            if m2 is None or m2.bot:
+                return "the chosen player is not reachable right now"
+            if interaction.guild is None:
+                return "no arena - use this inside a server"
+            return await _spawn_mega_battle(interaction, m2, "mega_t10")
+
+    # ---------- 👤 PLAYER EDITOR ----------
+    if fid == "pe_wipe_items":
+        if not uid:
+            return "pick a human first"
+        db.execute("DELETE FROM items WHERE user_id = ?", (uid,))
+        db.commit()
+        return "their ENTIRE inventory is gone (they kept equipment)"
+    if fid == "pe_fresh":
+        if not gid:
+            return "pick a server on the Servers page first"
+        db.execute("DELETE FROM players WHERE guild_id = ? AND user_id = ?", (gid, uid))
+        db.execute("DELETE FROM items WHERE user_id = ?", (uid,))
+        db.commit()
+        return "fresh start: their player row in this server is deleted (they can /start again)"
+    if fid == "pe_full_wipe":
+        if not uid:
+            return "pick a human first"
+        db.execute("DELETE FROM players WHERE user_id = ?", (uid,))
+        db.execute("DELETE FROM items WHERE user_id = ?", (uid,))
+        db.commit()
+        return "deleted from EVERY server. they are a brand new human now"
+    if fid == "pe_trophy":
+        if not uid:
+            return "pick a human first"
+        db.execute(
+            "INSERT INTO items (guild_id, user_id, name, quantity) VALUES (0, ?, 'Golden Trophy', 1) "
+            "ON CONFLICT(guild_id, user_id, name) DO UPDATE SET quantity = quantity + 1",
+            (uid,),
+        )
+        db.commit()
+        return "gifted a Golden Trophy"
+    if fid == "pe_donut":
+        if not uid:
+            return "pick a human first"
+        db.execute(
+            "INSERT INTO items (guild_id, user_id, name, quantity) VALUES (0, ?, 'Papyrus Donut', 1) "
+            "ON CONFLICT(guild_id, user_id, name) DO UPDATE SET quantity = quantity + 1",
+            (uid,),
+        )
+        db.commit()
+        return "gifted a Papyrus Donut (shaped like a puzzle)"
+    if fid == "pe_pie":
+        if not uid:
+            return "pick a human first"
+        db.execute(
+            "INSERT INTO items (guild_id, user_id, name, quantity) VALUES (0, ?, 'Butterscotch Pie', 1) "
+            "ON CONFLICT(guild_id, user_id, name) DO UPDATE SET quantity = quantity + 1",
+            (uid,),
+        )
+        db.commit()
+        return "gifted a Butterscotch Pie (Toriel-grade)"
+    if fid == "pe_def0":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET defense = 0 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "defense set to 0 (paper armor)"
+    if fid == "pe_def100":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET defense = 100 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "defense set to 100 (they are a wall now)"
+    if fid == "pe_slots":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET ability_slot1 = NULL, ability_slot2 = NULL, ability_slot3 = NULL WHERE user_id = ?", (uid,))
+        db.commit()
+        return "all ability slots cleared (re-pick in abilities)"
+    if fid == "pe_shuffle":
+        if not uid:
+            return "pick a human first"
+        new_lv = random.randint(1, 100)
+        db.execute("UPDATE players SET level = ? WHERE user_id = ?", (new_lv, uid))
+        db.commit()
+        return f"level SHUFFLED to {new_lv}! the slot machine of destiny"
+
+    # ---------- 🛡️ ADMIN POWERS ----------
+    if fid == "ad_role_show":
+        if not gid:
+            return "pick a server on the Servers page first"
+        rid = get_admin_role_id(gid)
+        if rid:
+            return f"admin role here: <@&{rid}>"
+        return "no admin role configured in that server"
+    if fid == "ad_give_role":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        rid = get_admin_role_id(gid)
+        g2, member = _mutual_member(uid)
+        if member is None:
+            return "cannot reach that human"
+        if rid is None:
+            return "no admin role configured in that server"
+        role = (g2 or bot.get_guild(gid)).get_role(rid)
+        if role is None:
+            return "the admin role is deleted"
+        try:
+            await member.add_roles(role, reason="creator console")
+            return f"gave {role.name} to them"
+        except Exception:
+            return "could not add the role (hierarchy)"
+    if fid == "ad_strip_role":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        rid = get_admin_role_id(gid)
+        g2, member = _mutual_member(uid)
+        if member is None or rid is None:
+            return "nothing to strip (no member or no admin role)"
+        role = (g2 or bot.get_guild(gid)).get_role(rid)
+        if role is None:
+            return "the admin role is deleted"
+        try:
+            await member.remove_roles(role, reason="creator console")
+            return f"stripped {role.name} from them"
+        except Exception:
+            return "could not remove the role (hierarchy)"
+    if fid == "ad_ban":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        ban_from_bot(gid, uid, banned_by="creator", reason="creator panel")
+        return "banned them from the bot in that server"
+    if fid == "ad_unban":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        unban_from_bot(gid, uid)
+        return "unbanned them in that server"
+    if fid == "ad_bans_list":
+        if not gid:
+            return "pick a server on the Servers page first"
+        rows = list_bot_bans(gid, limit=10)
+        if not rows:
+            return "no bot bans in that server"
+        return "recent bans: " + ", ".join(f"<@{r['user_id']}>" for r in rows)
+    if fid == "ad_bans_clear":
+        if not gid:
+            return "pick a server on the Servers page first"
+        db.execute("DELETE FROM bot_bans WHERE guild_id = ?", (gid,))
+        db.commit()
+        return "every bot ban in that server: cleared"
+    if fid == "ad_slow_on":
+        try:
+            await interaction.channel.edit(slowmode_delay=60, reason="creator console")
+            return "slow mode ON: 60s in this channel"
+        except Exception:
+            return "could not set slow mode (perms)"
+    if fid == "ad_slow_off":
+        try:
+            await interaction.channel.edit(slowmode_delay=0, reason="creator console")
+            return "slow mode OFF"
+        except Exception:
+            return "could not clear slow mode (perms)"
+    if fid == "ad_purge":
+        try:
+            await interaction.channel.purge(limit=10, check=lambda m: not m.pinned, bulk=True)
+            return "purged 10 messages (pins spared)"
+        except Exception:
+            return "could not purge (perms or old messages)"
+
+    # ---------- 📣 ANNOUNCEMENTS & EVENTS ----------
+    if fid == "an_official":
+        emb = discord.Embed(title="📢 OFFICIAL ANNOUNCEMENT", description="THE GREAT PAPYRUS AND MY CREATOR HAVE ISSUED A JOINT DECREE:\n\nEVERYONE HERE IS DOING GREAT. CARRY ON.", color=0x7B2CBF)
+        ok = await _say(None, emb)
+        return "announced" if ok else "no channel"
+    if fid == "an_patch":
+        emb = discord.Embed(title="🩹 PATCH NOTES v6.66", description="• Buffed: spaghetti (all types)\n• Nerfed: Jerry\n• Fixed: a bug where the bug was fixed\n• Added: this patch note\n• Removed: the exit of the puzzle. YOU LIVE HERE NOW.", color=0x2C5F8A)
+        ok = await _say(None, emb)
+        return "patch notes published" if ok else "no channel"
+    if fid == "an_festival":
+        emb = discord.Embed(title="🍝 THE SPAGHETTI FESTIVAL HAS BEGUN", description="ONE WEEK OF SPAGHETTI-RELATED ACTIVITIES.\nEVERYONE IS INVITED. EVERYONE. ESPECIALLY YOU.", color=0xC79A2A)
+        ok = await _say(None, emb)
+        return "festival opened" if ok else "no channel"
+    if fid == "an_holiday":
+        emb = discord.Embed(title="🎄 SURPRISE HOLIDAY", description="TODAY IS OFFICIALLY 'BE NICE TO SKELETONS' DAY.\nVIOLATORS WILL BE TICKLED.", color=0x2C8A5F)
+        ok = await _say(None, emb)
+        return "holiday declared" if ok else "no channel"
+    if fid == "an_weather":
+        emb = discord.Embed(title="🌤️ PAPYRUS WEATHER REPORT", description=random.choice([
+            "TODAY'S FORECAST: 100% CHANCE OF PUZZLES. DRESS ACCORDINGLY.",
+            "TOMORROW: CLOUDY WITH A CHANCE OF MEATBALLS (spaghetti).",
+            "TOMORROW: SUNNY INSIDE MY HOUSE. RAINY INSIDE PUZZLES.",
+        ]), color=0x2C5F8A)
+        ok = await _say(None, emb)
+        return "weather reported" if ok else "no channel"
+    if fid == "an_news":
+        emb = discord.Embed(title="📰 BREAKING NEWS", description=f"BREAKING: <@{uid or 'someone'}> DID SOMETHING NEWSWORTHY. EXPERTS ARE STUNTED. MORE AT 11.", color=0xB02020)
+        ok = await _say(None, emb)
+        return "news broken" if ok else "no channel"
+    if fid == "an_apology":
+        emb = discord.Embed(title="🙏 A FORMAL APOLOGY", description="I FORMALLY APOLOGIZE TO EVERYONE I HAVE EVER PUZZLED.\n...I WOULD DO IT AGAIN. BUT I AM SORRY.", color=0x7B2CBF)
+        ok = await _say(None, emb)
+        return "apology issued" if ok else "no channel"
+    if fid == "an_recruit":
+        emb = discord.Embed(title="🛡️ ROYAL GUARD RECRUITMENT", description="NOW HIRING: ROYAL GUARDS.\nREQUIREMENTS: ENTHUSIASM. STAMINA. A LOVE OF PUZZLES.\nPAY: NONE. PRIDE: INFINITE.", color=0xC79A2A)
+        ok = await _say(None, emb)
+        return "recruitment posted" if ok else "no channel"
+    if fid == "an_quiz":
+        emb = discord.Embed(title="❓ TRIVIA NIGHT STARTS NOW", description="TONIGHT! TRIVIA! HOSTED BY ME!\nTOPIC: ME! (answers may also be about spaghetti)", color=0x2C8A5F)
+        ok = await _say(None, emb)
+        return "trivia night opened" if ok else "no channel"
+    if fid == "an_bosshour":
+        emb = discord.Embed(title="⚔️ BOSS HOUR IS LIVE", description="FOR THE NEXT HOUR, EVERY BOSS IS 1% SCARIER.\nTHIS IS MATHEMATICALLY IRRELEVANT BUT EMOTIONALLY HUGE.", color=0xB02020)
+        ok = await _say(None, emb)
+        return "boss hour announced" if ok else "no channel"
+    if fid == "an_maintenance":
+        emb = discord.Embed(title="🔧 SCHEDULED MAINTENANCE", description="THE BOT WILL GO DOWN FOR MAINTENANCE...\n...IS WHAT I WOULD SAY IF I WERE NOT ALREADY PERFECT. STAY ONLINE.", color=0x555555)
+        ok = await _say(None, emb)
+        return "fake maintenance posted" if ok else "no channel"
+    if fid == "an_sale":
+        emb = discord.Embed(title="🏷️ EVERYTHING MUST GO", description="SHOP SALE! EVERYTHING 0% OFF! (the shop is already perfectly priced)\nHURRY, OFFER LASTS FOREVER.", color=0xC79A2A)
+        ok = await _say(None, emb)
+        return "sale announced" if ok else "no channel"
+
+    # ---------- DM POWERS ----------
     # ---------- DM POWERS ----------
     dm_texts = {
         "dm_pep": f"💌 A WHISPER FROM THE GREAT PAPYRUS:\n**{random.choice(PAPYRUS_DM_LINES)}**",
