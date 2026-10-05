@@ -474,6 +474,7 @@ FEATURES = {
         ("x_curse_watch", "Currently cursed users", "👻"),
         ("x_lurkers", "Humans who never interacted twice", "🕵️"),
         ("x_full_report", "THE FULL SECURITY REPORT", "📚"),
+        ("x_pic_audit", "Boss picture audit (dead/missing)", "🖼️"),
     ],
     "defense": [
         ("d_strip_here", "Confiscate all gold here", "🚨"),
@@ -2241,6 +2242,55 @@ async def _run_feature(self, fid, interaction):
         db.execute("DELETE FROM bot_bans WHERE guild_id = ?", (gid,))
         db.commit()
         return "amnesty declared: every bot ban in that server cleared"
+
+    # ---------- 🖼️ BOSS PICTURE AUDIT ----------
+    if fid == "x_pic_audit":
+        rows = db.execute("SELECT id, name, image_url, guild_id FROM bosses").fetchall()
+        missing, dead, ok_n = [], [], 0
+        urls_to_check = []
+        for r in rows:
+            u = str(r["image_url"] or "").strip()
+            if not u:
+                missing.append(r["name"])
+            else:
+                urls_to_check.append((r["name"], u))
+        checked = {}
+        if urls_to_check:
+            try:
+                import aiohttp as _ah
+                async def _check_all(pairs):
+                    out = {}
+                    async with _ah.ClientSession(timeout=_ah.ClientTimeout(total=8)) as sess:
+                        for nm, uu in pairs:
+                            try:
+                                async with sess.head(uu, allow_redirects=True) as resp:
+                                    out[uu] = resp.status
+                            except Exception:
+                                try:
+                                    async with sess.get(uu, allow_redirects=True) as resp:
+                                        out[uu] = resp.status
+                                except Exception:
+                                    out[uu] = 0
+                    return out
+                checked = await _check_all(urls_to_check[:40])
+            except Exception:
+                checked = {}
+        for nm, uu in urls_to_check:
+            st = checked.get(uu)
+            if st is None:
+                continue  # not checked (over cap or no session)
+            if st in (200, 301, 302):
+                ok_n += 1
+            else:
+                dead.append(f"{nm} ({'no response' if st == 0 else st})")
+        parts = []
+        if missing:
+            parts.append(f"NO PICTURE ({len(missing)}): " + ", ".join(missing[:12]))
+        if dead:
+            parts.append(f"DEAD LINK ({len(dead)}): " + ", ".join(dead[:12]))
+        if not parts:
+            return f"picture audit: all checked boss images are alive ({ok_n} ok)"
+        return ("🖼️ " + " · ".join(parts) + " - re-upload via Admin > Content > Bosses")
 
     # ---------- 👁️ WATCH ----------
     if fid == "w_activity":

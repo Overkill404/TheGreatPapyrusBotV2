@@ -3327,18 +3327,17 @@ def fill_boss_info_embed(embed, guild, boss, compact=False, skip_stats=False):
             pass
 
     # --- Core stats (always) ---
-    if skip_stats:
-        return embed
-    embed.add_field(
-        name="📊 Stats",
+    if not skip_stats:
+        embed.add_field(
+            name="📊 Stats",
         value=(
             f"❤️ **HP** `{int(boss['hp'] or 0):,}`\n"
             f"⚔️ **ATK** `{int(boss['attack'] or 0):,}`   🛡️ **DEF** `{int(boss['defense'] or 0):,}`\n"
             f"⭐ **XP** `{int(boss['xp'] or 0):,}`   💰 **Gold** `{int(boss['gold'] or 0):,}`\n"
             f"💛 **Mercy ACTs** `{max(1, int(boss['mercy_required'] or 5)) if 'mercy_required' in boss.keys() else 5}`"
         ),
-        inline=True,
-    )
+            inline=True,
+        )
     embed.add_field(
         name="🏷️ Class",
         value=_boss_class_field_value(kind, spawn_text, guild_id, boss),
