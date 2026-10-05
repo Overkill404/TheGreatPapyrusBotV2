@@ -50,8 +50,27 @@ def embed_panel(emb, classic_view=None):
                 c = ui.Container(accent_color=accent)
                 if emb.title:
                     c.add_item(ui.TextDisplay(f"## {emb.title}"))
+                # carry the embed's picture over (CV2 used to drop it silently)
+                thumb = emb.thumbnail.url if emb.thumbnail else None
+                big_img = emb.image.url if emb.image else None
                 if emb.description:
-                    c.add_item(ui.TextDisplay(emb.description))
+                    if thumb:
+                        try:
+                            c.add_item(ui.Section(ui.TextDisplay(emb.description), accessory=ui.Thumbnail(thumb)))
+                        except Exception:
+                            c.add_item(ui.TextDisplay(emb.description))
+                    else:
+                        c.add_item(ui.TextDisplay(emb.description))
+                elif thumb:
+                    try:
+                        c.add_item(ui.Section(ui.TextDisplay("\u200b"), accessory=ui.Thumbnail(thumb)))
+                    except Exception:
+                        pass
+                if big_img:
+                    try:
+                        c.add_item(ui.MediaGallery(discord.MediaGalleryItem(big_img)))
+                    except Exception:
+                        pass
                 for f in emb.fields:
                     if f.inline:
                         c.add_item(ui.TextDisplay(f"**{f.name}** — {f.value}"))
