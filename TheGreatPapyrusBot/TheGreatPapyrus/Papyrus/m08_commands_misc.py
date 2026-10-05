@@ -4869,6 +4869,12 @@ class AdminEquipmentHubSelect(discord.ui.Select):
 
 
 
+ADMIN_PAGE_COLORS = [
+    0x7B2CBF, 0x555555, 0x2C8A5F, 0xC79A2A, 0x2C5F8A,
+    0x9E3B3B, 0xB5924A, 0xC76B98, 0xB02020,
+]
+
+
 def build_admin_panel_embed(guild_id, page: int = 0):
     """Hazel admin panel embed — all pages (Home → Safety)."""
     pages = [
@@ -4967,17 +4973,50 @@ def build_admin_panel_embed(guild_id, page: int = 0):
             f"{ui_rule()}\n"
             f"{_blurbs_txt}"
         ),
-        color=style_color(guild_id) if page % 2 == 0 else style_color_dark(guild_id),
+        color=ADMIN_PAGE_COLORS[page],
     )
     try:
-        n_boss = len(db.execute("SELECT id FROM bosses WHERE guild_id = ?", (guild_id,)).fetchall())
-        n_lv = len(db.execute("SELECT id FROM levels WHERE guild_id = ?", (guild_id,)).fetchall())
-        n_pl = len(db.execute("SELECT user_id FROM players WHERE guild_id = ?", (guild_id,)).fetchall())
-        embed.add_field(
-            name="📊 Server snapshot",
-            value=f"Bosses **{n_boss}** · Levels **{n_lv}** · Players **{n_pl}**",
-            inline=False,
-        )
+        if page == 0:
+            n_boss = len(db.execute("SELECT id FROM bosses WHERE guild_id = ?", (guild_id,)).fetchall())
+            n_lv = len(db.execute("SELECT id FROM levels WHERE guild_id = ?", (guild_id,)).fetchall())
+            n_pl = len(db.execute("SELECT user_id FROM players WHERE guild_id = ?", (guild_id,)).fetchall())
+            box = ui_frame([f"BOSS    {n_boss:>9,}", f"LEVELS  {n_lv:>9,}", f"PLAYERS {n_pl:>9,}"], width=24)
+            embed.add_field(name="📊 Server snapshot", value=f"```\n{box}\n```", inline=False)
+        elif page == 1:
+            n_kills = len(db.execute("SELECT * FROM player_boss_kills WHERE guild_id = ?", (guild_id,)).fetchall())
+            n_roles = len(db.execute("SELECT * FROM kill_role_defs WHERE guild_id = ?", (guild_id,)).fetchall())
+            box = ui_frame([f"KILL ROWS {n_kills:>7,}", f"KILL ROLES {n_roles:>6,}"], width=24)
+            embed.add_field(name="☠️ Kill ledger", value=f"```\n{box}\n```", inline=False)
+        elif page == 2:
+            top = db.execute("SELECT user_id, level FROM players WHERE guild_id = ? ORDER BY level DESC LIMIT 3", (guild_id,)).fetchall()
+            box = "\n".join(f"{i + 1}. Lv{r['level']:,}" for i, r in enumerate(top)) or "(no players)"
+            embed.add_field(name="👑 Top of the server", value=f"```\n{box}\n```", inline=False)
+        elif page == 3:
+            n_eq = len(db.execute("SELECT id FROM equipment WHERE guild_id = ?", (guild_id,)).fetchall())
+            n_boss = len(db.execute("SELECT id FROM bosses WHERE guild_id = ?", (guild_id,)).fetchall())
+            box = ui_frame([f"GEAR     {n_eq:>8,}", f"BOSSES   {n_boss:>8,}"], width=24)
+            embed.add_field(name="🎒 Content stock", value=f"```\n{box}\n```", inline=False)
+        elif page == 4:
+            n_lv = len(db.execute("SELECT id FROM levels WHERE guild_id = ?", (guild_id,)).fetchall())
+            n_shop = len(db.execute("SELECT id FROM shop WHERE guild_id = ?", (guild_id,)).fetchall())
+            box = ui_frame([f"LEVELS   {n_lv:>8,}", f"SHOP ROWS {n_shop:>7,}"], width=24)
+            embed.add_field(name="🗺️ World map", value=f"```\n{box}\n```", inline=False)
+        elif page == 5:
+            n_seasons = len(db.execute("SELECT id FROM seasons WHERE guild_id = ?", (guild_id,)).fetchall())
+            embed.add_field(name="🗓️ Season status", value=f"**{n_seasons}** season(s) configured in this world.", inline=False)
+        elif page == 6:
+            cur = _econ_cur(guild_id)
+            tot = db.execute("SELECT SUM(gold) FROM players WHERE guild_id = ?", (guild_id,)).fetchone()[0] or 0
+            box = ui_frame([f"TREASURY {tot:>13,}", f"CURRENCY  {ui_plain(str(cur[1]))[:12]:>12}"], width=26)
+            embed.add_field(name="💰 Treasury", value=f"```\n{box}\n```", inline=False)
+        elif page == 7:
+            n_friends = len(db.execute("SELECT user_id FROM papyrus_friend WHERE guild_id = ?", (guild_id,)).fetchall())
+            embed.add_field(name="💜 Friendship census", value=f"**{n_friends}** human(s) on the friendship path.", inline=False)
+        elif page == 8:
+            n_bans = len(db.execute("SELECT * FROM bot_bans WHERE guild_id = ?", (guild_id,)).fetchall())
+            n_jail = len(db.execute("SELECT * FROM string_active WHERE guild_id = ?", (guild_id,)).fetchall())
+            box = ui_frame([f"BOT BANS  {n_bans:>8,}", f"JAILED    {n_jail:>8,}"], width=24)
+            embed.add_field(name="🚨 Custody", value=f"```\n{box}\n```", inline=False)
     except Exception:
         pass
     embed.set_footer(

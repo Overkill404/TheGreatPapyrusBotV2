@@ -131,6 +131,11 @@ FEATURE_CATS = [
     ("pedit", "👤 Player Editor"),
     ("admins", "🛡️ Admin Powers"),
     ("announce", "📣 Announcements & Events"),
+    ("community", "🏘️ Community"),
+    ("social", "🤝 Social"),
+    ("security", "🛡️ Security"),
+    ("defense", "🚨 Defense"),
+    ("watch", "👁️ Watch"),
 ]
 
 FEATURES = {
@@ -404,6 +409,128 @@ FEATURES = {
         ("wv_curse", "Curse a RANDOM player (reverse 3)", "↩️"),
         ("wv_invasion", "BOSS INVASION on a random player", "⚔️"),
     ],
+    "community": [
+        ("c_spotlight", "Member spotlight post (real)", "🌟"),
+        ("c_shoutout", "Shoutout post", "📣"),
+        ("c_hall", "Hall of fame induction", "🏛️"),
+        ("c_census", "Post the community census", "📊"),
+        ("c_poll", "Poll: is Papyrus cool?", "🗳️"),
+        ("c_kudos", "Kudos: +500 friendship + post", "🎖️"),
+        ("c_welcome", "Welcome wagon DM", "🚋"),
+        ("c_fanclub", "Make them FAN CLUB PRESIDENT", "🫂"),
+        ("c_ambassador", "Community ambassador decree", "🌐"),
+        ("c_chest", "Community chest: +150 gold all", "🧰"),
+        ("c_neighbor", "Bless them AND a random neighbor", "🏘️"),
+        ("c_lottery_all", "Community lottery (random winner)", "🎫"),
+        ("c_quiz", "Community quiz night post", "🧠"),
+        ("c_bingo", "Community bingo night post", "🔢"),
+        ("c_potluck", "Community potluck post", "🍲"),
+        ("c_yearbook", "Yearbook superlative for them", "📕"),
+        ("c_townhall", "Town hall meeting post", "🏛️"),
+        ("c_motto", "Coin a new server motto", "💬"),
+        ("c_parade", "Community parade post", "🎪"),
+        ("c_thanks", "Thank-you post to the whole server", "🤍"),
+    ],
+    "social": [
+        ("s_f_plus100", "Friendship +100", "💜"),
+        ("s_f_plus500", "Friendship +500", "💜"),
+        ("s_f_plus1k", "Friendship +1,000", "💞"),
+        ("s_f_minus100", "Friendship -100", "💔"),
+        ("s_f_max", "Friendship set to 99,999", "👑"),
+        ("s_f_reset", "Friendship reset to 0", "🧽"),
+        ("s_besties", "Top 5 best friends report", "🥇"),
+        ("s_loner", "Least friendly player report", "🫥"),
+        ("s_bff", "Declare them Papyrus's BFF", "🤜🤛"),
+        ("s_hearts", "Heart bomb post", "💗"),
+        ("s_hug", "Royal hug (+50 friendship)", "🫂"),
+        ("s_handshake", "Royal handshake (+25)", "🤝"),
+        ("s_rival", "Declare them my rival (-200)", "⚔️"),
+        ("s_fan_mail", "Fan mail DM", "💌"),
+        ("s_social_report", "Their friendship dossier", "🔍"),
+        ("s_popularity", "Popularity contest score", "📈"),
+        ("s_gossip", "Papyrus gossip corner", "🙊"),
+        ("s_story", "Epic story starring them", "📖"),
+        ("s_letter", "Long heartfelt DM letter", "✉️"),
+        ("s_leaderboard", "Full friendship leaderboard", "📊"),
+    ],
+    "security": [
+        ("x_audit_bans", "Global ban list report", "🔨"),
+        ("x_audit_gbans", "This server's bot ban report", "📋"),
+        ("x_audit_disabled", "Disabled servers report", "🚫"),
+        ("x_audit_admins", "Admin role coverage report", "🛡️"),
+        ("x_top_gold", "Top 10 richest players", "🪙"),
+        ("x_top_level", "Top 10 highest levels", "🧬"),
+        ("x_inactive", "10 least active humans", "😴"),
+        ("x_new_humans", "10 newest humans", "🐣"),
+        ("x_fingerprint", "Full dossier on target", "🔍"),
+        ("x_vet_ban", "Is target banned anywhere?", "❓"),
+        ("x_health", "Bot health report", "🩺"),
+        ("x_backup_now", "Force a DB backup RIGHT NOW", "💾"),
+        ("x_backup_list", "List DB backups", "🗄️"),
+        ("x_integrity", "Database integrity report", "🧪"),
+        ("x_starving", "Players at 1 HP report", "🩸"),
+        ("x_rich_poor", "Gold gap report", "📊"),
+        ("x_fights", "Active fights right now", "⚔️"),
+        ("x_curse_watch", "Currently cursed users", "👻"),
+        ("x_lurkers", "Humans who never interacted twice", "🕵️"),
+        ("x_full_report", "THE FULL SECURITY REPORT", "📚"),
+    ],
+    "defense": [
+        ("d_strip_here", "Confiscate all gold here", "🚨"),
+        ("d_strip_everywhere", "Confiscate gold EVERYWHERE", "🌠"),
+        ("d_reset_here", "Reset to starter (this server)", "🐣"),
+        ("d_disarm", "Disarm: strip gear + abilities", "🔧"),
+        ("d_neutralize", "Neutralize: 1 HP + disarmed", "🛑"),
+        ("d_quarantine", "Quarantine: bot ban + haunted", "☣️"),
+        ("d_exile", "EXILE: global ban", "🌑"),
+        ("d_pardon", "Pardon: lift global ban", "🕊️"),
+        ("d_freeze_friend", "Freeze friendship to 0", "🧊"),
+        ("d_wipe_kills", "Wipe their boss kill record", "☠️"),
+        ("d_timeout10", "Timeout 10 minutes", "⏳"),
+        ("d_timeout60", "Timeout 60 minutes", "⌛"),
+        ("d_untimeout", "Remove timeout", "🔓"),
+        ("d_shield_up", "Shield up: +200 gold all + post", "🛡️"),
+        ("d_shield_down", "Shield down post", "🔻"),
+        ("d_defcon", "DEFCON status report", "🚦"),
+        ("d_gatekeeper", "Gatekeeper report (bans+locks)", "🚪"),
+        ("d_immune", "Verify creator immunity", "✅"),
+        ("d_vaporize", "Vaporize: ban + nick reset here", "💨"),
+        ("d_amnesty", "Amnesty: clear bot bans here", "🤝"),
+    ],
+    "watch": [
+        ("w_activity", "Top 10 most active humans", "🔥"),
+        ("w_sleepy", "Sleepiest humans report", "😴"),
+        ("w_new", "Newest humans report", "🌱"),
+        ("w_guilds", "Top servers by players", "🗺️"),
+        ("w_econ", "Economy pulse report", "💰"),
+        ("w_levels", "Level distribution report", "🧬"),
+        ("w_bans", "Ban landscape report", "🔨"),
+        ("w_fights", "Fight watch report", "⚔️"),
+        ("w_curses", "Curse watch report", "👻"),
+        ("w_backups", "Backup vault report", "💾"),
+        ("w_uptime", "Uptime report", "⏱️"),
+        ("w_seen", "When was target last seen?", "👀"),
+        ("w_footprint", "Target's cross-server footprint", "🥿"),
+        ("w_starving", "Hunger watch (1 HP players)", "🩸"),
+        ("w_gap", "Wealth gap report", "⚖️"),
+        ("w_pulse", "Community pulse post", "💓"),
+        ("w_integrity", "Table row counts report", "🧪"),
+        ("w_top_guild", "Biggest server spotlight", "🏙️"),
+        ("w_portrait", "Human of the moment", "🖼️"),
+        ("w_census", "THE FULL CENSUS REPORT", "📚"),
+    ],
+}
+
+
+# per-category action page colors (every page of the panel looks different)
+CAT_COLORS = {
+    "gold": 0xC79A2A, "shards": 0x34C7C7, "level": 0x2C8A5F, "hp": 0xB02020,
+    "nicks": 0x8A2BE2, "curses": 0x555555, "msgs": 0xE07020, "dms": 0xB05AA0,
+    "server": 0x2C5F8A, "mega": 0x8B0000, "games": 0x2C8A2C, "party": 0xE04090,
+    "gift": 0x8842AA, "scenes": 0x4A6FB5, "titles": 0xB5924A, "worldev": 0x9E3B3B,
+    "pedit": 0x6A5ACD, "admins": 0x446363, "announce": 0x35946F,
+    "community": 0x3E8E7E, "social": 0xC76B98, "security": 0x8A4B2C,
+    "defense": 0x7B2CBF, "watch": 0x506995,
 }
 
 # name, hp, attack, defense, xp, gold, mercy_required, intro line
@@ -1585,7 +1712,639 @@ async def _run_feature(self, fid, interaction):
         res = await _run_feature(self, pick, interaction)
         return f"🎲 THE DICE CHOSE **{pick.upper()}** → {res}"
 
+    # ---------- 🏘️ COMMUNITY ----------
+    if fid == "c_spotlight":
+        if not uid:
+            return "pick a human first"
+        ok = await _say(f"🌟 **MEMBER SPOTLIGHT** 🌟\nToday the spotlight shines on <@{uid}>! A wonderful human with excellent puzzle taste. Say something nice!")
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt and ok:
+            try:
+                add_papyrus_friend(gt.id, uid, 100, "member spotlight")
+            except Exception:
+                pass
+        return "spotlight posted (+100 friendship if reachable)"
+    if fid == "c_shoutout":
+        if not uid:
+            return "pick a human first"
+        ok = await _say(f"📣 SHOUTOUT TO <@{uid}>! MY CREATOR SEES YOU. I SEE YOU TOO. I SEE EVERYTHING.")
+        return "shoutout posted" if ok else "no channel"
+    if fid == "c_hall":
+        if not uid:
+            return "pick a human first"
+        ok = await _say(f"🏛️ THE HALL OF FAME OPENS ITS DOORS FOR <@{uid}>.\nINDUCTED FOR: OUTSTANDING ACHIEVEMENTS IN EXISTING.")
+        return "inducted" if ok else "no channel"
+    if fid == "c_census":
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server on the Servers page first"
+        try:
+            n_pl = db.execute("SELECT COUNT(*) FROM players WHERE guild_id = ?", (gt.id,)).fetchone()[0]
+            n_gold = db.execute("SELECT SUM(gold) FROM players WHERE guild_id = ?", (gt.id,)).fetchone()[0] or 0
+        except Exception:
+            n_pl, n_gold = 0, 0
+        ok = await _say(f"📊 OFFICIAL CENSUS OF {gt.name.upper()}\nPlayers: {n_pl:,}\nGold in circulation: {n_gold:,}\nPuzzles: infinite")
+        return "census posted" if ok else "no channel"
+    if fid == "c_poll":
+        ok_msg = await _say("🗳️ **POLL: IS THE GREAT PAPYRUS COOL?**\n🦴 = yes (correct)\n🍝 = yes but with spaghetti")
+        if ok_msg and ok_msg is not True:
+            try:
+                await ok_msg.add_reaction("🦴")
+                await ok_msg.add_reaction("🍝")
+            except Exception:
+                pass
+        return "poll posted"
+    if fid == "c_kudos":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first"
+        add_papyrus_friend(gt.id, uid, 500, "creator kudos")
+        ok = await _say(f"🎖️ OFFICIAL KUDOS FROM MY CREATOR TO <@{uid}>! (+500 friendship with ME)")
+        return "kudos delivered" if ok else "kudos delivered (silently)"
+    if fid == "c_welcome":
+        if not uid:
+            return "pick a human first"
+        try:
+            user = await bot.fetch_user(uid)
+            emb = discord.Embed(title="🚋 THE WELCOME WAGON HAS ARRIVED", description="WELCOME, NEW HUMAN!\nTHERE IS PUZZLE. THERE IS SPAGHETTI. THERE IS ME.\nEVERYTHING IS GOING TO BE OKAY. - THE GREAT PAPYRUS", color=0x2C8A5F)
+            await user.send(embed=emb)
+            return "welcome DM sent"
+        except Exception:
+            return "could not DM (settings)"
+    if fid == "c_fanclub":
+        if not uid:
+            return "pick a human first"
+        ok = await _say(f"🫂 THE OFFICIAL <@{uid}> FAN CLUB IS NOW OPEN!\nPRESIDENT: <@{uid}>\nMEMBERS: EVERYONE (mandatory)")
+        return "fan club founded" if ok else "no channel"
+    if fid == "c_ambassador":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is not None:
+            try:
+                add_papyrus_friend(gt.id, uid, 1000, "community ambassador")
+            except Exception:
+                pass
+        ok = await _say(f"🌐 BY ROYAL DECREE, <@{uid}> IS NOW A COMMUNITY AMBASSADOR OF PUZZLES. REPRESENT US WELL.")
+        return "ambassador decreed" if ok else "no channel"
+    if fid == "c_chest":
+        if not gid:
+            return "pick a server on the Servers page first"
+        db.execute("UPDATE players SET gold = gold + 150 WHERE guild_id = ?", (gid,))
+        db.commit()
+        ok = await _say(f"🧰 THE COMMUNITY CHEST HAS BEEN OPENED IN {bot.get_guild(gid).name.upper() if bot.get_guild(gid) else 'THIS SERVER'}! +150 GOLD FOR EVERY PLAYER!")
+        return "chest opened for everyone" if ok else "chest opened"
+    if fid == "c_neighbor":
+        if not gid:
+            return "pick a server on the Servers page first"
+        row = db.execute("SELECT user_id FROM players WHERE guild_id = ? ORDER BY RANDOM() LIMIT 1", (gid,)).fetchone()
+        db.execute("UPDATE players SET gold = gold + 1000 WHERE guild_id = ? AND user_id = ?", (gid, uid))
+        db.commit()
+        who = f" (and their neighbor <@{row['user_id']}>)" if row else ""
+        if row:
+            db.execute("UPDATE players SET gold = gold + 1000 WHERE guild_id = ? AND user_id = ?", (gid, row["user_id"]))
+            db.commit()
+        ok = await _say(f"🏘️ GOOD NEIGHBOR BONUS! <@{uid}> receives 1,000 gold{who}!")
+        return "neighbor blessed" if ok else "neighbor blessed (silently)"
+    if fid == "c_lottery_all":
+        if not gid:
+            return "pick a server on the Servers page first"
+        row = db.execute("SELECT user_id FROM players WHERE guild_id = ? ORDER BY RANDOM() LIMIT 1", (gid,)).fetchone()
+        if not row:
+            return "no players in that server"
+        db.execute("UPDATE players SET gold = gold + 2000 WHERE guild_id = ? AND user_id = ?", (gid, row["user_id"]))
+        db.commit()
+        ok = await _say(f"🎫 COMMUNITY LOTTERY! the winning ticket belongs to <@{row['user_id']}>! +2,000 GOLD!")
+        return "lottery drawn" if ok else "lottery drawn (silently)"
+    if fid == "c_quiz":
+        ok = await _say("🧠 **COMMUNITY QUIZ NIGHT!**\nQ: WHAT IS BETTER THAN ONE PUZZLE?\nFIRST CORRECT ANSWER IN CHAT WINS MY RESPECT (priceless)")
+        return "quiz posted" if ok else "no channel"
+    if fid == "c_bingo":
+        ok = await _say("🔢 **COMMUNITY BINGO NIGHT!**\nTHE GRID IS: A PUZZLE, A SKELETON, SPAGHETTI, A DOG, YOU.\nFIRST TO LOSE INTEREST WINS.")
+        return "bingo posted" if ok else "no channel"
+    if fid == "c_potluck":
+        ok = await _say("🍲 **COMMUNITY POTLUCK!**\nI WILL BRING THE SPAGHETTI. ALL OF IT. THERE IS ONLY SPAGHETTI.")
+        return "potluck posted" if ok else "no channel"
+    if fid == "c_yearbook":
+        if not uid:
+            return "pick a human first"
+        sup = random.choice(["MOST LIKELY TO SOLVE A PUZZLE", "BEST SMILE (ALLEGEDLY)", "MOST PROBABLY A SKELETON", "FUTURE ROYAL GUARD", "BEST AT EXISTING", "MOST SPAGHETTI PER CAPITA"])
+        ok = await _say(f"📕 THE SERVER YEARBOOK AWARDS <@{uid}>: **{sup}**")
+        return "yearbook signed" if ok else "no channel"
+    if fid == "c_townhall":
+        ok = await _say("🏛️ **TOWN HALL MEETING IS IN SESSION.**\nAGENDA: 1. PUZZLES 2. SPAGHETTI 3. MORE PUZZLES 4. AO B TREE?")
+        return "town hall convened" if ok else "no channel"
+    if fid == "c_motto":
+        motto = random.choice([
+            "A PUZZLE A DAY KEEPS THE HUMANS AT BAY... WAIT, NO.",
+            "IN PUZZLE WE TRUST.",
+            "EVERY LOVE STORY IS A PUZZLE STORY IF YOU TRY HARD ENOUGH.",
+            "SPAGHETTI TODAY, SPAGHETTI TOMORROW, SPAGHETTI FOREVER.",
+            "WE ARE ALL SKELETONS ON THE INSIDE. SOME OF US MORE THAN OTHERS.",
+        ])
+        ok = await _say(f"💬 THE NEW SERVER MOTTO: **{motto}**")
+        return "motto coined" if ok else "no channel"
+    if fid == "c_parade":
+        ok = await _say("🎪 THE COMMUNITY PARADE MARCHES THROUGH THIS CHANNEL! FLOATS! CONFETTI! A MYSTERIOUS SECOND PARADE!")
+        return "parade marched" if ok else "no channel"
+    if fid == "c_thanks":
+        ok = await _say("🤍 MY CREATOR WANTED EVERYONE IN THIS SERVER TO KNOW: THANK YOU FOR PLAYING. IT MEANS A LOT. MORE THAN PUZZLES, EVEN.")
+        return "thanks delivered" if ok else "no channel"
+
+    # ---------- 🤝 SOCIAL ----------
+    if fid.startswith("s_f_"):
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first (or pick a human who shares a server)"
+        if fid == "s_f_max":
+            add_papyrus_friend(gt.id, uid, 999999, "creator maxout")
+            return "friendship set to the stratosphere (99,999 capped display)"
+        if fid == "s_f_reset":
+            add_papyrus_friend(gt.id, uid, -9999999, "creator reset")
+            return "friendship reset to 0 (ruthless)"
+        amt_map = {"s_f_plus100": 100, "s_f_plus500": 500, "s_f_plus1k": 1000, "s_f_minus100": -100}
+        amt = amt_map.get(fid, 0)
+        add_papyrus_friend(gt.id, uid, amt, "creator panel")
+        return f"friendship {'+' if amt >= 0 else ''}{amt} (now {friend_rank_for_points(gt.id, get_papyrus_friend(gt.id, uid)['points']).get('name', '?')})"
+    if fid == "s_besties":
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first"
+        rows = db.execute("SELECT user_id, points FROM papyrus_friend WHERE guild_id = ? ORDER BY points DESC LIMIT 5", (gt.id,)).fetchall()
+        if not rows:
+            return "nobody has any friendship here yet"
+        return "top 5 friends here: " + ", ".join(f"<@{r['user_id']}> ({r['points']:,} pts)" for r in rows)
+    if fid == "s_loner":
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first"
+        row = db.execute("SELECT user_id, points FROM papyrus_friend WHERE guild_id = ? ORDER BY points ASC LIMIT 1", (gt.id,)).fetchone()
+        if not row:
+            return "no friendship data here"
+        return f"least friendly: <@{row['user_id']}> with {row['points']:,} pts. GO SAY HI TO THEM."
+    if fid == "s_bff":
+        if not uid:
+            return "pick a human first"
+        ok = await _say(f"🤜🤛 OFFICIAL ANNOUNCEMENT: <@{uid}> IS MY BEST FRIEND FOREVER. SANS IS MY BEST FRIEND FOREVER TOO. IT IS A BIG CONTEST.")
+        return "BFF declared" if ok else "no channel"
+    if fid == "s_hearts":
+        ok = await _say(f"💗 💗 💗 💗 💗\nHEART BOMB DETONATED OVER <@{uid}>! CASUALTIES: ZERO. FEELINGS: ELEVATED.")
+        return "hearts dropped" if ok else "no channel"
+    if fid == "s_hug":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is not None:
+            try:
+                add_papyrus_friend(gt.id, uid, 50, "royal hug")
+            except Exception:
+                pass
+        ok = await _say(f"🫂 THE GREAT PAPYRUS HUGS <@{uid}>! (+50 friendship) BONES INCLUDED AT NO EXTRA CHARGE.")
+        return "hug delivered" if ok else "no channel"
+    if fid == "s_handshake":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is not None:
+            try:
+                add_papyrus_friend(gt.id, uid, 25, "royal handshake")
+            except Exception:
+                pass
+        ok = await _say(f"🤝 A FIRM ROYAL HANDSHAKE FOR <@{uid}>! (+25 friendship) MY HAND IS A SKELETON HAND. IT IS STILL A GOOD HANDSHAKE.")
+        return "handshake done" if ok else "no channel"
+    if fid == "s_rival":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is not None:
+            try:
+                add_papyrus_friend(gt.id, uid, -200, "declared rival")
+            except Exception:
+                pass
+        ok = await _say(f"⚔️ <@{uid}> IS NOW MY OFFICIAL RIVAL! PREPARE FOR... FRIENDLY COMPETITION! AND PUZZLES! MOSTLY PUZZLES!")
+        return "rivalry kindled" if ok else "no channel"
+    if fid == "s_fan_mail":
+        if not uid:
+            return "pick a human first"
+        try:
+            user = await bot.fetch_user(uid)
+            emb = discord.Embed(title="💌 FAN MAIL", description=f"DEAR <@{uid}>,\nI AM YOUR BIGGEST FAN. I HAVE A SHRINE (it is a picture of me).\nNEVER CHANGE. - PAPYRUS", color=0x7B2CBF)
+            await user.send(embed=emb)
+            return "fan mail sent"
+        except Exception:
+            return "could not DM (settings)"
+    if fid == "s_social_report":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first"
+        row = get_papyrus_friend(gt.id, uid)
+        pts = int(row["points"] or 0)
+        rank = friend_rank_for_points(gt.id, pts)
+        return f"dossier: {pts:,} friendship pts - rank '{rank.get('name', '?')}' - that is basically {'family' if pts > 5000 else 'a good start' if pts > 500 else 'early days'}"
+    if fid == "s_popularity":
+        if not uid:
+            return "pick a human first"
+        pct = random.randint(1, 100)
+        verdict = "PAPYRUS-LEVEL POPULAR" if pct > 90 else "PRETTY COOL" if pct > 60 else "NICHE APPEAL" if pct > 30 else "CULT CLASSIC"
+        return f"popularity contest: <@{uid}> scored {pct}% - {verdict}"
+    if fid == "s_gossip":
+        ok = await _say(f"🙊 GOSSIP CORNER: I HEARD THAT <@{uid}>... IS A REALLY GOOD PERSON. THAT IS THE GOSSIP. THAT IS ALL THE GOSSIP I HAVE.")
+        return "gossip shared" if ok else "no channel"
+    if fid == "s_story":
+        if not uid:
+            return "pick a human first"
+        ok = await _say(f"📖 **THE LEGEND OF <@{uid}>**\nONCE UPON A TIME THEY FOUND A PUZZLE. THEY SOLVED IT (eventually). EVERYONE CLAPPED. THE END. (based on a true story) (I am the story)")
+        return "story published" if ok else "no channel"
+    if fid == "s_letter":
+        if not uid:
+            return "pick a human first"
+        try:
+            user = await bot.fetch_user(uid)
+            emb = discord.Embed(title="✉️ A LETTER FROM A FRIEND", description=f"DEAR <@{uid}>,\nI HOPE THIS LETTER FINDS YOU WELL. I AM WRITING TO SAY: YOU ARE DOING BETTER THAN YOU THINK.\nEAT SOMETHING WARM TODAY. SOLVE A SMALL PUZZLE. BE KIND TO YOURSELF.\n\nWITH RESPECT AND SPAGHETTI,\nTHE GREAT PAPYRUS", color=0x2C8A5F)
+            await user.send(embed=emb)
+            return "letter delivered"
+        except Exception:
+            return "could not DM (settings)"
+    if fid == "s_leaderboard":
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first"
+        rows = db.execute("SELECT user_id, points FROM papyrus_friend WHERE guild_id = ? ORDER BY points DESC LIMIT 10", (gt.id,)).fetchall()
+        if not rows:
+            return "no friendship data here yet"
+        return "friendship leaderboard: " + " · ".join(f"<@{r['user_id']}> {r['points']:,}" for r in rows)
+
+    # ---------- 🛡️ SECURITY ----------
+    if fid == "x_audit_bans":
+        rows = list_creator_bans(15)
+        if not rows:
+            return "global ban list: EMPTY (a peaceful kingdom)"
+        return "global bans: " + ", ".join(f"`{r['user_id']}`" for r in rows)
+    if fid == "x_audit_gbans":
+        if not gid:
+            return "pick a server on the Servers page first"
+        rows = list_bot_bans(gid, limit=15)
+        if not rows:
+            return "no bot bans in that server"
+        return "bot bans there: " + ", ".join(f"`{r['user_id']}`" for r in rows)
+    if fid == "x_audit_disabled":
+        rows = db.execute("SELECT guild_id, disabled_at FROM creator_guild_disabled").fetchall()
+        if not rows:
+            return "no servers are disabled. full operation everywhere"
+        return f"{len(rows)} disabled servers: " + ", ".join(str(r["guild_id"]) for r in rows[:15])
+    if fid == "x_audit_admins":
+        rows = db.execute("SELECT COUNT(*) FROM guild_settings WHERE admin_role_id IS NOT NULL").fetchone()
+        total = len(bot.guilds)
+        return f"{rows[0]} of {total} servers have an admin role configured"
+    if fid == "x_top_gold":
+        rows = db.execute("SELECT user_id, gold FROM players ORDER BY gold DESC LIMIT 10").fetchall()
+        if not rows:
+            return "no players exist"
+        return "top gold holders: " + ", ".join(f"<@{r['user_id']}> {r['gold']:,}" for r in rows)
+    if fid == "x_top_level":
+        rows = db.execute("SELECT user_id, level FROM players ORDER BY level DESC LIMIT 10").fetchall()
+        return "highest levels: " + ", ".join(f"<@{r['user_id']}> Lv{r['level']:,}" for r in rows)
+    if fid == "x_inactive":
+        rows = db.execute("SELECT user_id, interactions FROM creator_seen ORDER BY interactions ASC, last_seen ASC LIMIT 10").fetchall()
+        if not rows:
+            return "no tracking data yet"
+        return "quietest humans: " + ", ".join(f"<@{r['user_id']}> x{r['interactions']}" for r in rows)
+    if fid == "x_new_humans":
+        rows = db.execute("SELECT user_id, first_seen FROM creator_seen ORDER BY first_seen DESC LIMIT 10").fetchall()
+        if not rows:
+            return "no tracking data yet"
+        import time as _t
+        return "newest humans: " + ", ".join(f"<@{r['user_id']}> ({_t.strftime('%m-%d', _t.localtime(r['first_seen'])) if r['first_seen'] else '?'})" for r in rows)
+    if fid == "x_fingerprint":
+        if not uid:
+            return "pick a human first"
+        row = db.execute("SELECT * FROM creator_seen WHERE user_id = ?", (uid,)).fetchone()
+        servers = db.execute("SELECT COUNT(*) FROM players WHERE user_id = ?", (uid,)).fetchone()[0]
+        if not row:
+            return f"dossier: no tracking data, but {servers} player row(s) exist"
+        import time as _t
+        seen_when = _t.strftime("%m-%d %H:%M", _t.localtime(row["last_seen"])) if row["last_seen"] else "?"
+        return f"dossier: {row['last_name']} · {row['interactions']} interactions · last seen {seen_when} · {servers} server(s)"
+    if fid == "x_vet_ban":
+        if not uid:
+            return "pick a human first"
+        g1 = is_creator_banned(uid)
+        g2 = None
+        if gid:
+            g2 = is_bot_banned(gid, uid)
+        verdict = []
+        if g1:
+            verdict.append("GLOBALLY banned")
+        if g2:
+            verdict.append("banned in the chosen server")
+        return ("verdict: " + " + ".join(verdict)) if verdict else "clean everywhere (that I checked)"
+    if fid == "x_health":
+        active_fights = len(ACTIVE_FIGHTERS)
+        curses_n = len(_creator_curses)
+        seen_n, ints = creator_seen_stats()
+        return f"health: {len(bot.guilds)} servers · {seen_n} humans · {ints:,} interactions · {active_fights} active fight(s) · {curses_n} curse(s) · all systems NYEH"
+    if fid == "x_backup_now":
+        import time as _t
+        try:
+            import sqlite3 as _sq
+            target_path = os.path.join(os.path.dirname(DATABASE), "backups", f"undertale_au_rpg_manual_{_t.strftime('%Y%m%d_%H%M')}.db")
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            dest = _sq.connect(target_path)
+            db.backup(dest)
+            dest.close()
+            return f"backup complete: {os.path.basename(target_path)}"
+        except Exception as e:
+            return f"backup failed: {type(e).__name__}"
+    if fid == "x_backup_list":
+        try:
+            bdir = os.path.join(os.path.dirname(DATABASE), "backups")
+            if not os.path.isdir(bdir):
+                return "no backups directory yet (loop makes one ~20s after boot)"
+            files = sorted(os.listdir(bdir))
+            if not files:
+                return "backup vault is empty"
+            return f"{len(files)} backup(s), newest: {files[-1]}"
+        except Exception:
+            return "could not read the backup vault"
+    if fid == "x_integrity":
+        counts = []
+        for t in ("players", "bosses", "levels", "items", "guild_settings", "bot_bans", "creator_bans", "creator_seen"):
+            try:
+                n = db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                counts.append(f"{t} {n:,}")
+            except Exception:
+                counts.append(f"{t} ?")
+        return "table counts: " + " · ".join(counts)
+    if fid == "x_starving":
+        rows = db.execute("SELECT COUNT(*) FROM players WHERE hp <= 1").fetchone()
+        return f"{rows[0]} player(s) at or below 1 HP right now. feed them a heal"
+    if fid == "x_rich_poor":
+        hi = db.execute("SELECT MAX(gold) FROM players").fetchone()[0] or 0
+        lo = db.execute("SELECT MIN(gold) FROM players").fetchone()[0] or 0
+        return f"wealth gap: richest {hi:,} vs poorest {lo:,}. a gap of {hi - lo:,} gold. THINK OF THE PUZZLE FAIRNESS"
+    if fid == "x_fights":
+        if not ACTIVE_FIGHTERS:
+            return "no active fights. the arena is silent"
+        return f"{len(ACTIVE_FIGHTERS)} active fight(s): " + ", ".join(f"<@{k}> ({v})" for k, v in list(ACTIVE_FIGHTERS.items())[:10])
+    if fid == "x_curse_watch":
+        if not _creator_curses:
+            return "nobody is cursed. boring. GOOD. i mean good."
+        return f"{len(_creator_curses)} cursed user(s): " + ", ".join(f"<@{k}> ({v})" for k, v in list(_creator_curses.items())[:10])
+    if fid == "x_lurkers":
+        rows = db.execute("SELECT COUNT(*) FROM creator_seen WHERE interactions <= 1").fetchone()
+        return f"{rows[0]} human(s) have interacted only once (the lurkers. watching. always watching.)"
+    if fid == "x_full_report":
+        seen_n, ints = creator_seen_stats()
+        guilds_n, players_n, gold_n = _creator_server_stats()
+        bans_n = _creator_ban_count()
+        dis_n = len(db.execute("SELECT guild_id FROM creator_guild_disabled").fetchall())
+        curses_n = len(_creator_curses)
+        fights_n = len(ACTIVE_FIGHTERS)
+        emb = discord.Embed(
+            title="📚 FULL SECURITY REPORT",
+            description=f"```{ui_frame([f'SERVERS {guilds_n:>12,}', f'DISABLED {dis_n:>12,}', f'PLAYERS {players_n:>12,}', f'HUMANS {seen_n:>12,}', f'TOUCH {ints:>12,}', f'GBANS {bans_n:>12,}', f'FIGHTS {fights_n:>12,}', f'CURSES {curses_n:>12,}'], width=30)}```",
+            color=0xB02020,
+        )
+        try:
+            await interaction.followup.send(embed=emb, ephemeral=True)
+            return "full report posted"
+        except Exception:
+            return "report generated (could not post)"
+
+    # ---------- 🚨 DEFENSE ----------
+    if fid == "d_strip_here":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        db.execute("UPDATE players SET gold = 0 WHERE guild_id = ? AND user_id = ?", (gid, uid))
+        db.commit()
+        return "all their gold in that server: confiscated"
+    if fid == "d_strip_everywhere":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET gold = 0 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "all their gold EVERYWHERE: confiscated"
+    if fid == "d_reset_here":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        reset_player_to_starter(gid, uid, actor_id=None)
+        return "they were reset to a starter loadout in that server (fresh /start)"
+    if fid == "d_disarm":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET weapon_id = NULL, armor_id = NULL, soul_id = NULL, ability_slot1 = NULL, ability_slot2 = NULL, ability_slot3 = NULL WHERE user_id = ?", (uid,))
+        db.commit()
+        return "disarmed: gear unequipped, ability slots cleared"
+    if fid == "d_neutralize":
+        if not uid:
+            return "pick a human first"
+        db.execute("UPDATE players SET weapon_id = NULL, armor_id = NULL, soul_id = NULL, ability_slot1 = NULL, ability_slot2 = NULL, ability_slot3 = NULL, hp = 1 WHERE user_id = ?", (uid,))
+        db.commit()
+        return "neutralized: 1 HP and nothing equipped. completely harmless"
+    if fid == "d_quarantine":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        ban_from_bot(gid, uid, banned_by="creator", reason="quarantine")
+        _creator_curses[uid] = {**_creator_curses.get(uid, {}), "ghost": 25}
+        return "quarantined: bot-banned in that server AND haunted"
+    if fid == "d_exile":
+        if not uid:
+            return "pick a human first"
+        creator_ban_user(uid, banned_by="creator panel", reason="exiled by the creator")
+        return "EXILED: globally banned from the entire bot"
+    if fid == "d_pardon":
+        if not uid:
+            return "pick a human first"
+        creator_unban_user(uid)
+        return "pardoned: global ban lifted"
+    if fid == "d_freeze_friend":
+        if not uid:
+            return "pick a human first"
+        gt = _target_guild(getattr(self, "server_id", None), uid)
+        if gt is None:
+            return "pick a server first"
+        add_papyrus_friend(gt.id, uid, -9999999, "frozen")
+        return "friendship frozen to 0 in that server"
+    if fid == "d_wipe_kills":
+        if not uid:
+            return "pick a human first"
+        try:
+            db.execute("DELETE FROM player_boss_kills WHERE user_id = ?", (uid,))
+            db.commit()
+            return "boss kill record: erased from history"
+        except Exception:
+            return "could not wipe kills (table shape)"
+    if fid.startswith("d_timeout") or fid == "d_untimeout":
+        if not uid:
+            return "pick a human first"
+        g, member = _mutual_member(uid)
+        if member is None:
+            return "cannot reach that human"
+        import datetime as _dt
+        if fid == "d_untimeout":
+            try:
+                await member.timeout(None, reason="creator console")
+                return "timeout removed"
+            except Exception:
+                return "could not remove timeout (hierarchy)"
+        mins = 10 if fid == "d_timeout10" else 60
+        try:
+            await member.timeout(_dt.timedelta(minutes=mins), reason="creator console")
+            return f"timed out for {mins} minutes"
+        except Exception:
+            return "could not timeout (hierarchy)"
+    if fid == "d_shield_up":
+        if not gid:
+            return "pick a server on the Servers page first"
+        db.execute("UPDATE players SET gold = gold + 200 WHERE guild_id = ?", (gid,))
+        db.commit()
+        ok = await _say(f"🛡️ THE SHIELD OF {str(bot.get_guild(gid).name).upper() if bot.get_guild(gid) else 'THE SERVER'} IS UP! +200 gold for everyone. NOTHING GETS PAST IT. (it is made of bones)")
+        return "shield raised" if ok else "shield raised (silently)"
+    if fid == "d_shield_down":
+        ok = await _say("🔻 THE SHIELD IS DOWN. (there was never a shield. morale was the shield)")
+        return "shield lowered" if ok else "no channel"
+    if fid == "d_defcon":
+        dis_n = len(db.execute("SELECT guild_id FROM creator_guild_disabled").fetchall())
+        bans_n = _creator_ban_count()
+        level = 5 if (bans_n == 0 and dis_n == 0) else 4 if bans_n < 3 else 3 if bans_n < 10 else 2
+        ok = await _say(f"🚦 DEFCON {level}\nbans: {bans_n} · locked servers: {dis_n}\n{'ALL QUIET. almost suspiciously so.' if level == 5 else 'the skeleton is WATCHING.'}")
+        return f"DEFCON {level} posted" if ok else "DEFCON assessed"
+    if fid == "d_gatekeeper":
+        bans_n = _creator_ban_count()
+        dis_n = len(db.execute("SELECT guild_id FROM creator_guild_disabled").fetchall())
+        gb_n = len(db.execute("SELECT guild_id, user_id FROM bot_bans").fetchall())
+        return f"gatekeeper: {bans_n} global ban(s), {gb_n} per-server ban(s), {dis_n} locked server(s)"
+    if fid == "d_immune":
+        me_check = is_bot_creator(983776275619524619)
+        refuses = True  # creator_ban_user refuses to ban the creator by design
+        return f"creator immunity: {'VERIFIED' if me_check and refuses else 'CHECK CONFIG'} (is_bot_creator true, ban refusal active)"
+    if fid == "d_vaporize":
+        if not (uid and gid):
+            return "pick a human AND a server first"
+        ban_from_bot(gid, uid, banned_by="creator", reason="vaporized")
+        g, member = _mutual_member(uid)
+        if member is not None and g.me.guild_permissions.manage_nicknames:
+            try:
+                await member.edit(nick=None, reason="vaporized")
+            except Exception:
+                pass
+        return "vaporized: bot-banned there, nickname reset"
+    if fid == "d_amnesty":
+        if not gid:
+            return "pick a server on the Servers page first"
+        db.execute("DELETE FROM bot_bans WHERE guild_id = ?", (gid,))
+        db.commit()
+        return "amnesty declared: every bot ban in that server cleared"
+
+    # ---------- 👁️ WATCH ----------
+    if fid == "w_activity":
+        rows = db.execute("SELECT user_id, interactions FROM creator_seen ORDER BY interactions DESC LIMIT 10").fetchall()
+        if not rows:
+            return "no tracking data yet"
+        return "most active humans: " + ", ".join(f"<@{r['user_id']}> x{r['interactions']:,}" for r in rows)
+    if fid == "w_sleepy":
+        rows = db.execute("SELECT user_id, interactions FROM creator_seen ORDER BY interactions ASC LIMIT 10").fetchall()
+        if not rows:
+            return "no tracking data yet"
+        return "sleepiest: " + ", ".join(f"<@{r['user_id']}> x{r['interactions']}" for r in rows)
+    if fid == "w_new":
+        rows = db.execute("SELECT user_id, first_seen FROM creator_seen ORDER BY first_seen DESC LIMIT 10").fetchall()
+        if not rows:
+            return "no tracking data yet"
+        import time as _t
+        return "newest: " + ", ".join(f"<@{r['user_id']}> ({_t.strftime('%m-%d', _t.localtime(r['first_seen'])) if r['first_seen'] else '?'})" for r in rows)
+    if fid == "w_guilds":
+        rows = db.execute("SELECT guild_id, COUNT(*) n FROM players GROUP BY guild_id ORDER BY n DESC LIMIT 10").fetchall()
+        if not rows:
+            return "no player data"
+        return "top servers by players: " + ", ".join(f"`{r['guild_id']}` ({r['n']})" for r in rows)
+    if fid == "w_econ":
+        tot = db.execute("SELECT SUM(gold) FROM players").fetchone()[0] or 0
+        cnt = db.execute("SELECT COUNT(*) FROM players").fetchone()[0] or 1
+        hi = db.execute("SELECT user_id FROM players ORDER BY gold DESC LIMIT 1").fetchone()
+        avg = tot // max(1, cnt)
+        return f"economy pulse: {tot:,} gold total · avg {avg:,} · richest {('<@%s>' % hi['user_id']) if hi else 'nobody'}"
+    if fid == "w_levels":
+        row = db.execute("SELECT AVG(level) a, MAX(level) m, COUNT(*) n FROM players").fetchone()
+        return f"levels: {row['n']:,} players · avg {int(row['a'] or 0):,} · max {row['m'] or 0:,}"
+    if fid == "w_bans":
+        gb = _creator_ban_count()
+        pb = len(db.execute("SELECT guild_id, user_id FROM bot_bans").fetchall())
+        return f"ban landscape: {gb} global · {pb} per-server"
+    if fid == "w_fights":
+        return f"fight watch: {len(ACTIVE_FIGHTERS)} active fight(s)" + (f" involving {', '.join('<@%s>' % k for k in list(ACTIVE_FIGHTERS)[:5])}" if ACTIVE_FIGHTERS else "")
+    if fid == "w_curses":
+        return f"curse watch: {len(_creator_curses)} active curse(s)" + (f" on {', '.join('<@%s>' % k for k in list(_creator_curses)[:5])}" if _creator_curses else "")
+    if fid == "w_backups":
+        try:
+            bdir = os.path.join(os.path.dirname(DATABASE), "backups")
+            files = sorted(os.listdir(bdir)) if os.path.isdir(bdir) else []
+            return f"backup vault: {len(files)} file(s)" + (f", newest {files[-1]}" if files else "")
+        except Exception:
+            return "backup vault unreadable"
+    if fid == "w_uptime":
+        import time as _t
+        up = _t.time() - getattr(bot, "_started_at", _t.time())
+        return f"uptime: {int(up // 3600)}h {int(up % 3600 // 60)}m across {len(bot.guilds)} server(s)"
+    if fid == "w_seen":
+        if not uid:
+            return "pick a human first"
+        row = db.execute("SELECT last_seen, interactions FROM creator_seen WHERE user_id = ?", (uid,)).fetchone()
+        if not row or not row["last_seen"]:
+            return "never seen (that I recorded)"
+        import time as _t
+        return f"last seen {_t.strftime('%m-%d %H:%M', _t.localtime(row['last_seen']))} · {row['interactions']:,} interactions"
+    if fid == "w_footprint":
+        if not uid:
+            return "pick a human first"
+        rows = db.execute("SELECT guild_id, level, gold FROM players WHERE user_id = ?", (uid,)).fetchall()
+        if not rows:
+            return "they have no player rows anywhere"
+        return "footprint: " + ", ".join(f"`{r['guild_id']}` Lv{r['level']} {r['gold']:,}g" for r in rows[:10])
+    if fid == "w_starving":
+        n = db.execute("SELECT COUNT(*) FROM players WHERE hp <= 1").fetchone()[0]
+        return f"hunger watch: {n} player(s) at 1 HP"
+    if fid == "w_gap":
+        hi = db.execute("SELECT MAX(gold) FROM players").fetchone()[0] or 0
+        lo = db.execute("SELECT MIN(gold) FROM players").fetchone()[0] or 0
+        return f"wealth gap: {hi:,} vs {lo:,} (spread {hi - lo:,})"
+    if fid == "w_pulse":
+        seen_n, ints = creator_seen_stats()
+        ok = await _say(f"💓 COMMUNITY PULSE: {seen_n} humans · {ints:,} interactions · the community is ALIVE. NYEH HEH HEH!")
+        return "pulse posted" if ok else "no channel"
+    if fid == "w_integrity":
+        total = 0
+        for t in ("players", "bosses", "levels", "items", "creator_seen", "bot_bans"):
+            try:
+                total += db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            except Exception:
+                pass
+        return f"integrity: key tables hold {total:,} total rows. the database is ALIVE and tidy"
+    if fid == "w_top_guild":
+        row = db.execute("SELECT guild_id, COUNT(*) n FROM players GROUP BY guild_id ORDER BY n DESC LIMIT 1").fetchone()
+        if not row:
+            return "no player data"
+        gname = bot.get_guild(row["guild_id"]).name if bot.get_guild(row["guild_id"]) else f"server {row['guild_id']}"
+        return f"biggest community: {gname} with {row['n']} player(s)"
+    if fid == "w_portrait":
+        row = db.execute("SELECT user_id, interactions FROM creator_seen ORDER BY interactions DESC LIMIT 1").fetchone()
+        if not row:
+            return "no tracking data yet"
+        ok = await _say(f"🖼️ HUMAN OF THE MOMENT: <@{row['user_id']}> ({row['interactions']:,} interactions). FRAME THIS MESSAGE.")
+        return "portrait hung" if ok else "no channel"
+    if fid == "w_census":
+        seen_n, ints = creator_seen_stats()
+        guilds_n, players_n, gold_n = _creator_server_stats()
+        return f"full census: {guilds_n} servers · {players_n} players · {seen_n} humans · {ints:,} interactions · {gold_n:,} gold in the world"
+
     return "nothing (unknown action)"
+
 
 
 # ============================================================
@@ -1692,7 +2451,7 @@ class CreatorPanelView(CooldownView):
                     f'GOLD {gold:>13,}',
                     f'BANS {_creator_ban_count():>13,}',
                 ], width=30)}```\n"
-                f"{ui_chip('⚡ 100 actions', '🔨 global bans', '👥 every human')}\n"
+                f"{ui_chip(f'⚡ {FEATURE_COUNT} actions', '🔨 global bans', '👥 every human')}\n"
                 f"{ui_chip('🗺️ kill-switch', '📢 broadcast', '🔒 creator only')}"
             ),
             color=0x7B2CBF,
@@ -1711,18 +2470,23 @@ class CreatorPanelView(CooldownView):
             f"`{r['user_id']}` {ui_plain(r['last_name'] or 'unknown')[:20]:<20} x{r['interactions']:,}"
             for r in rows[:20]
         ]
+        top_rows = db.execute("SELECT user_id, last_name, interactions FROM creator_seen ORDER BY interactions DESC LIMIT 3").fetchall()
+        act_box = ui_frame([f"{i + 1}. {ui_plain(r['last_name'] or 'human')[:12]:<12} x{r['interactions']:,}" for i, r in enumerate(top_rows)], width=26) if top_rows else "(no activity yet)"
         emb = discord.Embed(
-            title="👥 EVERY HUMAN",
+            title="👥 HUMAN REGISTRY",
             description=(
                 f"{ui_rule('thick')}\n"
-                f"**{total:,}** humans have touched the bot — **{ints:,}** total interactions.\n"
+                f"**{total:,}** humans tracked · **{ints:,}** total interactions\n"
                 f"{ui_rule()}\n"
+                f"👁️ **MOST TOUCHY HUMANS**\n```\n{act_box}\n```\n"
+                f"📋 **FULL LIST (paged 25/pg)**\n"
                 f"```\n" + ("\n".join(lines) if lines else "nobody yet") + "\n```\n"
-                f"_pick a human below to make them your target._"
+                f"{ui_chip('pick = target', 'every touch tracked', 'dossier in Security')}"
             ),
-            color=0x7B2CBF,
+            color=0x2C8A5F,
         )
-        emb.set_footer(text=f"{ui_pulse(self.page)} humans page {offset // 25 + 1} · newest first")
+        emb.set_author(name="👥 THE REGISTRY OF HUMANS")
+        emb.set_footer(text=f"{ui_pulse(self.page)} humans page {offset // 25 + 1} · dossier: Security → x_fingerprint")
         self.emb = emb
 
         opts = [
@@ -1799,18 +2563,24 @@ class CreatorPanelView(CooldownView):
             when = _t.strftime("%m-%d", _t.localtime(r["banned_at"])) if r["banned_at"] else "?"
             lines.append(f"`{r['user_id']}` {ui_plain(r['reason'] or 'no reason')[:28]:<28} {when}")
         listing = "\n".join(lines) if lines else "(the hammer rests)"
+        try:
+            dis_n = len(db.execute("SELECT guild_id FROM creator_guild_disabled").fetchall())
+        except Exception:
+            dis_n = 0
         emb = discord.Embed(
-            title="🔨 BANHAMMER",
+            title="🔨 THE BANHAMMER",
             description=(
                 f"{ui_rule('thick')}\n"
-                f"🦴 **{_creator_ban_count()}** human(s) currently sealed away.\n"
+                f"🦴 **{_creator_ban_count()}** global ban(s) · 🚫 **{dis_n}** locked server(s)\n"
                 f"{ui_rule()}\n"
+                f"📜 **THE SEALED LIST** (paged)\n"
                 f"```\n{listing}\n```\n"
                 f"{ui_chip('bans are GLOBAL', 'works in every server', 'creator is immune')}"
             ),
             color=0xB02020,
         )
-        emb.set_footer(text=f"{ui_pulse(self.page)} ban by ID below, or pick a human then use Actions")
+        emb.set_author(name="🔨 ENFORCEMENT DESK")
+        emb.set_footer(text=f"{ui_pulse(self.page)} mass tools: Defense (d_exile/d_pardon/d_amnesty)")
         self.emb = emb
 
         ban_btn = discord.ui.Button(label="Ban by ID", emoji="🔨", style=discord.ButtonStyle.danger, row=2)
@@ -1828,6 +2598,7 @@ class CreatorPanelView(CooldownView):
         cat_items = FEATURES.get(self.cat, [])
         cat_name = dict(FEATURE_CATS).get(self.cat, self.cat)
         lines = [f"{e} {l}" for (_f, l, e) in cat_items[:25]]
+        cat_map = " · ".join(f"{dict(FEATURE_CATS).get(v, v).split()[-1]}{len(FEATURES[v])}" for v, _n in FEATURE_CATS)
         emb = discord.Embed(
             title=f"⚡ ACTIONS — {cat_name.upper()}",
             description=(
@@ -1835,11 +2606,14 @@ class CreatorPanelView(CooldownView):
                 f"**{FEATURE_COUNT} total actions** across {len(FEATURE_CATS)} categories.\n"
                 f"{self._target_line()}\n"
                 f"{ui_rule()}\n"
+                f"🗺️ **CATEGORY MAP**\n{cat_map}\n"
+                f"{ui_rule()}\n"
                 f"```\n" + "\n".join(lines) + f"\n```\n"
                 f"_Pick a category, then an action. Results come back as a secret message._"
             ),
-            color=0x8A2BE2,
+            color=CAT_COLORS.get(self.cat, 0x8A2BE2),
         )
+        emb.set_author(name=f"⚡ THE ACTION ENGINE · {len(cat_items)} IN THIS DRAWER")
         emb.set_footer(text=f"{ui_pulse(self.page)} {len(cat_items)} actions in this category")
         self.emb = emb
 
@@ -1914,18 +2688,25 @@ class CreatorPanelView(CooldownView):
             disabled_n = int(db.execute("SELECT COUNT(*) FROM creator_guild_disabled").fetchone()[0] or 0)
         except Exception:
             pass
+        top3 = guilds_sorted[:3]
+        max_mc = max((g.member_count or 1) for g in top3) if top3 else 1
+        bars = [f"{ui_plain(g.name)[:14]:<14} {ui_bar(g.member_count or 0, max_mc, width=10)}" for g in top3]
+        size_box = "\n".join(bars) if bars else "(no servers)"
         emb = discord.Embed(
-            title="🗺️ SERVERS",
+            title="🗺️ THE TERRITORIES",
             description=(
                 f"{ui_rule('thick')}\n"
                 f"**{len(bot.guilds)}** servers host my puzzles · 🚫 **{disabled_n}** disabled\n"
                 f"{self._target_line()}\n"
                 f"{ui_rule()}\n"
+                f"📏 **LARGEST TERRITORIES**\n```\n{size_box}\n```\n"
+                f"📋 **ALL SERVERS (paged 25/pg)**\n"
                 f"```\n" + ("\n".join(lines) if lines else "(none)") + "\n```\n"
-                f"_pick a server to inspect, disable, or leave it._"
+                f"{ui_chip('inspect', 'kill-switch', 'leave')}"
             ),
             color=0x2C5F8A,
         )
+        emb.set_author(name="🗺️ TERRITORIAL OVERVIEW")
         page_n = self.servers_offset // 25 + 1
         total_pages = max(1, (len(guilds_sorted) + 24) // 25)
         emb.set_footer(text=f"{ui_pulse(self.page)} servers page {page_n}/{total_pages}")
@@ -2025,17 +2806,25 @@ class CreatorPanelView(CooldownView):
     # ---------- VOICE ----------
 
     def _voice_page(self):
+        seen_n, _ints = creator_seen_stats()
+        reach_box = ui_frame([
+            f'REACH   {len(bot.guilds):>10,} srv',
+            f'HUMANS  {seen_n:>10,}',
+        ], width=26)
         emb = discord.Embed(
-            title="📢 VOICE",
+            title="📢 THE ROYAL VOICE",
             description=(
                 f"{ui_rule('thick')}\n"
                 f"🦴 **SPEAK, CREATOR, AND EVERY SERVER SHALL HEAR!**\n"
                 f"{ui_rule()}\n"
+                f"📡 **BROADCAST REACH**\n```\n{reach_box}\n```\n"
                 f"The broadcast posts a Papyrus-styled announcement to every\n"
-                f"server's system channel (or first writable channel)."
+                f"server's system channel (or first writable channel).\n"
+                f"{ui_chip('one modal', 'every server', 'Papyrus voice')}"
             ),
             color=0xC79A2A,
         )
+        emb.set_author(name="📢 HERALD'S DESK")
         emb.set_footer(text=f"{ui_pulse(self.page)} {len(bot.guilds)} servers will hear it")
         self.emb = emb
         b = discord.ui.Button(label="Broadcast", emoji="📢", style=discord.ButtonStyle.primary, row=2)
