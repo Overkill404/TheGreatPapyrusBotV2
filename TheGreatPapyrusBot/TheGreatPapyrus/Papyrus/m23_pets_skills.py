@@ -492,7 +492,7 @@ async def open_skills_admin(interaction, guild_id):
     emb.add_field(name="Setting", value=f"skills_enabled: **{figet(guild_id, 'skills_enabled', 1)}**")
     emb.add_field(name="Effects", value=", ".join(f"`{k}`={v}" for k, v in SKILL_EFFECTS.items()), inline=False)
     view = _AdminPickView(guild_id, "skills",
-        [("Add Tree", _tree_add_modal), ("Add Node", _node_add_modal), ("Grant Points", _points_grant_modal)],
+        [("Add Tree", _tree_add_modal), ("Add Node", _node_add_pick), ("Grant Points", _points_grant_modal)],
         emb)
     await _send_panel(interaction, emb, view)
 
@@ -508,9 +508,23 @@ def _tree_add_modal():
             await inter.response.send_message("Skill tree added.", ephemeral=True)
     return _M
 
-def _node_add_modal():
+async def _node_add_pick(inter):
+    trees = db.execute("SELECT * FROM skill_trees WHERE guild_id=? ORDER BY id", (inter.guild_id,)).fetchall()
+    opts = [discord.SelectOption(label=f"{t['emoji'] or ''} {t['name']}".strip()[:100], value=str(t["id"]),
+                                 description=f"ID {t['id']}" + ("" if t["enabled"] else " · off"))
+            for t in trees]
+
+    async def on_pick(i2, value):
+        await i2.response.send_modal(_node_add_modal(int(value))())
+
+    await send_paged_picker(inter, "🌳 Add node to which tree?", opts, on_pick,
+                            placeholder="Pick a skill tree...", empty="No skill trees yet - add one first.")
+
+
+def _node_add_modal(tree_pick=None):
     class _M(discord.ui.Modal, title="Add Skill Node"):
-        tree_id = discord.ui.TextInput(label="Tree ID (see list)", max_length=8)
+        if tree_pick is None:
+            tree_id = discord.ui.TextInput(label="Tree ID (see list)", max_length=8)
         name = discord.ui.TextInput(label="Node name", max_length=40)
         stats = discord.ui.TextInput(label="cost,effect,value,requires_id", max_length=60, default="1,atk_flat,2,0")
         description = discord.ui.TextInput(label="Description", max_length=80, required=False, default="")
@@ -525,7 +539,7 @@ def _node_add_modal():
             emoji = "🔹"
             execute("""INSERT INTO skill_nodes (guild_id, tree_id, name, emoji, description, cost, effect, value, requires_id)
                 VALUES (?,?,?,?,?,?,?,?,?)""",
-                (inter.guild_id, int(str(self.tree_id.value).strip() or 0), str(self.name.value), emoji,
+                (inter.guild_id, int(tree_pick) if tree_pick is not None else int(str(self.tree_id.value).strip() or 0), str(self.name.value), emoji,
                  str(self.description.value)[:80], cost, eff, val, req))
             audit_log(inter.guild_id, inter.user.id, "skill_node_add", str(self.name.value))
             await inter.response.send_message("Skill node added.", ephemeral=True)
@@ -658,7 +672,10 @@ class _AdminPickView(CooldownView):
         pass
     def _make_cb(self, maker):
         async def cb(inter):
-            await inter.response.send_modal(maker())
+            if asyncio.iscoroutinefunction(maker):
+                await maker(inter)  # picker step (list + pages) before the modal
+            else:
+                await inter.response.send_modal(maker())
         return cb
 
 _g["open_spirits_admin"] = open_spirits_admin

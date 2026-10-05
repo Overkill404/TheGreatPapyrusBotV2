@@ -1051,6 +1051,26 @@ class PagedOptionsView(CooldownView):
         self.add_item(next_b)
 
 
+async def send_paged_picker(interaction, title, options, on_select, placeholder="Choose...", empty="Nothing to pick yet."):
+    """Ephemeral paged select (Prev/Next past Discord's 25-option limit) instead of typing an ID.
+
+    on_select(interaction, value) runs with the picked option's value.
+    """
+    options = list(options or [])
+    if not options:
+        if interaction.response.is_done():
+            await interaction.followup.send(f"❌ {empty}", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"❌ {empty}", ephemeral=True)
+        return
+    view = PagedOptionsView(options, 0, placeholder, title, on_select)
+    content = f"{title} - page **{view.page + 1}/{view.pages}** ({view.total} total)"
+    if interaction.response.is_done():
+        await interaction.followup.send(content, view=view, ephemeral=True)
+    else:
+        await interaction.response.send_message(content, view=view, ephemeral=True)
+
+
 class PagedBossPickView(CooldownView):
     """Boss picker that pages past Discord 25-option select limit."""
 

@@ -1382,22 +1382,26 @@ async def open_economy_admin(interaction, guild_id, tool: str = "hub"):
         return
 
     if tool == "shop_del":
-        class M(discord.ui.Modal, title="Delete shop item"):
-            iid = discord.ui.TextInput(label="Shop item id")
+        rows = db.execute(
+            "SELECT * FROM economy_shop WHERE guild_id = ? ORDER BY sort_order, id", (guild_id,)
+        ).fetchall() or []
+        opts = [
+            discord.SelectOption(
+                label=f"{r['emoji'] or ''} {r['name']}".strip()[:100],
+                value=str(r["id"]),
+                description=f"#{r['id']} · cost {r['cost']} · {r['reward_type']}×{r['reward_amount']}"[:100],
+            )
+            for r in rows
+        ]
 
-            async def on_submit(self, inter):
-                execute("DELETE FROM economy_shop WHERE guild_id = ? AND id = ?", (guild_id, int(self.iid.value)))
-                await inter.response.send_message("Deleted.", ephemeral=True)
+        async def on_pick(inter, value):
+            row = db.execute("SELECT name FROM economy_shop WHERE guild_id = ? AND id = ?", (guild_id, int(value))).fetchone()
+            execute("DELETE FROM economy_shop WHERE guild_id = ? AND id = ?", (guild_id, int(value)))
+            await inter.response.edit_message(
+                content=f"🗑️ Deleted **{row['name'] if row else '#' + str(value)}** from the shop.", view=None)
 
-        v = CooldownView(timeout=60)
-        b = discord.ui.Button(label="Delete by id", style=discord.ButtonStyle.danger)
-
-        async def cb(inter):
-            await inter.response.send_modal(M())
-
-        b.callback = cb
-        v.add_item(b)
-        await interaction.followup.send("Delete shop item:", view=v, ephemeral=True)
+        await send_paged_picker(interaction, "🗑️ Delete which shop item?", opts, on_pick,
+                                placeholder="Pick an item to delete...", empty="The shop is empty.")
         return
 
     if tool == "season":

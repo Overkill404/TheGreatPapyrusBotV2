@@ -8324,7 +8324,7 @@ class LevelAdminSelect(discord.ui.Select):
         options = [
             discord.SelectOption(label="Make Level", value="create", emoji="✨", description="Create a new portal level/area"),
             discord.SelectOption(label="Edit Level", value="edit", emoji="✏️", description="Rename or change a level"),
-            discord.SelectOption(label="List Levels", value="list", emoji="📋", description="Show all level IDs"),
+            discord.SelectOption(label="List Levels", value="list", emoji="📋", description="Show all levels"),
         ]
         super().__init__(placeholder="Level tools...", options=options, min_values=1, max_values=1)
         self.guild_id = guild_id
@@ -8334,17 +8334,58 @@ class LevelAdminSelect(discord.ui.Select):
         if self.values[0] == "create":
             await interaction.response.send_modal(CreateLevelModal(self.guild_id))
         elif self.values[0] == "edit":
-            await interaction.response.send_modal(EditLevelModal(self.guild_id))
+            gid = self.guild_id
+
+            async def on_pick(inter, value):
+                lv = get_level(gid, int(value))
+                if not lv:
+                    await inter.response.send_message("❌ Level not found.", ephemeral=True)
+                    return
+                await inter.response.send_modal(EditLevelModal(gid, lv))
+
+            await send_paged_picker(
+                interaction, "✏️ Pick a level to edit", level_pick_options(gid), on_pick,
+                placeholder="Edit which level?", empty="No levels yet.",
+            )
         else:
             levels = get_levels(self.guild_id, enabled_only=False)
             text = "\n".join(
                 f"`ID {lv['id']}` {lv['emoji']} **{lv['name']}** - {lv['description'] or '-'}"
                 for lv in levels
             )
+            if len(text) > 1900:
+                text = text[:1900].rsplit("\n", 1)[0] + "\n… use **Edit Level** to page through all of them"
             await interaction.response.send_message(
                 f"🗺️ **All levels**\n{text}",
                 ephemeral=True
             )
+
+
+def level_pick_options(guild_id):
+    """SelectOptions for every level (incl. disabled), labelled with universe + status."""
+    opts = []
+    for lv in get_levels(guild_id, enabled_only=False):
+        uni_name = ""
+        try:
+            uid = int(lv["universe_id"] or 0) if "universe_id" in lv.keys() else 0
+            u = get_universe(guild_id, uid) if uid else None
+            uni_name = str(u["name"]) if u else ""
+        except Exception:
+            pass
+        bits = [f"ID {lv['id']}"]
+        if uni_name:
+            bits.append(uni_name)
+        if not int(lv["enabled"] if "enabled" in lv.keys() else 1):
+            bits.append("disabled")
+        desc = str(lv["description"] or "").strip()
+        if desc:
+            bits.append(desc)
+        opts.append(discord.SelectOption(
+            label=f"{lv['emoji'] or ''} {lv['name']}".strip()[:100],
+            value=str(lv["id"]),
+            description=" · ".join(bits)[:100],
+        ))
+    return opts
 
 
 class CreateLevelModal(discord.ui.Modal, title="Make Level"):
@@ -8459,16 +8500,31 @@ class EditLevelModal(discord.ui.Modal, title="Edit Level"):
         max_length=40
     )
 
-    def __init__(self, guild_id):
+    def __init__(self, guild_id, level=None):
         super().__init__()
         self.guild_id = guild_id
+        self.pre_level = level
+        if level is not None:
+            self.remove_item(self.id_in)
+            self.title = f"Edit {level['name']}"[:45]
+            self.name_in.default = str(level["name"] or "")[:80]
+            intro = (level["intro"] if "intro" in level.keys() and level["intro"] else level["description"]) or ""
+            self.intro_in.default = str(intro)[:500]
+            img = level["image_url"] if "image_url" in level.keys() and level["image_url"] else ""
+            self.image_in.placeholder = (str(img) or "no image")[:100]
+            req_lv = int(level["require_player_level"] or 0) if "require_player_level" in level.keys() else 0
+            req_boss = (level["require_boss_id"] if "require_boss_id" in level.keys() else None) or 0
+            self.extra_in.default = f"{level['emoji'] or '🌀'} | {req_lv},{req_boss}"[:40]
 
     async def on_submit(self, interaction: discord.Interaction):
-        try:
-            lid = int(str(self.id_in.value).strip())
-        except ValueError:
-            await interaction.response.send_message("❌ Invalid level ID.", ephemeral=True)
-            return
+        if self.pre_level is not None:
+            lid = int(self.pre_level["id"])
+        else:
+            try:
+                lid = int(str(self.id_in.value).strip())
+            except ValueError:
+                await interaction.response.send_message("❌ Invalid level ID.", ephemeral=True)
+                return
         lv = get_level(self.guild_id, lid)
         if not lv:
             await interaction.response.send_message("❌ Level not found.", ephemeral=True)

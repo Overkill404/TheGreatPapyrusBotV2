@@ -662,8 +662,51 @@ async def open_dex_admin(interaction, guild_id):
         color=style_color(guild_id))
     emb.add_field(name="Completion rewards", value="\n".join(rlines) or "None set — all completions give nothing. Add one!", inline=False)
     emb.add_field(name="Setting", value=f"dex_enabled: **{figet(guild_id, 'dex_enabled', 1)}**")
-    view = _AdminPickViewM25(guild_id, [("Toggle Boss In Dex", _dex_boss_modal), ("Add Set Reward", _dex_reward_modal), ("Toggle Setting", _dex_setting_modal)])
+    view = _AdminPickViewM25(guild_id, [("Toggle Boss In Dex", _dex_boss_pick), ("Add Set Reward", _dex_reward_pick), ("Toggle Setting", _dex_setting_modal)])
     await _send_panel(interaction, emb, view)
+
+async def _dex_boss_pick(inter):
+    gid = inter.guild_id
+
+    def _opts():
+        out = []
+        for o in boss_select_options(gid, limit=None):
+            try:
+                on = figet(gid, f"dex_boss_{int(o.value)}", 1)
+            except Exception:
+                continue
+            out.append(discord.SelectOption(label=(("✅ " if on else "❌ ") + str(o.label))[:100], value=str(o.value),
+                                            description=("In dex - pick to remove" if on else "Not in dex - pick to add")))
+        return out
+
+    async def on_pick(i2, value):
+        bid = int(value)
+        new_state = 0 if figet(gid, f"dex_boss_{bid}", 1) else 1
+        fset(gid, f"dex_boss_{bid}", new_state)
+        b = get_boss(gid, bid)
+        name = b["name"] if b else f"#{bid}"
+        view = PagedOptionsView(_opts(), 0, "Toggle which boss?", "📕 Toggle boss in dex", on_pick)
+        await i2.response.edit_message(
+            content=f"📕 **{name}** is now **{'in' if new_state else 'out of'}** the dex. Pick another to toggle.",
+            view=view)
+
+    await send_paged_picker(inter, "📕 Toggle boss in dex", _opts(), on_pick,
+                            placeholder="Toggle which boss?", empty="No bosses yet.")
+
+
+async def _dex_reward_pick(inter):
+    gid = inter.guild_id
+    opts = [discord.SelectOption(label="Default Areas", value="0", description="Levels not in a universe")]
+    for u in list_universes(gid, enabled_only=False):
+        opts.append(discord.SelectOption(label=f"{u['emoji'] or ''} {u['name']}".strip()[:100], value=str(u["id"]),
+                                         description=f"ID {u['id']}"))
+
+    async def on_pick(i2, value):
+        await i2.response.send_modal(_dex_reward_modal(int(value))())
+
+    await send_paged_picker(inter, "🏆 Reward for completing which universe?", opts, on_pick,
+                            placeholder="Pick a universe...")
+
 
 def _dex_boss_modal():
     class _M(discord.ui.Modal, title="Toggle boss in dex"):
@@ -678,18 +721,24 @@ def _dex_boss_modal():
             await inter.response.send_message("Dex updated.", ephemeral=True)
     return _M
 
-def _dex_reward_modal():
+def _dex_reward_modal(uni_pick=None):
     class _M(discord.ui.Modal, title="Add universe completion reward"):
-        universe_id = discord.ui.TextInput(label="Universe ID (0 = default)", max_length=8, default="0")
+        if uni_pick is None:
+            universe_id = discord.ui.TextInput(label="Universe ID (0 = default)", max_length=8, default="0")
         rewards = discord.ui.TextInput(label="gold,xp", max_length=30, default="1000,500")
         async def on_submit(self, inter):
             try:
                 g, x = [int(v.strip()) for v in str(self.rewards.value).split(",")[:2]]
             except Exception:
                 g, x = 1000, 500
+            try:
+                uid = int(uni_pick) if uni_pick is not None else int(str(self.universe_id.value).strip() or 0)
+            except ValueError:
+                await inter.response.send_message("❌ Universe ID must be a number.", ephemeral=True)
+                return
             execute("INSERT INTO dex_rewards (guild_id, universe_id, gold, xp) VALUES (?,?,?,?)",
-                    (inter.guild_id, int(str(self.universe_id.value).strip() or 0), g, x))
-            audit_log(inter.guild_id, inter.user.id, "dex_reward_add", f"uni {self.universe_id.value}")
+                    (inter.guild_id, uid, g, x))
+            audit_log(inter.guild_id, inter.user.id, "dex_reward_add", f"uni {uid}")
             await inter.response.send_message("Reward added.", ephemeral=True)
     return _M
 
@@ -715,7 +764,10 @@ class _AdminPickViewM25(CooldownView):
         for label, maker in buttons[:5]:
             btn = discord.ui.Button(label=label, style=discord.ButtonStyle.primary)
             async def cb(inter, _maker=maker):
-                await inter.response.send_modal(_maker())
+                if asyncio.iscoroutinefunction(_maker):
+                    await _maker(inter)  # picker step (list + pages) before the modal
+                else:
+                    await inter.response.send_modal(_maker())
             btn.callback = cb
             try:
                 self.add_item(btn)
