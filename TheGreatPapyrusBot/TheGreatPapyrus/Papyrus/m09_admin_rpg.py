@@ -3234,12 +3234,7 @@ async def summon_cmd(interaction: discord.Interaction):
     await _open_summon_menu(interaction)
 
 
-@bot.tree.command(
-    name="explore",
-    description="Alias for /summon - open your portal menu."
-)
-async def explore(interaction: discord.Interaction):
-    await _open_summon_menu(interaction)
+
 
 
 

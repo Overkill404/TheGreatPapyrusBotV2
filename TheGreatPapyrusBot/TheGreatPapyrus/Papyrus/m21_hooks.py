@@ -36,6 +36,51 @@ except Exception as e:
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
+    # CREATOR TRACKING — every human who touches the bot, any server
+    try:
+        if interaction.user and not interaction.user.bot:
+            creator_touch_user(
+                interaction.user.id,
+                interaction.guild_id,
+                getattr(interaction.user, "display_name", "") or interaction.user.name,
+            )
+    except Exception:
+        pass
+    # CREATOR GUILD KILL-SWITCH — disabled servers get silence
+    try:
+        if (
+            interaction.guild_id
+            and interaction.user
+            and not is_bot_creator(interaction.user.id)
+            and creator_guild_is_disabled(interaction.guild_id)
+        ):
+            try:
+                await interaction.response.send_message(
+                    "🚫 The bot is disabled in this server by its creator.",
+                    ephemeral=True,
+                )
+            except Exception:
+                pass
+            return
+    except Exception:
+        pass
+    # CREATOR BAN enforcement — global, blocks everything, creator immune
+    try:
+        if (
+            interaction.user
+            and not is_bot_creator(interaction.user.id)
+            and is_creator_banned(interaction.user.id)
+        ):
+            try:
+                await interaction.response.send_message(
+                    "🚫 You are globally banned from using this bot. NYEH HEH HEH.",
+                    ephemeral=True,
+                )
+            except Exception:
+                pass
+            return
+    except Exception:
+        pass
     try:
         await _cmd_usage_listener(interaction)
     except Exception:

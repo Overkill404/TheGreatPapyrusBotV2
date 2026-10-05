@@ -54,6 +54,113 @@ def unban_from_bot(guild_id, user_id):
     )
 
 
+# ==================== CREATOR GLOBAL POWERS ====================
+
+def is_creator_banned(user_id) -> bool:
+    """True if the bot creator has globally banned this user from the bot."""
+    try:
+        row = db.execute(
+            "SELECT 1 FROM creator_bans WHERE user_id = ?",
+            (int(user_id),),
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
+def creator_ban_user(user_id, banned_by=None, reason=None):
+    """Global bot ban, works in every server. The creator himself is immune."""
+    import time as _time
+    if is_bot_creator(user_id):
+        return False
+    execute(
+        """
+        INSERT INTO creator_bans (user_id, banned_by, reason, banned_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            banned_by = excluded.banned_by,
+            reason = excluded.reason,
+            banned_at = excluded.banned_at
+        """,
+        (int(user_id), banned_by, reason or "", _time.time()),
+    )
+    return True
+
+
+def creator_unban_user(user_id):
+    execute("DELETE FROM creator_bans WHERE user_id = ?", (int(user_id),))
+
+
+def list_creator_bans(limit=50):
+    return db.execute(
+        "SELECT * FROM creator_bans ORDER BY banned_at DESC LIMIT ?",
+        (int(limit),),
+    ).fetchall()
+
+
+def creator_guild_is_disabled(guild_id) -> bool:
+    try:
+        row = db.execute(
+            "SELECT 1 FROM creator_guild_disabled WHERE guild_id = ?",
+            (int(guild_id),),
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
+def creator_disable_guild(guild_id):
+    import time as _time
+    execute(
+        "INSERT OR IGNORE INTO creator_guild_disabled (guild_id, disabled_at) VALUES (?, ?)",
+        (int(guild_id), _time.time()),
+    )
+
+
+def creator_enable_guild(guild_id):
+    execute("DELETE FROM creator_guild_disabled WHERE guild_id = ?", (int(guild_id),))
+
+
+def creator_touch_user(user_id, guild_id=None, name=None):
+    """Record that this human interacted with the bot (any server)."""
+    import time as _time
+    try:
+        row = db.execute(
+            "SELECT interactions FROM creator_seen WHERE user_id = ?",
+            (int(user_id),),
+        ).fetchone()
+        if row:
+            execute(
+                "UPDATE creator_seen SET interactions = interactions + 1, last_name = ?, last_guild_id = ?, last_seen = ? WHERE user_id = ?",
+                (name or "", int(guild_id or 0), _time.time(), int(user_id)),
+            )
+        else:
+            execute(
+                "INSERT INTO creator_seen (user_id, last_name, last_guild_id, interactions, first_seen, last_seen) VALUES (?, ?, ?, 1, ?, ?)",
+                (int(user_id), name or "", int(guild_id or 0), _time.time(), _time.time()),
+            )
+    except Exception:
+        pass
+
+
+def creator_seen_stats():
+    row = db.execute(
+        "SELECT COUNT(*), COALESCE(SUM(interactions), 0) FROM creator_seen"
+    ).fetchone()
+    return int(row[0] or 0), int(row[1] or 0)
+
+
+def creator_seen_page(offset=0, limit=25):
+    return db.execute(
+        """
+        SELECT * FROM creator_seen
+        ORDER BY last_seen DESC
+        LIMIT ? OFFSET ?
+        """,
+        (int(limit), int(offset)),
+    ).fetchall()
+
+
 def list_bot_bans(guild_id, limit=40):
     return db.execute(
         """

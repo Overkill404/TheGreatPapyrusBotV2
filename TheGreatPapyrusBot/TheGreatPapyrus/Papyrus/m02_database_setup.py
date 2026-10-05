@@ -812,6 +812,33 @@ def setup_database():
         )
     """)
 
+    execute("""
+        CREATE TABLE IF NOT EXISTS creator_bans (
+            user_id INTEGER PRIMARY KEY,
+            banned_by INTEGER,
+            reason TEXT,
+            banned_at REAL
+        )
+    """)
+
+    execute("""
+        CREATE TABLE IF NOT EXISTS creator_guild_disabled (
+            guild_id INTEGER PRIMARY KEY,
+            disabled_at REAL
+        )
+    """)
+
+    execute("""
+        CREATE TABLE IF NOT EXISTS creator_seen (
+            user_id INTEGER PRIMARY KEY,
+            last_name TEXT,
+            last_guild_id INTEGER,
+            interactions INTEGER NOT NULL DEFAULT 1,
+            first_seen REAL,
+            last_seen REAL
+        )
+    """)
+
     try:
         execute("ALTER TABLE guild_settings ADD COLUMN announce_channel_id INTEGER")
     except sqlite3.OperationalError:
