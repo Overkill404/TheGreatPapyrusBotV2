@@ -1036,8 +1036,8 @@ class InventoryEquipmentSelect(discord.ui.Select):
 
 
 
-def build_inventory_embed(guild, member):
-    """Backpack panel - stats + currently equipped only (lists live in buttons)."""
+def build_inventory_embed(guild, member, page: int = 0):
+    """Backpack panel - stats header + page-specific sections (11 pages)."""
     guild_id = guild.id
     user_id = member.id
     player = get_player(guild_id, user_id)
@@ -1263,53 +1263,242 @@ def build_inventory_embed(guild, member):
     except Exception:
         pass
 
-    # Add abilities in a more organized way
-    if slot_lines:
-        abilities_text = "\n".join(slot_lines[:3])
-        embed.add_field(name="🔥 **ABILITIES**", value=abilities_text[:1024], inline=False)
-    
-    try:
-        prog = player_progression_summary(guild_id, user_id)
-        if prog:
-            embed.add_field(name="✨ **PROGRESSION**", value=prog[:1024], inline=False)
-    except Exception as e:
-        print("backpack progression:", e)
-    
-    # Add boss role if equipped
-    if boss_role_line != "-":
-        embed.add_field(name="🎭 **BOSS ROLE**", value=boss_role_line[:1024], inline=False)
-    
-    # Add special currency info
-    try:
-        shard_n = get_rebirth_shard_count(guild_id, user_id)
-    except Exception:
-        shard_n = 0
-    try:
-        ashard_n = get_ascended_shard_count(guild_id, user_id)
-    except Exception:
-        ashard_n = 0
-    
-    currency_text = f"💎 **Rebirth Shards:** {shard_n:,} | 🌟 **Ascended Shards:** {ashard_n:,}"
-    embed.add_field(name="💎 **SPECIAL CURRENCY**", value=currency_text[:1024], inline=False)
-    
-    # Add boss kill stats if any
-    try:
-        total_k, top_boss, top_k = get_player_boss_kill_stats(guild_id, user_id)
-        if total_k > 0:
-            top_s = f"**{top_boss}** x{top_k}" if top_boss else "-"
+    PAGE_TITLES = ["Home", "Shop", "Player Shop", "Craft", "Upgrades", "Combat",
+                   "Progress", "Kills", "Profile", "Social+", "Commands"]
+    PAGE_BLURBS = {
+        0: "🏠 equipment & admin tools",
+        1: "🛒 buy with gold / shards (opens here)",
+        2: "🏪 browse · list · sell",
+        3: "🔨 recipes & crafting",
+        4: "🎒 craftable backpack bonuses",
+        5: "⚔️ party · rush · PvP · clear",
+        6: "✨ rebirth · ascend · codes",
+        7: "☠️ boss stats & kill roles",
+        8: "🎭 custom name & pfp",
+        9: "💬 court · bounty · apartment · gauntlets",
+        10: "📜 all bot slash commands",
+    }
+    _pg = max(0, min(int(page or 0), len(PAGE_TITLES) - 1))
+    embed.add_field(
+        name=f"📂 {PAGE_TITLES[_pg].upper()}",
+        value=PAGE_BLURBS.get(_pg, "Pick an option below."),
+        inline=False,
+    )
+
+    if _pg == 1:
+        # Shop page: balance + shop overview
+        bal = f"💰 **Gold:** {int(player['gold'] or 0):,}"
+        try:
+            shard_n0 = get_rebirth_shard_count(guild_id, user_id)
+            bal += f"  ·  💎 **Rebirth Shards:** {shard_n0:,}"
+        except Exception:
+            pass
+        try:
+            ashard_n0 = get_ascended_shard_count(guild_id, user_id)
+            bal += f"  ·  🌟 **Ascended:** {ashard_n0:,}"
+        except Exception:
+            pass
+        embed.add_field(name="💰 YOUR BALANCE", value=bal, inline=False)
+        try:
+            rows0 = db.execute(
+                "SELECT COUNT(*) AS n, MIN(price) AS lo, MAX(price) AS hi FROM shop WHERE guild_id = ? AND enabled = 1",
+                (guild_id,),
+            ).fetchone()
+            n0 = int(rows0["n"] or 0)
+            if n0:
+                embed.add_field(
+                    name="🛒 SERVER SHOP",
+                    value=f"**{n0}** items listed · prices from **{int(rows0['lo'] or 0):,}** to **{int(rows0['hi'] or 0):,}**\nPick **Server Shop** above to browse and buy.",
+                    inline=False,
+                )
+            else:
+                embed.add_field(name="🛒 SERVER SHOP", value="The shop is empty. Admins can add items in Admin+ → Shop.", inline=False)
+        except Exception:
+            pass
+    elif _pg == 2:
+        # Player Shop page: your listings
+        try:
+            mine = db.execute(
+                "SELECT item_name, quantity, price FROM player_shop WHERE guild_id = ? AND seller_id = ? ORDER BY id DESC LIMIT 5",
+                (guild_id, user_id),
+            ).fetchall()
+            if mine:
+                lines0 = "\n".join(f"• **{r['item_name']}** x{int(r['quantity'] or 1)} — {int(r['price'] or 0):,} gold" for r in mine)
+                embed.add_field(name="🏪 YOUR LISTINGS", value=lines0[:1024], inline=False)
+            else:
+                embed.add_field(name="🏪 YOUR LISTINGS", value="Nothing listed yet. Use **List for Sale** above to put items on the market.", inline=False)
+        except Exception:
+            pass
+        embed.add_field(name="💸 QUICK SELL", value="**Sell Item** above converts items to gold instantly.", inline=False)
+    elif _pg == 3:
+        # Craft page
+        try:
+            mats = db.execute(
+                "SELECT COUNT(*) AS n, SUM(quantity) AS q FROM items WHERE guild_id = ? AND user_id = ? AND quantity > 0",
+                (guild_id, user_id),
+            ).fetchone()
             embed.add_field(
-                name="☠️ **BOSS KILLS**",
-                value=f"**{total_k:,}** total - Most fought: {top_s}",
+                name="🔨 CRAFTING MATERIALS",
+                value=f"You hold **{int(mats['n'] or 0)}** kinds of items (**{int(mats['q'] or 0):,}** total).\nPick **Craft** above to combine them into gear.",
                 inline=False,
             )
-        else:
-            embed.add_field(
-                name="☠️  Boss Kills",
-                value="**0** - defeat bosses to build your record (kept on Rebirth & Ascend)",
-                inline=False,
-            )
-    except Exception:
-        pass
+        except Exception:
+            embed.add_field(name="🔨 CRAFTING", value="Pick **Craft** above to open recipes.", inline=False)
+    elif _pg == 4:
+        # Upgrades page: owned backpack upgrades + effects
+        try:
+            own = db.execute(
+                """
+                SELECT u.name, u.emoji, u.description, p.purchase_count
+                FROM player_backpack_upgrades p
+                JOIN backpack_upgrades u ON u.id = p.upgrade_id
+                WHERE p.guild_id = ? AND p.user_id = ?
+                ORDER BY u.id LIMIT 10
+                """,
+                (guild_id, user_id),
+            ).fetchall()
+            if own:
+                lines0 = "\n".join(
+                    f"{r['emoji'] or '🎒'} **{r['name']}** x{int(r['purchase_count'] or 1)}" for r in own
+                )
+                embed.add_field(name="🎒 YOUR BACKPACK UPGRADES", value=lines0[:1024], inline=False)
+            else:
+                embed.add_field(name="🎒 YOUR BACKPACK UPGRADES", value="No upgrades yet. Pick **View Upgrades** above to browse craftable backpack bonuses.", inline=False)
+        except Exception:
+            embed.add_field(name="🎒 UPGRADES", value="Pick **View Upgrades** above.", inline=False)
+    elif _pg == 5:
+        # Combat page
+        try:
+            fighting = is_in_fight(user_id)
+            status0 = "⚔️ **You are mid-fight!** Finish it or use **Clear Fights** above." if fighting else "✅ No active fight."
+        except Exception:
+            status0 = ""
+        try:
+            tk0, tb0, tkk0 = get_player_boss_kill_stats(guild_id, user_id)
+            rec0 = f"☠️ **{tk0:,}** boss kills" + (f" — most fought: **{tb0}** x{tkk0}" if tb0 else "") if tk0 else "☠️ No boss kills yet — go fight something!"
+        except Exception:
+            rec0 = ""
+        txt0 = "\n".join(x for x in (status0, rec0, "👥 **Party** up for co-op fights · 🏃 **Boss Rush** for chains · ⚔️ **PvP** to duel players.") if x)
+        embed.add_field(name="⚔️ COMBAT STATUS", value=txt0[:1024], inline=False)
+    elif _pg == 6:
+        # Progress page
+        try:
+            prog0 = player_progression_summary(guild_id, user_id)
+            if prog0:
+                embed.add_field(name="✨ REBIRTH / ASCEND", value=prog0[:1024], inline=False)
+        except Exception:
+            pass
+        try:
+            shard_n0 = get_rebirth_shard_count(guild_id, user_id)
+            ashard_n0 = get_ascended_shard_count(guild_id, user_id)
+            embed.add_field(name="💎 SPECIAL CURRENCY", value=f"💎 **Rebirth Shards:** {shard_n0:,} | 🌟 **Ascended Shards:** {ashard_n0:,}", inline=False)
+        except Exception:
+            pass
+        embed.add_field(name="⏭️ NEXT MILESTONES", value=f"Level **{player['level']}** → next XP at **{xp_need:,}**.\n🔑 **Codes** above redeem gift codes.", inline=False)
+    elif _pg == 7:
+        # Kills page: top bosses
+        try:
+            rows0 = db.execute(
+                """
+                SELECT boss_id, kills FROM player_boss_kills
+                WHERE guild_id = ? AND user_id = ? AND kills > 0
+                ORDER BY kills DESC LIMIT 5
+                """,
+                (guild_id, user_id),
+            ).fetchall()
+            if rows0:
+                lines0 = []
+                for r0 in rows0:
+                    try:
+                        b0 = get_boss(guild_id, int(r0["boss_id"]))
+                        nm0 = b0["name"] if b0 else f"Boss #{r0['boss_id']}"
+                    except Exception:
+                        nm0 = f"Boss #{r0['boss_id']}"
+                    lines0.append(f"• **{nm0}** — x{int(r0['kills'] or 0)}")
+                embed.add_field(name="☠️ YOUR TOP BOSSES", value="\n".join(lines0)[:1024], inline=False)
+            else:
+                embed.add_field(name="☠️ YOUR TOP BOSSES", value="No kills recorded yet. Defeat bosses to build your record!", inline=False)
+        except Exception:
+            pass
+        embed.add_field(name="🏅 KILL ROLES", value="Pick **Kill Roles** above to equip boss roles you have earned.", inline=False)
+    elif _pg == 8:
+        # Profile page
+        embed.add_field(name="🎭 CURRENT PROFILE", value=f"**Name:** {display_label}\n**Level:** {player['level']} · **Gold:** {int(player['gold'] or 0):,}", inline=False)
+        embed.add_field(name="✏️ CUSTOMIZE", value="**Name** above sets your RPG name · **Pfp** sets an image/GIF avatar.", inline=False)
+    elif _pg == 9:
+        # Social+ page
+        try:
+            frow0 = get_papyrus_friend(guild_id, user_id)
+            fpts0 = int(frow0["points"] or 0) if frow0 else 0
+            frank0 = friend_rank_for_points(guild_id, fpts0)
+            embed.add_field(name="💜 FRIENDSHIP WITH PAPYRUS", value=f"**{frank0.get('name', 'Stranger')}** — `{fpts0:,}` pts\n`/friendship` shows full details.", inline=False)
+        except Exception:
+            pass
+        if boss_role_line != "-":
+            embed.add_field(name="🎭 BOSS ROLE", value=boss_role_line, inline=False)
+        embed.add_field(name="💬 SOCIAL FEATURES", value="Court · Bounty Board · Apartment · Soul Paths · Gauntlets · Codex — pick above.", inline=False)
+    elif _pg == 10:
+        # Commands page
+        embed.add_field(
+            name="📜 QUICK COMMANDS",
+            value=(
+                "`/start` create player · `/backpack` this panel · `/summon` portals\n"
+                "`/attack` fight · `/shop` buy · `/craft` recipes\n"
+                "`/leaderboard` rankings · `/friendship` Papyrus rank\n"
+                "`/daily` daily rewards · `/work` earn gold · `/crime` risky gold\n"
+                "Pick **All Commands** above for the full list."
+            ),
+            inline=False,
+        )
+    else:
+        # Home page (default)
+        # Add abilities in a more organized way
+        if slot_lines:
+            abilities_text = "\n".join(slot_lines[:3])
+            embed.add_field(name="🔥 **ABILITIES**", value=abilities_text[:1024], inline=False)
+        
+        try:
+            prog = player_progression_summary(guild_id, user_id)
+            if prog:
+                embed.add_field(name="✨ **PROGRESSION**", value=prog[:1024], inline=False)
+        except Exception as e:
+            print("backpack progression:", e)
+        
+        # Add boss role if equipped
+        if boss_role_line != "-":
+            embed.add_field(name="🎭 **BOSS ROLE**", value=boss_role_line[:1024], inline=False)
+        
+        # Add special currency info
+        try:
+            shard_n = get_rebirth_shard_count(guild_id, user_id)
+        except Exception:
+            shard_n = 0
+        try:
+            ashard_n = get_ascended_shard_count(guild_id, user_id)
+        except Exception:
+            ashard_n = 0
+
+        currency_text = f"💎 **Rebirth Shards:** {shard_n:,} | 🌟 **Ascended Shards:** {ashard_n:,}"
+        embed.add_field(name="💎 **SPECIAL CURRENCY**", value=currency_text[:1024], inline=False)
+        
+        # Add boss kill stats if any
+        try:
+            total_k, top_boss, top_k = get_player_boss_kill_stats(guild_id, user_id)
+            if total_k > 0:
+                top_s = f"**{top_boss}** x{top_k}" if top_boss else "-"
+                embed.add_field(
+                    name="☠️ **BOSS KILLS**",
+                    value=f"**{total_k:,}** total - Most fought: {top_s}",
+                    inline=False,
+                )
+            else:
+                embed.add_field(
+                    name="☠️  Boss Kills",
+                    value="**0** - defeat bosses to build your record (kept on Rebirth & Ascend)",
+                    inline=False,
+                )
+        except Exception:
+            pass
     embed.set_footer(text="🎒 ◀ ▶ PAGES: Home | Shop | Player Shop | Craft | Upgrades | Combat | Progress | Kills | Profile | Social+ | Commands")
     return embed
 
@@ -1567,36 +1756,7 @@ class InventoryView(CooldownView):
         self._build_page()
         try:
             guild = interaction.guild
-            embed = build_inventory_embed(guild, self.owner)
-            blurbs = {
-                0: "🏠 **Home** — equipment & admin tools",
-                1: "🛒 **Shop** — buy with gold / shards (opens here)",
-                2: "🏪 **Player Shop** — browse · list · sell",
-                3: "🔨 **Craft** — recipes",
-                4: "🎒 **Upgrades** — purchase backpack upgrades & bonuses",
-                5: "⚔️ **Combat** — party · rush · PvP · clear",
-                6: "✨ **Progress** — rebirth · ascend · codes",
-                7: "☠️ **Kills** — boss stats & kill roles",
-                8: "🎭 **Profile** — custom name & pfp",
-                9: "💬 **Social+** — court · bounty · apartment · gauntlets",
-                10: "📜 **Commands** — view all bot slash commands with pagination",
-            }
-            try:
-                embed.insert_field_at(
-                    0,
-                    name=f"📂 {self.PAGE_NAMES[self.page]}",
-                    value=blurbs.get(self.page, "Pick an option below."),
-                    inline=False,
-                )
-            except Exception:
-                try:
-                    embed.add_field(
-                        name=f"📂 {self.PAGE_NAMES[self.page]}",
-                        value=blurbs.get(self.page, "Pick an option below."),
-                        inline=False,
-                    )
-                except Exception:
-                    pass
+            embed = build_inventory_embed(guild, self.owner, page=self.page)
             try:
                 embed.color = [
                     discord.Color.blurple(),

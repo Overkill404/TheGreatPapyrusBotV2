@@ -4538,10 +4538,11 @@ async def backpack(
     except Exception:
         pass
 
-    embed = build_inventory_embed(interaction.guild, interaction.user)
+    embed = build_inventory_embed(interaction.guild, interaction.user, page=0)
     try:
-        embed.insert_field_at(0, name="📂 Home", value=f"🦴 **{_pap_backpack_line()}**\n🏠 **Home** - equip gear - use ◀ ▶ for Shop, Craft, Combat, Progress...", inline=False)
-        embed.set_footer(text="Page 1/7 - Home - ◀ ▶ switch pages")
+        home_field = discord.utils.get(embed.fields, name="📂 HOME")
+        if home_field:
+            embed.set_field_at(embed.fields.index(home_field), name="📂 HOME", value=f"🦴 **{_pap_backpack_line()}**\n{home_field.value}", inline=False)
     except Exception:
         pass
     await interaction.response.send_message(
