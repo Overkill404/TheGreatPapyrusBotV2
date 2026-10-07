@@ -504,29 +504,87 @@ class BackpackUpgradeManageModal(discord.ui.Modal, title="Manage Backpack Upgrad
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            upgrade_id = int(self.upgrade_id_in.value)
-            action = str(self.action_in.value).strip().lower()
-            row = db.execute(
-                "SELECT * FROM backpack_upgrades WHERE guild_id = ? AND id = ?", (self.guild_id, upgrade_id)
-            ).fetchone()
-            if not row:
-                raise ValueError("Upgrade not found in this server.")
-            if action == "toggle":
-                execute("UPDATE backpack_upgrades SET enabled = ? WHERE id = ?", (0 if int(row["enabled"]) else 1, upgrade_id))
-                message = f"Upgrade #{upgrade_id} is now {'disabled' if int(row['enabled']) else 'enabled'}."
-            elif action == "delete":
-                owned = db.execute("SELECT 1 FROM player_backpack_upgrades WHERE upgrade_id = ? LIMIT 1", (upgrade_id,)).fetchone()
-                if owned:
-                    raise ValueError("Players own this upgrade; disable it instead so their purchase history is preserved.")
-                execute("DELETE FROM backpack_upgrade_effects WHERE upgrade_id = ?", (upgrade_id,))
-                execute("DELETE FROM backpack_upgrade_rewards WHERE upgrade_id = ?", (upgrade_id,))
-                execute("DELETE FROM backpack_upgrades WHERE id = ?", (upgrade_id,))
-                message = f"Deleted upgrade #{upgrade_id}."
-            else:
-                raise ValueError("Action must be toggle or delete.")
+            message = backpack_upgrade_apply(self.guild_id, int(self.upgrade_id_in.value), str(self.action_in.value))
             await interaction.response.send_message("✅ " + message, ephemeral=True)
         except Exception as error:
             await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+
+
+def backpack_upgrade_apply(guild_id, upgrade_id, action):
+    """Toggle or delete one backpack upgrade. Returns a status line; raises ValueError on refusal."""
+    action = str(action or "").strip().lower()
+    row = db.execute(
+        "SELECT * FROM backpack_upgrades WHERE guild_id = ? AND id = ?", (int(guild_id), int(upgrade_id))
+    ).fetchone()
+    if not row:
+        raise ValueError("Upgrade not found in this server.")
+    if action == "toggle":
+        execute("UPDATE backpack_upgrades SET enabled = ? WHERE id = ?", (0 if int(row["enabled"]) else 1, upgrade_id))
+        return f"Upgrade #{upgrade_id} is now {'disabled' if int(row['enabled']) else 'enabled'}."
+    if action == "delete":
+        owned = db.execute("SELECT 1 FROM player_backpack_upgrades WHERE upgrade_id = ? LIMIT 1", (upgrade_id,)).fetchone()
+        if owned:
+            raise ValueError("Players own this upgrade; disable it instead so their purchase history is preserved.")
+        execute("DELETE FROM backpack_upgrade_effects WHERE upgrade_id = ?", (upgrade_id,))
+        execute("DELETE FROM backpack_upgrade_rewards WHERE upgrade_id = ?", (upgrade_id,))
+        execute("DELETE FROM backpack_upgrades WHERE id = ?", (upgrade_id,))
+        return f"Deleted upgrade #{upgrade_id}."
+    raise ValueError("Action must be toggle or delete.")
+
+
+def _backpack_upgrade_pick_options(guild_id):
+    rows = db.execute("SELECT * FROM backpack_upgrades WHERE guild_id = ? ORDER BY id", (int(guild_id),)).fetchall()
+    return [
+        discord.SelectOption(
+            label=f"{r['emoji'] or ''} {r['name']}".strip()[:100],
+            value=str(r["id"]),
+            description=f"#{r['id']} · {'enabled' if int(r['enabled']) else 'disabled'} · {int(r['cost_gold'] or 0):,} gold"[:100],
+        )
+        for r in rows
+    ]
+
+
+async def open_backpack_upgrade_picker(interaction, guild_id):
+    """Paged list of upgrades; picking one shows Toggle / Delete buttons."""
+    gid = int(guild_id)
+
+    async def on_pick(inter, value):
+        uid = int(value)
+        row = db.execute("SELECT * FROM backpack_upgrades WHERE guild_id = ? AND id = ?", (gid, uid)).fetchone()
+        if not row:
+            await inter.response.edit_message(content="❌ Upgrade not found.", view=None)
+            return
+        on = int(row["enabled"])
+        v = CooldownView(timeout=120)
+        tog = discord.ui.Button(label="Disable" if on else "Enable", emoji="⏸️" if on else "▶️",
+                                style=discord.ButtonStyle.secondary)
+        dele = discord.ui.Button(label="Delete", emoji="🗑️", style=discord.ButtonStyle.danger)
+        back = discord.ui.Button(label="Back to list", emoji="↩️", style=discord.ButtonStyle.secondary)
+
+        async def do(i2, action):
+            try:
+                msg = "✅ " + backpack_upgrade_apply(gid, uid, action)
+            except Exception as error:
+                msg = f"❌ {error}"
+            pv = PagedOptionsView(_backpack_upgrade_pick_options(gid), 0, "Pick an upgrade...", "⚙️ Manage upgrades", on_pick)
+            await i2.response.edit_message(content=f"{msg}\n⚙️ Pick another upgrade to manage:", view=pv)
+
+        async def back_cb(i2):
+            pv = PagedOptionsView(_backpack_upgrade_pick_options(gid), 0, "Pick an upgrade...", "⚙️ Manage upgrades", on_pick)
+            await i2.response.edit_message(content="⚙️ Pick an upgrade to manage:", view=pv)
+
+        tog.callback = lambda i2: do(i2, "toggle")
+        dele.callback = lambda i2: do(i2, "delete")
+        back.callback = back_cb
+        v.add_item(tog)
+        v.add_item(dele)
+        v.add_item(back)
+        await inter.response.edit_message(
+            content=f"{row['emoji']} **#{uid} {row['name']}** - {'✅ enabled' if on else '⏸️ disabled'}\n{row['description'] or ''}"[:1900],
+            view=v)
+
+    await send_paged_picker(interaction, "⚙️ Manage upgrades", _backpack_upgrade_pick_options(gid), on_pick,
+                            placeholder="Pick an upgrade...", empty="No upgrades yet.")
 
 
 async def open_backpack_upgrade_admin(interaction, guild_id):
@@ -554,7 +612,7 @@ async def open_backpack_upgrade_admin(interaction, guild_id):
         await inter.response.send_modal(BackpackUpgradeCreateModal(guild_id))
 
     async def manage_callback(inter):
-        await inter.response.send_modal(BackpackUpgradeManageModal(guild_id))
+        await open_backpack_upgrade_picker(inter, guild_id)
 
     create_button.callback = create_callback
     manage_button.callback = manage_callback

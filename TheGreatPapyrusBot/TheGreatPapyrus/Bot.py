@@ -54,6 +54,7 @@ _PARTS = [
     "m42_web_api.py",
     "m11_economy_run.py",
     "m43_creator.py",
+    "m44_boss_share.py",
 ]
 
 def _load_parts() -> None:

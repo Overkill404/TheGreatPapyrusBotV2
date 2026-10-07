@@ -2990,6 +2990,31 @@ class PostBattleView(CooldownView):
 # VICTORY
 # ============================================================
 
+def papyrus_battle_grade(battle):
+    """Grade a won fight on HP kept (70 pts) and speed (30 pts: 3 turns or fewer = full).
+
+    Old grade used total damage / boss max HP, so overkill hits, heals and revives
+    pushed almost every fight to C.
+    """
+    try:
+        p_max = max(1, int(getattr(battle, "player_max_hp", 0) or 0))
+        p_hp = max(0, min(p_max, int(getattr(battle, "player_hp", 0) or 0)))
+        hp_left = p_hp / p_max
+    except Exception:
+        hp_left = 0.0
+    turns = max(1, int(getattr(battle, "turn_count", 0) or 0))
+    score = hp_left * 70 + min(30.0, 30.0 * 3 / max(3, turns))
+    if score >= 85:
+        grade, line = "S", "NYEH HEH HEH! FLAWLESS PUZZLE-SOLVING!"
+    elif score >= 70:
+        grade, line = "A", "A DECENT EFFORT! I AM ONLY SLIGHTLY IMPRESSED!"
+    elif score >= 50:
+        grade, line = "B", "HMM! THERE IS ROOM TO GROW, HUMAN!"
+    else:
+        grade, line = "C", "I WILL PREPARE A TRAINING REGIMEN IMMEDIATELY!"
+    return grade, line, int(round(hp_left * 100)), turns
+
+
 async def victory(
     interaction,
     battle,
@@ -3192,17 +3217,9 @@ async def victory(
     try:
         _dmg = int(getattr(battle, "total_player_damage", 0) or 0)
         _crits = int(getattr(battle, "crit_count", 0) or 0)
-        _bmax = int(getattr(battle, "boss_max_hp", 0) or 0)
-        _eff = (_dmg / _bmax) if _bmax > 0 else 0.0
-        if _eff <= 1.05:
-            _grade, _grade_line = "S", "NYEH HEH HEH! FLAWLESS PUZZLE-SOLVING!"
-        elif _eff <= 1.35:
-            _grade, _grade_line = "A", "A DECENT EFFORT! I AM ONLY SLIGHTLY IMPRESSED!"
-        elif _eff <= 1.9:
-            _grade, _grade_line = "B", "HMM! THERE IS ROOM TO GROW, HUMAN!"
-        else:
-            _grade, _grade_line = "C", "I WILL PREPARE A TRAINING REGIMEN IMMEDIATELY!"
+        _grade, _grade_line, _hp_pct, _turns = papyrus_battle_grade(battle)
         _report = f"\n\n📊 **BATTLE REPORT**\n🏆 Papyrus Grade: **{_grade}** — {_grade_line}"
+        _report += f"\n❤️ HP left: **{_hp_pct}%** · 🔁 Turns: **{_turns}**"
         _report += f"\n⚔️ Damage dealt: **{_dmg:,}**"
         if _crits:
             _report += f"\n💥 Critical hits: **{_crits}**"

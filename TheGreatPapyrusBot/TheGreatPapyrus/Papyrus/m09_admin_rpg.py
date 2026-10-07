@@ -3281,6 +3281,25 @@ def _check_require_specific_boss(guild_id, user_id, boss_id) -> tuple:
 
 
 
+def universe_image_url(uni) -> str:
+    """Universe thumbnail URL ('' when unset/invalid)."""
+    try:
+        if uni and "image_url" in uni.keys():
+            url = str(uni["image_url"] or "").strip()
+            return url if is_http_url(url) else ""
+    except Exception:
+        pass
+    return ""
+
+
+def universe_image_for_level(guild_id, level) -> str:
+    try:
+        uid = int(level["universe_id"] or 0) if level and "universe_id" in level.keys() else 0
+        return universe_image_url(get_universe(guild_id, uid)) if uid else ""
+    except Exception:
+        return ""
+
+
 def universe_label_for_level(guild_id, level) -> str:
     """Pretty universe name for embeds (portal / hub / boss)."""
     if not level:
@@ -3322,6 +3341,11 @@ def build_portal_embed(guild, level, boss, player=None):
     level_img = ""
     if level and "image_url" in level.keys() and level["image_url"]:
         level_img = level["image_url"]
+    if not level_img and level:
+        try:
+            level_img = universe_image_for_level(guild.id if guild else level["guild_id"], level)
+        except Exception:
+            pass
     boss_img = boss["image_url"] if boss and boss["image_url"] else ""
 
     # Enhanced stats display with visual bars
@@ -3539,9 +3563,11 @@ def build_level_hub_embed(guild_id, user_id, level, player_name=None):
         color=discord.Color.from_str("#0E6655")
     )
     embed.set_author(name=f"{player_name}'s area hub" if player_name else "AREA HUB")
-    if "image_url" in level.keys() and level["image_url"]:
+    hub_img = level["image_url"] if "image_url" in level.keys() and level["image_url"] else ""
+    hub_img = hub_img or universe_image_for_level(guild_id, level)
+    if hub_img:
         try:
-            embed.set_thumbnail(url=level["image_url"])
+            embed.set_thumbnail(url=hub_img)
         except Exception:
             pass
     embed.set_footer(text="You remain in this area until Main Menu")
@@ -3659,6 +3685,29 @@ def build_level_menu_embed(guild_id, user_id, levels, player_name=None):
         color=discord.Color.from_str("#5B2C6F")
     )
     embed.set_author(name=f"{player_name}'s main menu - SUMMON" if player_name else "UNDERTALE RPG  -  SUMMON")
+    universes = list_universes(guild_id, enabled_only=True)
+    if universes:
+        for u in universes[:20]:
+            ok, reason = universe_unlocked(guild_id, user_id, u)
+            n_lv = len(get_levels_in_universe(guild_id, u["id"], enabled_only=True))
+            desc = str(u["description"] or "")[:80]
+            embed.add_field(
+                name=f"{u['emoji'] or '🌌'}  {u['name']}" + ("" if ok else "  🔒"),
+                value=f"{desc or '*No description*'}\n🗺️ **{n_lv}** area(s) - {'✅ Open' if ok else '🔒 ' + reason}",
+                inline=True,
+            )
+        n_default = len(get_levels_in_universe(guild_id, 0, enabled_only=True))
+        if n_default:
+            embed.add_field(
+                name="🌌  Default Areas",
+                value=f"*Levels not in a universe*\n🗺️ **{n_default}** area(s) - ✅ Open",
+                inline=True,
+            )
+        embed.set_footer(text=(
+            f"✦ {player_name}'s summon menu — select a universe below ✦" if player_name
+            else "✦ Select a universe below ✦"
+        ))
+        return embed
     for lv in levels[:12]:
         count = len(get_spawnable_bosses_for_level(guild_id, lv["id"]))
         ok, reason = level_unlock_status(guild_id, user_id, lv)
@@ -3774,32 +3823,19 @@ class LevelSelectView(CooldownView):
                     except Exception:
                         pass
                     return
-            lvls = get_levels_in_universe(_g, uid, enabled_only=True)
-            if not lvls:
+            if not get_levels_in_universe(_g, uid, enabled_only=True):
                 try:
                     await inter.followup.send("No levels in this universe yet.", ephemeral=True)
                 except Exception:
                     pass
                 return
-            lopts = []
-            for lv in lvls[:100]:
-                ok2, reason2 = level_unlock_status(_g, _p.id, lv)
-                lock = "LOCK " if not ok2 else ""
-                lopts.append(discord.SelectOption(
-                    label=f"{lock}{lv['name']}"[:100],
-                    value=f"lv:{lv['id']}",
-                    description=(reason2[:100] if not ok2 else "Enter area"),
-                ))
-            async def on_lv(inter2, value2, __p=_p, __g=_g):
-                await _open_level_hub(inter2, __p, __g, int(str(value2).split(":")[-1]))
-            view = PagedOptionsView(lopts, placeholder="Select level...", title="Levels", on_select=on_lv)
-            uni = get_universe(_g, uid) if uid else None
-            title = uni["name"] if uni else "Default Areas"
+            emb = build_universe_levels_embed(_g, _p.id, uid, player_name=label_for_member(_p))
+            view = UniverseLevelsView(_p, _g, uid)
             try:
-                await inter.edit_original_response(content=f"**{title}** - pick a level:", embed=None, view=view)
+                await battle_edit_original(inter, emb, view)
             except Exception:
                 try:
-                    await inter.followup.send(f"**{title}** - pick a level:", view=view, ephemeral=True)
+                    await battle_followup(inter, emb, view)
                 except Exception:
                     pass
 
@@ -3809,6 +3845,107 @@ class LevelSelectView(CooldownView):
                 self.add_item(child)
             except Exception:
                 pass
+
+
+UNIVERSE_LEVELS_PAGE = 10
+
+
+def build_universe_levels_embed(guild_id, user_id, universe_id, page=0, player_name=None):
+    """One universe's card: header + its levels as fields (paged)."""
+    uni = get_universe(guild_id, universe_id) if universe_id else None
+    lvls = get_levels_in_universe(guild_id, universe_id, enabled_only=True)
+    pages = max(1, (len(lvls) + UNIVERSE_LEVELS_PAGE - 1) // UNIVERSE_LEVELS_PAGE)
+    page = max(0, min(int(page or 0), pages - 1))
+    name = uni["name"] if uni else "Default Areas"
+    emoji = (uni["emoji"] if uni and uni["emoji"] else "🌌")
+    desc = (str(uni["description"] or "") if uni else "") or "*Levels not in a universe*"
+    embed = discord.Embed(
+        title=f"{emoji}  {name}",
+        description=(
+            f"{ui_rule('thick')}\n"
+            f"{desc}\n"
+            f"{ui_rule()}\n"
+            f"🗺️ **{len(lvls)}** area(s) - pick a level below"
+        ),
+        color=discord.Color.from_str("#5B2C6F"),
+    )
+    embed.set_author(name=f"{player_name}'s summon - {name}" if player_name else f"SUMMON - {name}")
+    uimg = universe_image_url(uni)
+    if uimg:
+        embed.set_thumbnail(url=uimg)
+    for lv in lvls[page * UNIVERSE_LEVELS_PAGE:(page + 1) * UNIVERSE_LEVELS_PAGE]:
+        count = len(get_spawnable_bosses_for_level(guild_id, lv["id"]))
+        ok, reason = level_unlock_status(guild_id, user_id, lv)
+        is_start = ("is_start" in lv.keys() and lv["is_start"]) or lv["name"] in ("Void", "Puzzle Field")
+        intro = (lv["intro"] if "intro" in lv.keys() and lv["intro"] else lv["description"]) or ""
+        embed.add_field(
+            name=f"{lv['emoji']}  {lv['name']}" + ("  - 🏁" if is_start else ""),
+            value=f"{intro[:80] or '*No intro*'}\n🌀 **{count}** bosses - {'✅ Open' if ok else '🔒 ' + reason}",
+            inline=True,
+        )
+    embed.set_footer(text=f"Page {page + 1}/{pages} · Universes button returns to the universe list")
+    return embed
+
+
+class UniverseLevelsView(CooldownView):
+    """Levels inside one universe: level select + paging + back to universes."""
+
+    def __init__(self, player, guild_id, universe_id, page=0):
+        super().__init__(timeout=180)
+        self.player = player
+        self.guild_id = guild_id
+        self.universe_id = int(universe_id or 0)
+        lvls = get_levels_in_universe(guild_id, self.universe_id, enabled_only=True)
+        self.pages = max(1, (len(lvls) + UNIVERSE_LEVELS_PAGE - 1) // UNIVERSE_LEVELS_PAGE)
+        self.page = max(0, min(int(page or 0), self.pages - 1))
+
+        opts = []
+        for lv in lvls[self.page * UNIVERSE_LEVELS_PAGE:(self.page + 1) * UNIVERSE_LEVELS_PAGE]:
+            ok, reason = level_unlock_status(guild_id, player.id, lv)
+            opts.append(discord.SelectOption(
+                label=f"{'LOCK ' if not ok else ''}{lv['name']}"[:100],
+                value=str(lv["id"]),
+                emoji=safe_select_emoji(lv["emoji"], "🌀"),
+                description=(reason[:100] if not ok else "Enter area"),
+            ))
+        if opts:
+            sel = discord.ui.Select(placeholder="Select level...", options=opts, row=0)
+
+            async def on_level(inter, _sel=sel):
+                await _open_level_hub(inter, self.player, self.guild_id, int(_sel.values[0]))
+            sel.callback = on_level
+            self.add_item(sel)
+
+        back = discord.ui.Button(label="Universes", emoji="🌌", style=discord.ButtonStyle.secondary, row=1)
+        back.callback = self._back
+        self.add_item(back)
+        if self.pages > 1:
+            prev_b = discord.ui.Button(label="◀ Prev", style=discord.ButtonStyle.secondary, row=1, disabled=self.page <= 0)
+            prev_b.callback = lambda i: self._flip(i, self.page - 1)
+            self.add_item(prev_b)
+            next_b = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary, row=1, disabled=self.page >= self.pages - 1)
+            next_b.callback = lambda i: self._flip(i, self.page + 1)
+            self.add_item(next_b)
+
+    async def _not_owner(self, interaction):
+        if interaction.user.id != self.player.id:
+            await interaction.response.send_message("❌ Not your run.", ephemeral=True)
+            return True
+        return False
+
+    async def _flip(self, interaction, page):
+        if await self._not_owner(interaction):
+            return
+        pname = label_for_member(self.player)
+        emb = build_universe_levels_embed(self.guild_id, self.player.id, self.universe_id, page, player_name=pname)
+        await battle_edit(interaction, emb, UniverseLevelsView(self.player, self.guild_id, self.universe_id, page))
+
+    async def _back(self, interaction):
+        if await self._not_owner(interaction):
+            return
+        levels = get_levels(self.guild_id)
+        embed = build_level_menu_embed(self.guild_id, self.player.id, levels, player_name=label_for_member(self.player))
+        await battle_edit(interaction, embed, LevelSelectView(self.player, self.guild_id, levels))
 
 
 async def _open_level_hub(interaction, player, guild_id, level_id):

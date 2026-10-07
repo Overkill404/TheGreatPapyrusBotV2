@@ -475,7 +475,7 @@ async def open_gather_admin(interaction, guild_id):
     emb.add_field(name="Nodes", value="\n".join(nlines) or "None yet", inline=False)
     emb.add_field(name="Setting", value=f"gather_enabled: **{figet(guild_id, 'gather_enabled', 1)}**")
     view = _AdminPickView(guild_id, "gather",
-        [("Add Material", _mat_add_modal), ("Add Node", _node_add_modal_g), ("Add Roll", _roll_add_modal), ("Toggle Setting", _gather_setting_modal)],
+        [("Add Material", _mat_add_modal), ("Add Node", _node_add_modal_g), ("Add Roll", _roll_add_pick), ("Toggle Setting", _gather_setting_modal)],
         emb)
     await _send_panel(interaction, emb, view)
 
@@ -511,19 +511,53 @@ def _node_add_modal_g():
             await inter.response.send_message("Node added. Now add rolls to it (Add Roll).", ephemeral=True)
     return _M
 
-def _roll_add_modal():
+async def _roll_add_pick(inter):
+    gid = inter.guild_id
+    nodes = db.execute("SELECT * FROM gather_nodes WHERE guild_id=? ORDER BY id", (gid,)).fetchall()
+    mats = db.execute("SELECT * FROM materials WHERE guild_id=? ORDER BY id", (gid,)).fetchall()
+    if not mats:
+        await inter.response.send_message("❌ No materials yet - add one first.", ephemeral=True)
+        return
+    node_opts = [discord.SelectOption(label=f"{n['emoji'] or ''} {n['name']}".strip()[:100], value=str(n["id"]),
+                                      description=f"ID {n['id']} · {n['cooldown_min']}min cd") for n in nodes]
+    mat_opts = [discord.SelectOption(label=f"{m['emoji'] or ''} {m['name']}".strip()[:100], value=str(m["id"]),
+                                     description=f"ID {m['id']} · worth {m['value']}") for m in mats]
+
+    async def on_node(i2, node_value):
+        node = next((n for n in nodes if str(n["id"]) == str(node_value)), None)
+        title = f"⛏️ {node['name'] if node else 'Node'} - drops which material?"
+
+        async def on_mat(i3, mat_value):
+            await i3.response.send_modal(_roll_add_modal(int(node_value), int(mat_value))())
+
+        view = PagedOptionsView(mat_opts, 0, "Pick a material...", title, on_mat)
+        await i2.response.edit_message(content=f"{title} - page **1/{view.pages}** ({view.total} total)", view=view)
+
+    await send_paged_picker(inter, "⛏️ Add roll - pick a node", node_opts, on_node,
+                            placeholder="Pick a node...", empty="No nodes yet - add one first.")
+
+
+def _roll_add_modal(node_pick=None, mat_pick=None):
     class _M(discord.ui.Modal, title="Add roll: node -> material"):
-        node_id = discord.ui.TextInput(label="Node ID", max_length=8)
-        material_id = discord.ui.TextInput(label="Material ID", max_length=8)
+        if node_pick is None:
+            node_id = discord.ui.TextInput(label="Node ID", max_length=8)
+        if mat_pick is None:
+            material_id = discord.ui.TextInput(label="Material ID", max_length=8)
         stats = discord.ui.TextInput(label="chance%,min,max", max_length=30, default="50,1,3")
         async def on_submit(self, inter):
             try:
                 c, mn, mx = [int(x.strip()) for x in str(self.stats.value).split(",")[:3]]
             except Exception:
                 c, mn, mx = 50, 1, 3
+            try:
+                nid = int(node_pick) if node_pick is not None else int(str(self.node_id.value).strip())
+                mid = int(mat_pick) if mat_pick is not None else int(str(self.material_id.value).strip())
+            except ValueError:
+                await inter.response.send_message("❌ Node/Material ID must be a number.", ephemeral=True)
+                return
             execute("INSERT INTO gather_rolls (guild_id, node_id, material_id, chance_pct, min_qty, max_qty) VALUES (?,?,?,?,?,?)",
-                    (inter.guild_id, int(str(self.node_id.value).strip()), int(str(self.material_id.value).strip()), max(1, min(100, c)), mn, mx))
-            audit_log(inter.guild_id, inter.user.id, "gather_roll_add", f"node {self.node_id.value} -> mat {self.material_id.value}")
+                    (inter.guild_id, nid, mid, max(1, min(100, c)), mn, mx))
+            audit_log(inter.guild_id, inter.user.id, "gather_roll_add", f"node {nid} -> mat {mid}")
             await inter.response.send_message("Roll added.", ephemeral=True)
     return _M
 

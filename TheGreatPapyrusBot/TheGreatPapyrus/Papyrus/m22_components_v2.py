@@ -38,8 +38,12 @@ def embed_panel(emb, classic_view=None):
         return None
     classic_view = classic_view if isinstance(classic_view, ui.View) else None
     try:
-        kids = list(classic_view.children) if classic_view is not None else []
+        kids = []
         if classic_view is not None:
+            # keep the controls on the classic view so a retry (e.g. edit failed ->
+            # followup) can bridge it again instead of rendering a button-less panel
+            kids = getattr(classic_view, "_bridge_kids", None) or list(classic_view.children)
+            classic_view._bridge_kids = kids
             classic_view.clear_items()  # unbind so they can join the bridge
         timeout = getattr(classic_view, "timeout", None) if classic_view is not None else None
 
@@ -122,7 +126,7 @@ async def battle_edit(inter, emb, classic_view=None):
     """interaction.response.edit_message that renders as a V2 panel when possible."""
     v = embed_panel(emb, classic_view)
     if v is not None:
-        await inter.response.edit_message(view=v)
+        await inter.response.edit_message(content=None, embed=None, view=v)
     else:
         await inter.response.edit_message(embed=emb, view=classic_view)
 
@@ -130,7 +134,7 @@ async def battle_edit(inter, emb, classic_view=None):
 async def battle_edit_original(inter, emb, classic_view=None):
     v = embed_panel(emb, classic_view)
     if v is not None:
-        await inter.edit_original_response(view=v)
+        await inter.edit_original_response(content=None, embed=None, view=v)
     else:
         await inter.edit_original_response(embed=emb, view=classic_view)
 
@@ -138,7 +142,7 @@ async def battle_edit_original(inter, emb, classic_view=None):
 async def battle_msg_edit(message, emb, classic_view=None):
     v = embed_panel(emb, classic_view)
     if v is not None:
-        await message.edit(view=v)
+        await message.edit(content=None, embed=None, view=v)
     else:
         await message.edit(embed=emb, view=classic_view)
 

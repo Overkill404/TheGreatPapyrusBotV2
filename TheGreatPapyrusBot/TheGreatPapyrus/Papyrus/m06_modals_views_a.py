@@ -5156,6 +5156,7 @@ async def open_universe_admin(interaction, guild_id):
         discord.SelectOption(label="Create Universe", value="create", emoji="➕"),
         discord.SelectOption(label="List Universes", value="list", emoji="📜"),
         discord.SelectOption(label="Edit Universe", value="edit", emoji="✏️"),
+        discord.SelectOption(label="Set Universe Image", value="image", emoji="🖼️", description="Thumbnail shown on universe/area panels"),
         discord.SelectOption(label="Set Gate Boss", value="gate", emoji="🚪", description="Must beat this boss to enter"),
         discord.SelectOption(label="Set Universe Final", value="ufinal", emoji="🌌", description="Apex boss of this universe"),
         discord.SelectOption(label="Delete Universe", value="del", emoji="🗑️"),
@@ -5212,6 +5213,20 @@ async def open_universe_admin(interaction, guild_id):
                     return
                 await i2.response.send_modal(EditUniverseModal(_g, u))
             await inter.followup.send("Edit:", view=PagedOptionsView(ropts, on_select=on_ed, title="Edit Uni"), ephemeral=True)
+            return
+        if v == "image":
+            rows = list_universes(guild_id, enabled_only=False)
+            if not rows:
+                await inter.followup.send("Create a Universe first.", ephemeral=True)
+                return
+            ropts = [discord.SelectOption(label=str(r["name"])[:100], value=str(r["id"])) for r in rows[:25]]
+            async def on_img(i2, val, _g=guild_id):
+                u = get_universe(_g, int(val))
+                if not u:
+                    await i2.response.send_message("Missing.", ephemeral=True)
+                    return
+                await i2.response.send_modal(UniverseImageModal(_g, u))
+            await inter.followup.send("Set image for which universe?", view=PagedOptionsView(ropts, on_select=on_img, title="Uni Image"), ephemeral=True)
             return
         if v in ("gate", "ufinal"):
             rows = list_universes(guild_id, enabled_only=False)
@@ -5373,6 +5388,37 @@ class EditUniverseModal(discord.ui.Modal, title="Edit Universe"):
         except Exception as e:
             print("universe edit boss prompts:", e)
 
+
+
+class UniverseImageModal(discord.ui.Modal, title="Universe Image"):
+    url_in = discord.ui.TextInput(
+        label="Image URL (png/jpg/gif) - blank to clear",
+        required=False, max_length=500,
+        placeholder="https://...",
+    )
+
+    def __init__(self, guild_id, uni):
+        super().__init__()
+        self.guild_id = guild_id
+        self.uni_id = int(uni["id"])
+        self.uni_name = str(uni["name"])
+        try:
+            self.url_in.default = str(uni["image_url"] or "")[:500] if "image_url" in uni.keys() else ""
+        except Exception:
+            pass
+
+    async def on_submit(self, interaction: discord.Interaction):
+        url = str(self.url_in.value or "").strip()
+        if url and not is_http_url(url):
+            await interaction.response.send_message("❌ Must be an http(s) image link.", ephemeral=True)
+            return
+        execute("UPDATE universes SET image_url=? WHERE guild_id=? AND id=?", (url, self.guild_id, self.uni_id))
+        if not url:
+            await interaction.response.send_message(f"🖼️ Image cleared for **{self.uni_name}**.", ephemeral=True)
+            return
+        emb = discord.Embed(title=f"🖼️ {self.uni_name}", description="Universe image saved.", color=discord.Color.dark_purple())
+        emb.set_thumbnail(url=url)
+        await interaction.response.send_message(embed=emb, ephemeral=True)
 
 
 async def open_ascend_menu(interaction, guild_id, owner):

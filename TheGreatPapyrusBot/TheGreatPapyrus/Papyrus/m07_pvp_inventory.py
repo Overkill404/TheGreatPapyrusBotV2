@@ -2390,32 +2390,30 @@ class InventoryView(CooldownView):
                     except Exception:
                         pass
 
-        # Step 1: pick accused via member select is hard in inventory — use modal asking for user ID/mention
-        class CourtTargetModal(discord.ui.Modal, title="Papyrus Court — Who?"):
-            who_in = discord.ui.TextInput(
-                label="Player @mention or ID",
-                placeholder="@player or 123456789",
-                max_length=40,
-            )
+        # Step 1: pick the accused from a player dropdown, then the charge modal opens.
+        accuser_id = interaction.user.id
+        pick_view = CooldownView(timeout=120)
+        picker = discord.ui.UserSelect(placeholder="Who are you accusing?", min_values=1, max_values=1)
 
-            async def on_submit(self, inter: discord.Interaction):
-                raw = str(self.who_in.value or "").strip()
-                member = None
-                try:
-                    digits = "".join(c for c in raw if c.isdigit())
-                    if digits:
-                        member = inter.guild.get_member(int(digits))
-                except Exception:
-                    member = None
-                if not member:
-                    await inter.response.send_message(
-                        "Couldn't find that player. Use a mention or ID.",
-                        ephemeral=True,
-                    )
-                    return
-                await inter.response.send_modal(CourtChargeModal(member))
+        async def pick_accused(inter: discord.Interaction):
+            if inter.user.id != accuser_id:
+                await inter.response.send_message("This isn't your court summons.", ephemeral=True)
+                return
+            picked = picker.values[0]
+            member = picked if isinstance(picked, discord.Member) else inter.guild.get_member(int(picked.id))
+            if member is None:
+                await inter.response.send_message("That player isn't in this server.", ephemeral=True)
+                return
+            if member.bot or member.id == inter.user.id:
+                await inter.response.send_message("Pick another player (not yourself or a bot).", ephemeral=True)
+                return
+            await inter.response.send_modal(CourtChargeModal(member))
 
-        await interaction.response.send_modal(CourtTargetModal())
+        picker.callback = pick_accused
+        pick_view.add_item(picker)
+        await interaction.response.send_message(
+            "⚖️ **Papyrus Court** - pick the player you're accusing:", view=pick_view, ephemeral=True
+        )
 
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
