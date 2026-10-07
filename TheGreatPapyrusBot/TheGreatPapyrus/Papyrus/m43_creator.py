@@ -2408,6 +2408,7 @@ CREATOR_PAGES = [
     ("Actions", "⚡", f"{FEATURE_COUNT} actions in {len(FEATURE_CATS)} categories", 0x8A2BE2),
     ("Servers", "🗺️", "Inspect, disable or leave servers", 0x2C5F8A),
     ("Voice", "📢", "Broadcast to every server", 0xC79A2A),
+    ("Library", "📚", "Approve bosses servers offer to the Boss Library", 0x3A7D44),
 ]
 CREATOR_PAGE_SIZE = 25
 
@@ -2420,7 +2421,7 @@ class CreatorPanelView(CooldownView):
     """
 
     PAGES = [p[0] for p in CREATOR_PAGES]
-    HOME, HUMANS, BANS, ACTIONS, SERVERS, VOICE = range(6)
+    HOME, HUMANS, BANS, ACTIONS, SERVERS, VOICE, LIBRARY = range(7)
 
     def __init__(self, owner, page: int = 0):
         super().__init__(timeout=1800)
@@ -2432,6 +2433,8 @@ class CreatorPanelView(CooldownView):
         self.humans_offset = 0
         self.servers_offset = 0
         self._leave_armed = None
+        self.lib_offset = 0
+        self.lib_pick = None
         self._build()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -2452,6 +2455,7 @@ class CreatorPanelView(CooldownView):
             self.ACTIONS: self._actions_page,
             self.SERVERS: self._servers_page,
             self.VOICE: self._voice_page,
+            self.LIBRARY: self._library_page,
         }
         self.emb = builders[self.page]()
         self._add_controls()
@@ -2581,6 +2585,12 @@ class CreatorPanelView(CooldownView):
         self._nav_button("Actions", "⚡", self.ACTIONS, style=discord.ButtonStyle.primary)
         self._nav_button("Servers", "🗺️", self.SERVERS)
         self._nav_button("Broadcast", "📢", self.VOICE)
+        try:
+            _lib_wait = len(boss_library_list("pending"))
+        except Exception:
+            _lib_wait = 0
+        self._nav_button(f"Boss Library ({_lib_wait})" if _lib_wait else "Boss Library", "📚", self.LIBRARY,
+                         style=discord.ButtonStyle.success if _lib_wait else discord.ButtonStyle.secondary)
         return emb
 
     # ---------- HUMANS ----------
@@ -2945,6 +2955,95 @@ class CreatorPanelView(CooldownView):
         b.callback = lambda i: i.response.send_modal(CreatorBroadcastModal(self))
         self.add_item(b)
         return emb
+
+    # ---------- LIBRARY ----------
+
+    def _library_page(self):
+        rows = boss_library_list()
+        counts = {"pending": 0, "approved": 0, "hidden": 0}
+        for r in rows:
+            counts[str(r["status"])] = counts.get(str(r["status"]), 0) + 1
+        emb = self._embed(description=(
+            "Bosses that servers offered from **Admin → Boss Stuff → Export Boss**.\n"
+            "Approved ones show up in every server's **Import Boss → Boss Library**."
+        ))
+        emb.add_field(name="⏳ Waiting", value=f"**{counts['pending']}**", inline=True)
+        emb.add_field(name="✅ Approved", value=f"**{counts['approved']}**", inline=True)
+        emb.add_field(name="🙈 Hidden", value=f"**{counts['hidden']}**", inline=True)
+        self.lib_offset = max(0, min(self.lib_offset, max(0, len(rows) - 1)))
+        chunk = rows[self.lib_offset:self.lib_offset + CREATOR_PAGE_SIZE]
+        if chunk:
+            opts = []
+            for r in chunk:
+                icon = BOSS_LIB_STATUS_ICON.get(str(r["status"]), "❔")
+                opts.append(discord.SelectOption(
+                    label=f"{r['name']}"[:100], value=str(r["id"]), emoji=icon,
+                    description=f"{str(r['status']).title()} · {r['source_guild_name'] or '?'} · by {r['author_name'] or '?'}"[:100],
+                    default=(self.lib_pick == int(r["id"])),
+                ))
+            sel = discord.ui.Select(placeholder="Pick an offered boss…", options=opts, row=1)
+            sel.callback = lambda i, s=sel: self._lib_select(i, int(s.values[0]))
+            self.add_item(sel)
+        else:
+            emb.add_field(name="Offers", value="Nothing offered yet.", inline=False)
+        self._pager(self.lib_offset, len(rows), self._lib_flip, row=2)
+
+        entry = boss_library_get(self.lib_pick) if self.lib_pick else None
+        if entry is None:
+            self.lib_pick = None
+            return emb
+        bundle = boss_library_bundle(entry)
+        if bundle:
+            prev = boss_bundle_embed(bundle)
+            for f in prev.fields:
+                emb.add_field(name=f"{entry['name']} · {f.name}"[:256], value=f.value, inline=False)
+            if prev.thumbnail and prev.thumbnail.url:
+                emb.set_thumbnail(url=prev.thumbnail.url)
+        else:
+            emb.add_field(name=str(entry["name"]), value="⚠️ This entry's data is broken.", inline=False)
+        status = str(entry["status"])
+        for label, emoji, style, new_status in (
+            ("Approve", "✅", discord.ButtonStyle.success, "approved"),
+            ("Hide", "🙈", discord.ButtonStyle.secondary, "hidden"),
+        ):
+            b = discord.ui.Button(label=label, emoji=emoji, style=style, row=3, disabled=status == new_status)
+            b.callback = lambda i, st=new_status: self._lib_status(i, st)
+            self.add_item(b)
+        dl = discord.ui.Button(label="Download", emoji="⬇️", style=discord.ButtonStyle.secondary, row=3,
+                               disabled=bundle is None)
+        dl.callback = self._lib_download
+        self.add_item(dl)
+        rm = discord.ui.Button(label="Delete", emoji="🗑️", style=discord.ButtonStyle.danger, row=3)
+        rm.callback = self._lib_delete
+        self.add_item(rm)
+        return emb
+
+    async def _lib_flip(self, interaction, offset):
+        self.lib_offset = int(offset)
+        await self._jump_to(interaction, self.LIBRARY)
+
+    async def _lib_select(self, interaction, entry_id):
+        self.lib_pick = int(entry_id)
+        await self._jump_to(interaction, self.LIBRARY)
+
+    async def _lib_status(self, interaction, status):
+        if self.lib_pick:
+            boss_library_set_status(self.lib_pick, status)
+        await self._jump_to(interaction, self.LIBRARY)
+
+    async def _lib_delete(self, interaction):
+        if self.lib_pick:
+            boss_library_delete(self.lib_pick)
+            self.lib_pick = None
+        await self._jump_to(interaction, self.LIBRARY)
+
+    async def _lib_download(self, interaction):
+        entry = boss_library_get(self.lib_pick) if self.lib_pick else None
+        bundle = boss_library_bundle(entry) if entry else None
+        if not bundle:
+            await interaction.response.send_message("❌ Nothing to download.", ephemeral=True)
+            return
+        await interaction.response.send_message(file=boss_bundle_file(bundle), ephemeral=True)
 
 
 # ============================================================

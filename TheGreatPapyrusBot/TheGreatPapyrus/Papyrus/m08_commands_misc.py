@@ -6037,12 +6037,20 @@ class AdminBossStuffSelect(discord.ui.Select):
             discord.SelectOption(label="Boss Tools", value="tools", emoji="🔁", description="Phases, patterns, moves"),
             discord.SelectOption(label="Boss Rush", value="boss_rush", emoji="🏃", description="Edit rush difficulty mults"),
             discord.SelectOption(label="Check Boss", value="check", emoji="🔎", description="Inspect a boss"),
+            discord.SelectOption(label="Export Boss", value="export", emoji="📤", description="Download a boss or offer it to the Boss Library"),
+            discord.SelectOption(label="Import Boss", value="import", emoji="📥", description="Add a boss + its drops from the Library or a file"),
         ]
         super().__init__(placeholder="Boss Stuff...", options=options, min_values=1, max_values=1)
 
     async def callback(self, interaction: discord.Interaction):
         choice = self.values[0]
         gid = self.guild_id
+        if choice == "export":
+            await open_boss_export(interaction, gid)
+            return
+        if choice == "import":
+            await open_boss_import(interaction, gid)
+            return
         if choice == "create":
             view = CooldownView(timeout=60)
             view.add_item(CreateBossTypeSelect(gid))
